@@ -13,6 +13,7 @@ struct AssetGridView: View {
     @ObservedObject private var thumbnailCache = ThumbnailCache.shared
     let assetProvider: AssetProvider
     @AppStorage("allPhotosSortOrder") private var allPhotosSortOrder = "desc"
+    @AppStorage(UserDefaultsKeys.hideAllPhotosFilterAndSortButtons) private var hideAllPhotosFilterAndSortButtons = false
     let albumId: String? // Optional album ID to filter assets
     let personId: String? // Optional person ID to filter assets
     let tagId: String? // Optional tag ID to filter assets
@@ -76,7 +77,7 @@ struct AssetGridView: View {
                 }
             } else if assets.isEmpty {
                 VStack {
-                    if isAllPhotos {
+                    if shouldShowAllPhotosToolbar {
                         allPhotosToolbar
                             .padding(.bottom, 20)
                     }
@@ -91,7 +92,7 @@ struct AssetGridView: View {
                 }
             } else {
                 VStack {
-                    if isAllPhotos {
+                    if shouldShowAllPhotosToolbar {
                         allPhotosToolbar
                             .padding(.bottom, 20)
                     }
@@ -285,6 +286,10 @@ struct AssetGridView: View {
         }
     }
 
+    private var shouldShowAllPhotosToolbar: Bool {
+        isAllPhotos && !hideAllPhotosFilterAndSortButtons
+    }
+
     private var allPhotosToolbar: some View {
         HStack(spacing: 30) {
             Spacer()
@@ -308,7 +313,6 @@ struct AssetGridView: View {
                 }
             }
             .buttonStyle(.bordered)
-            .padding(.trailing, 60)
         }
     }
     

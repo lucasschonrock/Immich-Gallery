@@ -105,6 +105,16 @@ extension UserDefaults {
             }
         }
     }
+
+    var hideAllPhotosFilterAndSortButtons: Bool {
+        get { bool(forKey: UserDefaultsKeys.hideAllPhotosFilterAndSortButtons) }
+        set { set(newValue, forKey: UserDefaultsKeys.hideAllPhotosFilterAndSortButtons) }
+    }
+
+    var appBackgroundStyle: String {
+        get { string(forKey: UserDefaultsKeys.appBackgroundStyle) ?? "ocean" }
+        set { set(newValue, forKey: UserDefaultsKeys.appBackgroundStyle) }
+    }
     
     var artModeLevel: String {
         get { string(forKey: UserDefaultsKeys.artModeLevel) ?? "off" }

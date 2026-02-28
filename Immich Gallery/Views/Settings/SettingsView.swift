@@ -77,6 +77,8 @@ struct SettingsView: View {
     @AppStorage("enableThumbnailAnimation") private var enableThumbnailAnimation = false
     @AppStorage("enableSlideshowShuffle") private var enableSlideshowShuffle = false
     @AppStorage("allPhotosSortOrder") private var allPhotosSortOrder = "desc"
+    @AppStorage(UserDefaultsKeys.hideAllPhotosFilterAndSortButtons) private var hideAllPhotosFilterAndSortButtons = false
+    @AppStorage(UserDefaultsKeys.appBackgroundStyle) private var appBackgroundStyle = AppBackgroundStyle.ocean.rawValue
     @AppStorage("navigationStyle") private var navigationStyle = NavigationStyle.tabs.rawValue
     @AppStorage("enableTopShelf", store: UserDefaults(suiteName: AppConstants.appGroupIdentifier)) private var enableTopShelf = true
     @AppStorage("topShelfStyle", store: UserDefaults(suiteName: AppConstants.appGroupIdentifier)) private var topShelfStyle = "carousel"
@@ -294,6 +296,21 @@ struct SettingsView: View {
                                     )
                                     
                                     SettingsRow(
+                                        icon: "paintpalette",
+                                        title: "App Background",
+                                        subtitle: "Change the background style used across the app",
+                                        content: AnyView(
+                                            Picker("App Background", selection: $appBackgroundStyle) {
+                                                ForEach(AppBackgroundStyle.allCases, id: \.self) { style in
+                                                    Text(style.displayName).tag(style.rawValue)
+                                                }
+                                            }
+                                                .pickerStyle(.menu)
+                                                .frame(width: 300, alignment: .trailing)
+                                        )
+                                    )
+
+                                    SettingsRow(
                                         icon: "house",
                                         title: "Default Startup Tab",
                                         subtitle: "Choose which tab opens when the app starts",
@@ -412,6 +429,14 @@ struct SettingsView: View {
                                             .pickerStyle(.menu)
                                             .frame(width: 300, alignment: .trailing)
                                     )
+                                )
+
+                                SettingsRow(
+                                    icon: "line.3.horizontal.decrease.circle",
+                                    title: "Hide Filter & Sort Buttons",
+                                    subtitle: "Hide these controls in the main All Photos library view",
+                                    content: AnyView(Toggle("", isOn: $hideAllPhotosFilterAndSortButtons).labelsHidden()),
+                                    isOn: hideAllPhotosFilterAndSortButtons
                                 )
                             })
                         }

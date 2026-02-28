@@ -7,15 +7,70 @@
 
 import SwiftUI
 
-// Shared background gradient for consistent styling across the app
-struct SharedGradientBackground: View {
-    var body: some View {
-        LinearGradient(
-            gradient: Gradient(colors: [
+enum AppBackgroundStyle: String, CaseIterable {
+    case ocean
+    case midnight
+    case forest
+    case sunset
+    case graphite
+
+    var displayName: String {
+        switch self {
+        case .ocean: return "Ocean"
+        case .midnight: return "Midnight"
+        case .forest: return "Forest"
+        case .sunset: return "Sunset"
+        case .graphite: return "Graphite"
+        }
+    }
+
+    var gradientColors: [Color] {
+        switch self {
+        case .ocean:
+            return [
                 Color(red: 44/255, green: 83/255, blue: 100/255),
                 Color(red: 44/255, green: 83/255, blue: 100/255),
                 Color(red: 44/255, green: 83/255, blue: 100/255)
-            ]),
+            ]
+        case .midnight:
+            return [
+                .black,
+                .black,
+                .black
+            ]
+        case .forest:
+            return [
+                Color(red: 18/255, green: 52/255, blue: 44/255),
+                Color(red: 30/255, green: 78/255, blue: 65/255),
+                Color(red: 45/255, green: 98/255, blue: 83/255)
+            ]
+        case .sunset:
+            return [
+                Color(red: 78/255, green: 36/255, blue: 65/255),
+                Color(red: 118/255, green: 58/255, blue: 83/255),
+                Color(red: 166/255, green: 82/255, blue: 79/255)
+            ]
+        case .graphite:
+            return [
+                Color(red: 30/255, green: 34/255, blue: 40/255),
+                Color(red: 42/255, green: 47/255, blue: 54/255),
+                Color(red: 58/255, green: 64/255, blue: 72/255)
+            ]
+        }
+    }
+}
+
+// Shared background gradient for consistent styling across the app
+struct SharedGradientBackground: View {
+    @AppStorage(UserDefaultsKeys.appBackgroundStyle) private var appBackgroundStyle = AppBackgroundStyle.ocean.rawValue
+
+    private var selectedStyle: AppBackgroundStyle {
+        AppBackgroundStyle(rawValue: appBackgroundStyle) ?? .ocean
+    }
+
+    var body: some View {
+        LinearGradient(
+            gradient: Gradient(colors: selectedStyle.gradientColors),
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
@@ -70,13 +125,15 @@ struct ColorSelectionButtonStyle: ButtonStyle {
 }
 
 struct SharedOpaqueBackground: View {
+    @AppStorage(UserDefaultsKeys.appBackgroundStyle) private var appBackgroundStyle = AppBackgroundStyle.ocean.rawValue
+
+    private var selectedStyle: AppBackgroundStyle {
+        AppBackgroundStyle(rawValue: appBackgroundStyle) ?? .ocean
+    }
+
     var body: some View {
         LinearGradient(
-            gradient: Gradient(colors: [
-                Color(red: 44/255, green: 83/255, blue: 100/255),
-                Color(red: 44/255, green: 83/255, blue: 100/255),
-                Color(red: 44/255, green: 83/255, blue: 100/255)
-            ]),
+            gradient: Gradient(colors: selectedStyle.gradientColors),
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )

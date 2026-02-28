@@ -33,6 +33,18 @@ struct WhatsNewView: View {
     
     private let changelogContent = """
     
+    VERSION|1.1.9
+
+    NEW_FEATURE| Background & Library Controls
+    - Added an app-wide background style picker in Settings → Interface, including a true black Midnight theme.
+    - Added a new Settings → Sorting option to hide Filter and Sort buttons in the main library view.
+    - When Filter and Sort buttons are hidden, the All Photos grid now reclaims that space to show more images.
+
+    VERSION|1.1.8
+
+    NEW_FEATURE| All Photos Sort & Filter
+    - Added sort and filter controls to the main library (All Photos) view.
+
     VERSION|1.1.7
 
     NEW_FEATURE| Tabs vs Sidebar

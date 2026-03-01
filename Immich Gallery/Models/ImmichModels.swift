@@ -286,6 +286,30 @@ struct GridConfig {
     let loadingText: String
     let emptyStateText: String
     let emptyStateDescription: String
+    let enableThumbnailAnimation: Bool
+    let enableFocusAnimation: Bool
+
+    init(
+        columns: [GridItem],
+        itemWidth: CGFloat,
+        itemHeight: CGFloat,
+        spacing: CGFloat,
+        loadingText: String,
+        emptyStateText: String,
+        emptyStateDescription: String,
+        enableThumbnailAnimation: Bool = true,
+        enableFocusAnimation: Bool = true
+    ) {
+        self.columns = columns
+        self.itemWidth = itemWidth
+        self.itemHeight = itemHeight
+        self.spacing = spacing
+        self.loadingText = loadingText
+        self.emptyStateText = emptyStateText
+        self.emptyStateDescription = emptyStateDescription
+        self.enableThumbnailAnimation = enableThumbnailAnimation
+        self.enableFocusAnimation = enableFocusAnimation
+    }
     
     static let albumStyle = GridConfig(
         columns: [
@@ -341,7 +365,9 @@ struct GridConfig {
         spacing: 80,
         loadingText: "Loading folders...",
         emptyStateText: "No Folders Found",
-        emptyStateDescription: "Folders with indexed assets will appear here"
+        emptyStateDescription: "Folders with indexed assets will appear here",
+        enableThumbnailAnimation: false,
+        enableFocusAnimation: false
     )
 }
 

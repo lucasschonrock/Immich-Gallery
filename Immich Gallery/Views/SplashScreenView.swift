@@ -39,6 +39,10 @@ struct WhatsNewView: View {
     - Added an app-wide background style picker in Settings → Interface, including a true black Midnight theme.
     - Added a new Settings → Sorting option to hide Filter and Sort buttons in the main library view.
     - When Filter and Sort buttons are hidden, the All Photos grid now reclaims that space to show more images.
+    
+    BUGFIX| Folders UI hangs on large libraries
+    - Fixed a bug where folders view may hang on large libraries. 
+    - Made some additional performance improvements to people and tags tab.
 
     VERSION|1.1.8
 

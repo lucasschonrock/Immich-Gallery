@@ -19,12 +19,33 @@ struct SharedGridView<Item: GridDisplayable>: View {
     let isLoading: Bool
     let errorMessage: String?
     let onItemSelected: (Item) -> Void
+    let onItemAppear: ((Item) -> Void)?
     let onRetry: () -> Void
     
     @FocusState private var focusedItemId: String?
     @State private var globalAnimationTimer: Timer?
     @State private var animationTrigger: Int = 0
     @AppStorage("enableThumbnailAnimation") private var enableThumbnailAnimation = true
+
+    init(
+        items: [Item],
+        config: GridConfig,
+        thumbnailProvider: ThumbnailProvider,
+        isLoading: Bool,
+        errorMessage: String?,
+        onItemSelected: @escaping (Item) -> Void,
+        onItemAppear: ((Item) -> Void)? = nil,
+        onRetry: @escaping () -> Void
+    ) {
+        self.items = items
+        self.config = config
+        self.thumbnailProvider = thumbnailProvider
+        self.isLoading = isLoading
+        self.errorMessage = errorMessage
+        self.onItemSelected = onItemSelected
+        self.onItemAppear = onItemAppear
+        self.onRetry = onRetry
+    }
     
     var body: some View {
         ZStack {
@@ -74,12 +95,19 @@ struct SharedGridView<Item: GridDisplayable>: View {
                                     config: config,
                                     thumbnailProvider: thumbnailProvider,
                                     isFocused: focusedItemId == item.id,
-                                    animationTrigger: animationTrigger
+                                    animationTrigger: animationTrigger,
+                                    enableThumbnailAnimation: config.enableThumbnailAnimation && enableThumbnailAnimation
                                 )
                             }
                             .frame(width: config.itemWidth, height: config.itemHeight)
                             .focused($focusedItemId, equals: item.id)
-                            .animation(.easeInOut(duration: 0.2), value: focusedItemId)
+                            .animation(
+                                config.enableFocusAnimation ? .easeInOut(duration: 0.2) : nil,
+                                value: focusedItemId
+                            )
+                            .onAppear {
+                                onItemAppear?(item)
+                            }
                             .padding(10)
                             .buttonStyle(CardButtonStyle())
                         }
@@ -96,7 +124,7 @@ struct SharedGridView<Item: GridDisplayable>: View {
     }
     
     private func startGlobalAnimation() {
-        guard enableThumbnailAnimation else { return }
+        guard enableThumbnailAnimation, config.enableThumbnailAnimation else { return }
         stopGlobalAnimation()
         
         globalAnimationTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { _ in
@@ -117,13 +145,29 @@ struct SharedGridItemView<Item: GridDisplayable>: View {
     let thumbnailProvider: ThumbnailProvider
     let isFocused: Bool
     let animationTrigger: Int
+    let enableThumbnailAnimation: Bool
     
     @ObservedObject private var thumbnailCache = ThumbnailCache.shared
     @State private var thumbnails: [UIImage] = []
     @State private var currentThumbnailIndex = 0
     @State private var isLoadingThumbnails = false
-    @State private var enableThumbnailAnimation: Bool = UserDefaults.standard.enableThumbnailAnimation
-    
+
+    init(
+        item: Item,
+        config: GridConfig,
+        thumbnailProvider: ThumbnailProvider,
+        isFocused: Bool,
+        animationTrigger: Int,
+        enableThumbnailAnimation: Bool = true
+    ) {
+        self.item = item
+        self.config = config
+        self.thumbnailProvider = thumbnailProvider
+        self.isFocused = isFocused
+        self.animationTrigger = animationTrigger
+        self.enableThumbnailAnimation = enableThumbnailAnimation
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Thumbnail section
@@ -147,7 +191,10 @@ struct SharedGridItemView<Item: GridDisplayable>: View {
                                 .clipped()
                                 .cornerRadius(12)
                                 .opacity(index == currentThumbnailIndex ? 1.0 : 0.0)
-                                .animation(.easeInOut(duration: 1.5), value: currentThumbnailIndex)
+                                .animation(
+                                    enableThumbnailAnimation ? .easeInOut(duration: 1.5) : nil,
+                                    value: currentThumbnailIndex
+                                )
                         }
                     }
                 } else {
@@ -264,9 +311,6 @@ struct SharedGridItemView<Item: GridDisplayable>: View {
                     currentThumbnailIndex = (currentThumbnailIndex + 1) % thumbnails.count
                 }
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
-            enableThumbnailAnimation = UserDefaults.standard.enableThumbnailAnimation
         }
     }
     

@@ -238,7 +238,7 @@ class MockFolderService: FolderService {
         super.init(networkService: networkService)
     }
     
-    override func fetchUniquePaths() async throws -> [ImmichFolder] {
+    override func fetchUniquePaths(forceRefresh: Bool = false) async throws -> [ImmichFolder] {
         return [
             ImmichFolder(path: "/mock/photos"),
             ImmichFolder(path: "/mock/photos/vacation"),

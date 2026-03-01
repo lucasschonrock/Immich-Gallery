@@ -7,6 +7,35 @@
 
 import SwiftUI
 
+private let animatedThumbnailLimit = 3
+
+private func loadSingleThumbnail(
+    assetService: AssetService,
+    thumbnailCache: ThumbnailCache,
+    personId: String? = nil,
+    tagId: String? = nil,
+    folderPath: String? = nil
+) async -> UIImage? {
+    do {
+        let searchResult = try await assetService.fetchAssets(
+            page: 1,
+            limit: 1,
+            personId: personId,
+            tagId: tagId,
+            folderPath: folderPath
+        )
+        guard let asset = searchResult.assets.first(where: { $0.type == .image }) else {
+            return nil
+        }
+
+        return try await thumbnailCache.getThumbnail(for: asset.id, size: "thumbnail") {
+            try await assetService.loadImage(assetId: asset.id, size: "thumbnail")
+        }
+    } catch {
+        return nil
+    }
+}
+
 // MARK: - Album Thumbnail Provider
 class AlbumThumbnailProvider: ThumbnailProvider {
     private let albumService: AlbumService
@@ -51,12 +80,12 @@ class AlbumThumbnailProvider: ThumbnailProvider {
     private func loadAnimatedThumbnails(for album: ImmichAlbum) async -> [UIImage] {
         do {
             let albumProvider = AlbumAssetProvider(albumService: albumService, albumId: album.id)
-            let searchResult = try await albumProvider.fetchAssets(page: 1, limit: 10)
+            let searchResult = try await albumProvider.fetchAssets(page: 1, limit: animatedThumbnailLimit)
             let imageAssets = searchResult.assets.filter { $0.type == .image }
             
             var loadedThumbnails: [UIImage] = []
             
-            for asset in imageAssets.prefix(10) {
+            for asset in imageAssets.prefix(animatedThumbnailLimit) {
                 do {
                     let thumbnail = try await thumbnailCache.getThumbnail(for: asset.id, size: "thumbnail") {
                         try await self.assetService.loadImage(assetId: asset.id, size: "thumbnail")
@@ -88,14 +117,21 @@ class PeopleThumbnailProvider: ThumbnailProvider {
     
     func loadThumbnails(for item: GridDisplayable) async -> [UIImage] {
         guard let person = item as? Person else { return [] }
+
+        if shouldUseStaticThumbnail() {
+            if let thumbnail = await loadStaticThumbnail(for: person) {
+                return [thumbnail]
+            }
+            return []
+        }
         
         do {
-            let searchResult = try await assetService.fetchAssets(page: 1, limit: 10, personId: person.id)
+            let searchResult = try await assetService.fetchAssets(page: 1, limit: animatedThumbnailLimit, personId: person.id)
             let imageAssets = searchResult.assets.filter { $0.type == .image }
             
             var loadedThumbnails: [UIImage] = []
             
-            for asset in imageAssets.prefix(10) {
+            for asset in imageAssets.prefix(animatedThumbnailLimit) {
                 do {
                     let thumbnail = try await thumbnailCache.getThumbnail(for: asset.id, size: "thumbnail") {
                         try await self.assetService.loadImage(assetId: asset.id, size: "thumbnail")
@@ -114,6 +150,22 @@ class PeopleThumbnailProvider: ThumbnailProvider {
             return []
         }
     }
+
+    private func shouldUseStaticThumbnail() -> Bool {
+        return !UserDefaults.standard.enableThumbnailAnimation
+    }
+
+    private func loadStaticThumbnail(for person: Person) async -> UIImage? {
+        let thumbnail = await loadSingleThumbnail(
+            assetService: assetService,
+            thumbnailCache: thumbnailCache,
+            personId: person.id
+        )
+        if thumbnail == nil {
+            print("Failed to load static thumbnail for person \(person.id)")
+        }
+        return thumbnail
+    }
 }
 
 // MARK: - Tag Thumbnail Provider
@@ -127,14 +179,21 @@ class TagThumbnailProvider: ThumbnailProvider {
     
     func loadThumbnails(for item: GridDisplayable) async -> [UIImage] {
         guard let tag = item as? Tag else { return [] }
+
+        if shouldUseStaticThumbnail() {
+            if let thumbnail = await loadStaticThumbnail(for: tag) {
+                return [thumbnail]
+            }
+            return []
+        }
         
         do {
-            let searchResult = try await assetService.fetchAssets(page: 1, limit: 10, tagId: tag.id)
+            let searchResult = try await assetService.fetchAssets(page: 1, limit: animatedThumbnailLimit, tagId: tag.id)
             let imageAssets = searchResult.assets.filter { $0.type == .image }
             
             var loadedThumbnails: [UIImage] = []
             
-            for asset in imageAssets.prefix(10) {
+            for asset in imageAssets.prefix(animatedThumbnailLimit) {
                 do {
                     let thumbnail = try await thumbnailCache.getThumbnail(for: asset.id, size: "thumbnail") {
                         try await self.assetService.loadImage(assetId: asset.id, size: "thumbnail")
@@ -153,43 +212,106 @@ class TagThumbnailProvider: ThumbnailProvider {
             return []
         }
     }
+
+    private func shouldUseStaticThumbnail() -> Bool {
+        return !UserDefaults.standard.enableThumbnailAnimation
+    }
+
+    private func loadStaticThumbnail(for tag: Tag) async -> UIImage? {
+        let thumbnail = await loadSingleThumbnail(
+            assetService: assetService,
+            thumbnailCache: thumbnailCache,
+            tagId: tag.id
+        )
+        if thumbnail == nil {
+            print("Failed to load static thumbnail for tag \(tag.id)")
+        }
+        return thumbnail
+    }
 }
 
 // MARK: - Folder Thumbnail Provider
 class FolderThumbnailProvider: ThumbnailProvider {
     private let assetService: AssetService
     private let thumbnailCache = ThumbnailCache.shared
-    
+    private let coordinator = FolderThumbnailCoordinator(maxConcurrentLoads: 4)
+
     init(assetService: AssetService) {
         self.assetService = assetService
     }
-    
+
     func loadThumbnails(for item: GridDisplayable) async -> [UIImage] {
         guard let folder = item as? ImmichFolder else { return [] }
-        
-        do {
-            let searchResult = try await assetService.fetchAssets(page: 1, limit: 10, folderPath: folder.path)
-            let imageAssets = searchResult.assets.filter { $0.type == .image }
-            
-            var loadedThumbnails: [UIImage] = []
-            
-            for asset in imageAssets.prefix(10) {
-                do {
-                    let thumbnail = try await thumbnailCache.getThumbnail(for: asset.id, size: "thumbnail") {
-                        try await self.assetService.loadImage(assetId: asset.id, size: "thumbnail")
-                    }
-                    if let thumbnail = thumbnail {
-                        loadedThumbnails.append(thumbnail)
-                    }
-                } catch {
-                    print("Failed to load thumbnail for asset \(asset.id): \(error)")
-                }
+
+        if let inFlight = await coordinator.inFlightTask(for: folder.path) {
+            if let thumbnail = await inFlight.value {
+                return [thumbnail]
             }
-            
-            return loadedThumbnails
-        } catch {
-            print("Failed to fetch assets for folder \(folder.path): \(error)")
             return []
+        }
+
+        let task = Task<UIImage?, Never> {
+            await coordinator.acquireSlot()
+            let thumbnail = await loadSingleThumbnail(
+                assetService: assetService,
+                thumbnailCache: thumbnailCache,
+                folderPath: folder.path
+            )
+            await coordinator.releaseSlot()
+            return thumbnail
+        }
+
+        await coordinator.setInFlightTask(task, for: folder.path)
+        let thumbnail = await task.value
+        await coordinator.clearInFlightTask(for: folder.path)
+
+        if let thumbnail {
+            return [thumbnail]
+        }
+
+        return []
+    }
+}
+
+private actor FolderThumbnailCoordinator {
+    private let maxConcurrentLoads: Int
+    private var activeLoads = 0
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+    private var inFlightByPath: [String: Task<UIImage?, Never>] = [:]
+
+    init(maxConcurrentLoads: Int) {
+        self.maxConcurrentLoads = maxConcurrentLoads
+    }
+
+    func inFlightTask(for path: String) -> Task<UIImage?, Never>? {
+        inFlightByPath[path]
+    }
+
+    func setInFlightTask(_ task: Task<UIImage?, Never>, for path: String) {
+        inFlightByPath[path] = task
+    }
+
+    func clearInFlightTask(for path: String) {
+        inFlightByPath[path] = nil
+    }
+
+    func acquireSlot() async {
+        if activeLoads < maxConcurrentLoads {
+            activeLoads += 1
+            return
+        }
+
+        await withCheckedContinuation { continuation in
+            waiters.append(continuation)
+        }
+        activeLoads += 1
+    }
+
+    func releaseSlot() {
+        activeLoads = max(0, activeLoads - 1)
+        if !waiters.isEmpty, activeLoads < maxConcurrentLoads {
+            let waiter = waiters.removeFirst()
+            waiter.resume()
         }
     }
 }

@@ -113,7 +113,7 @@ struct LockScreenStyleOverlay: View {
         //        .padding(40) // Overall padding for the entire overlay to push it in from edges
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing) // Align content to top right
         .onAppear {
-            if isSlideshowMode {
+            if isSlideshowMode && showCurrentTimeWidget {
                 startTimeUpdate()
             }
         }

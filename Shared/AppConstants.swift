@@ -21,6 +21,9 @@ struct UserDefaultsKeys {
     
     // Settings
     static let hideImageOverlay = "hideImageOverlay"
+    static let showCurrentTimeWidget = "showCurrentTimeWidget"
+    static let photoDateDisplayMode = "photoDateDisplayMode" // "dateAndTime" | "dateOnly" | "none"
+    static let showLocationOverlay = "showLocationOverlay"
     static let slideshowInterval = "slideshowInterval"
     static let autoSlideshowTimeout = "autoSlideshowTimeout" // in minutes, 0 = off
     static let slideshowBackgroundColor = "slideshowBackgroundColor"

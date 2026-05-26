@@ -65,6 +65,9 @@ struct SettingsView: View {
     @State private var showingSignIn = false
     @State private var showingWhatsNew = false
     @AppStorage("hideImageOverlay") private var hideImageOverlay = true
+    @AppStorage(UserDefaultsKeys.showCurrentTimeWidget) private var showCurrentTimeWidget = true
+    @AppStorage(UserDefaultsKeys.photoDateDisplayMode) private var photoDateDisplayMode = "dateAndTime"
+    @AppStorage(UserDefaultsKeys.showLocationOverlay) private var showLocationOverlay = true
     @State private var slideshowInterval: Double = UserDefaults.standard.object(forKey: "slideshowInterval") as? Double ?? 8.0
     @AppStorage("slideshowBackgroundColor") private var slideshowBackgroundColor = "white"
     @AppStorage("showTagsTab") private var showTagsTab = false
@@ -449,6 +452,9 @@ struct SettingsView: View {
                                     slideshowBackgroundColor: $slideshowBackgroundColor,
                                     use24HourClock: $use24HourClock,
                                     hideOverlay: $hideImageOverlay,
+                                    showCurrentTimeWidget: $showCurrentTimeWidget,
+                                    photoDateDisplayMode: $photoDateDisplayMode,
+                                    showLocationOverlay: $showLocationOverlay,
                                     enableReflections: $enableReflectionsInSlideshow,
                                     enableKenBurns: $enableKenBurnsEffect,
                                     enableShuffle: $enableSlideshowShuffle,

@@ -20,6 +20,18 @@ struct LockScreenStyleOverlay: View {
     private var use24HourClock: Bool {
         UserDefaults.standard.bool(forKey: "use24HourClock")
     }
+
+    private var showCurrentTimeWidget: Bool {
+        UserDefaults.standard.showCurrentTimeWidget
+    }
+
+    private var photoDateDisplayMode: String {
+        UserDefaults.standard.photoDateDisplayMode
+    }
+
+    private var showLocationOverlay: Bool {
+        UserDefaults.standard.showLocationOverlay
+    }
     
     init(asset: ImmichAsset, isSlideshowMode: Bool = false) {
         self.asset = asset
@@ -31,8 +43,8 @@ struct LockScreenStyleOverlay: View {
         
         VStack(alignment: .trailing, spacing: 24) { // Increased spacing for tvOS
             // MARK: - Clock and Date Display
-            if isSlideshowMode {
-                
+            if isSlideshowMode && showCurrentTimeWidget {
+
                 VStack(alignment: .trailing, spacing: 12) { // Increased spacing
                     // Current time in large text
                     Text(formatCurrentTime())
@@ -68,7 +80,7 @@ struct LockScreenStyleOverlay: View {
                     }
                     
                     // MARK: - Location with elegant styling
-                    if let location = getLocationString() {
+                    if showLocationOverlay, let location = getLocationString() {
                         HStack(spacing: 0) {
                             Image(systemName: "location.fill")
                                 .font(.system(size: 20))
@@ -78,15 +90,17 @@ struct LockScreenStyleOverlay: View {
                                 .foregroundColor(.white)
                         }
                     }
-                    
+
                     // MARK: - Date with elegant styling
-                    HStack(spacing: 0) {
-                        Image(systemName: "calendar")
-                            .font(.system(size: 20))
-                            .foregroundColor(.white.opacity(0.85))
-                        Text(getDisplayDate())
-                            .font(.system(size: 20, weight: .regular, design: .rounded))
-                            .foregroundColor(.white)
+                    if photoDateDisplayMode != "none" {
+                        HStack(spacing: 0) {
+                            Image(systemName: "calendar")
+                                .font(.system(size: 20))
+                                .foregroundColor(.white.opacity(0.85))
+                            Text(getDisplayDate())
+                                .font(.system(size: 20, weight: .regular, design: .rounded))
+                                .foregroundColor(.white)
+                        }
                     }
                 }
             }
@@ -118,28 +132,38 @@ struct LockScreenStyleOverlay: View {
     }
     
     private func formatDisplayDate(_ dateString: String) -> String {
-        let formatter = DateFormatter()
-        
-        // Try EXIF date format first
-        formatter.dateFormat = "yyyy:MM:dd HH:mm:ss"
-        if let date = formatter.date(from: dateString) {
+        if let date = parseAssetDate(dateString) {
             let displayFormatter = DateFormatter()
             displayFormatter.dateStyle = .medium
-            displayFormatter.timeStyle = .short
+            displayFormatter.timeStyle = photoDateDisplayMode == "dateOnly" ? .none : .short
             return displayFormatter.string(from: date)
         }
-        
-        // Try ISO date format
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
-        formatter.timeZone = TimeZone(abbreviation: "UTC") // Important for 'Z' suffix
-        if let date = formatter.date(from: dateString) {
-            let displayFormatter = DateFormatter()
-            displayFormatter.dateStyle = .medium
-            displayFormatter.timeStyle = .short
-            return displayFormatter.string(from: date)
-        }
-        
         return dateString
+    }
+
+    private func parseAssetDate(_ dateString: String) -> Date? {
+        // EXIF "yyyy:MM:dd HH:mm:ss"
+        let exifFormatter = DateFormatter()
+        exifFormatter.dateFormat = "yyyy:MM:dd HH:mm:ss"
+        if let date = exifFormatter.date(from: dateString) { return date }
+
+        // ISO 8601 with timezone offset (e.g. "2025-07-05T15:42:30+00:00")
+        let isoWithTZ = ISO8601DateFormatter()
+        isoWithTZ.formatOptions = [.withInternetDateTime]
+        if let date = isoWithTZ.date(from: dateString) { return date }
+
+        // ISO 8601 with fractional seconds (e.g. "2025-07-05T15:42:30.123+00:00")
+        let isoWithFractional = ISO8601DateFormatter()
+        isoWithFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = isoWithFractional.date(from: dateString) { return date }
+
+        // Legacy: "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+        let legacyFormatter = DateFormatter()
+        legacyFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+        legacyFormatter.timeZone = TimeZone(abbreviation: "UTC")
+        if let date = legacyFormatter.date(from: dateString) { return date }
+
+        return nil
     }
     
     private func getLocationString() -> String? {

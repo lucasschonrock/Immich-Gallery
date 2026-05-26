@@ -32,7 +32,14 @@ struct WhatsNewView: View {
     @State private var opacity: Double = 0
     
     private let changelogContent = """
-    
+
+    VERSION|1.2.1
+
+    NEW_FEATURE| Granular Slideshow Overlay Controls
+    - New Settings → Slideshow toggles to independently show or hide the current time widget, the photo's taken date, and the location.
+    - Photo Date now has three modes: Date and Time, Date Only, or None.
+    - Existing behavior preserved by default — turn things off only if you want to.
+
     VERSION|1.1.9
 
     NEW_FEATURE| Background & Library Controls

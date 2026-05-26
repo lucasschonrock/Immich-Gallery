@@ -15,6 +15,9 @@ struct SlideshowSettings: View {
     @Binding var slideshowBackgroundColor: String
     @Binding var use24HourClock: Bool
     @Binding var hideOverlay: Bool
+    @Binding var showCurrentTimeWidget: Bool
+    @Binding var photoDateDisplayMode: String
+    @Binding var showLocationOverlay: Bool
     @Binding var enableReflections: Bool
     @Binding var enableKenBurns: Bool
     @Binding var enableShuffle: Bool
@@ -183,21 +186,83 @@ struct SlideshowSettings: View {
                 isOn: enableShuffle
             )
             
+            // MARK: - Image Overlay group
+            HStack {
+                Text("Image Overlay")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                Spacer()
+            }
+            .padding(.top, 8)
+            .padding(.horizontal, 4)
+
             SettingsRow(
-                icon: "eye.slash",
-                title: "Hide Image Overlays",
-                subtitle: "Hide clock, date, location overlay from slideshow and fullscreen view.",
+                icon: "eye",
+                title: "Show Image Overlays",
+                subtitle: "Master switch for the clock, photo date, and location overlays. Applies to slideshow and fullscreen view.",
                 content: AnyView(
-                    Picker("Hide Image Overlays", selection: $hideOverlay) {
-                        Text("Off").tag(false)
-                        Text("On").tag(true)
+                    Picker("Show Image Overlays", selection: Binding(
+                        get: { !hideOverlay },
+                        set: { hideOverlay = !$0 }
+                    )) {
+                        Text("Show").tag(true)
+                        Text("Hide").tag(false)
                     }
                     .pickerStyle(.menu)
                     .frame(width: 300, alignment: .trailing)
                 ),
-                isOn: hideOverlay
-                
+                isOn: !hideOverlay
             )
+
+            VStack(spacing: 12) {
+                SettingsRow(
+                    icon: "clock.badge",
+                    title: "Current Time Widget",
+                    subtitle: "Show the large current time and today's date in the slideshow overlay.",
+                    content: AnyView(
+                        Picker("Current Time Widget", selection: $showCurrentTimeWidget) {
+                            Text("Show").tag(true)
+                            Text("Hide").tag(false)
+                        }
+                        .pickerStyle(.menu)
+                        .frame(width: 300, alignment: .trailing)
+                    ),
+                    isOn: showCurrentTimeWidget
+                )
+
+                SettingsRow(
+                    icon: "calendar",
+                    title: "Photo Date",
+                    subtitle: "What to show for the photo's taken date in the overlay.",
+                    content: AnyView(
+                        Picker("Photo Date", selection: $photoDateDisplayMode) {
+                            Text("Date & Time").tag("dateAndTime")
+                            Text("Date Only").tag("dateOnly")
+                            Text("Hidden").tag("none")
+                        }
+                        .pickerStyle(.menu)
+                        .frame(width: 300, alignment: .trailing)
+                    ),
+                    isOn: photoDateDisplayMode != "none"
+                )
+
+                SettingsRow(
+                    icon: "location",
+                    title: "Location",
+                    subtitle: "Show the photo's location (city, state, country) in the overlay.",
+                    content: AnyView(
+                        Picker("Location", selection: $showLocationOverlay) {
+                            Text("Show").tag(true)
+                            Text("Hide").tag(false)
+                        }
+                        .pickerStyle(.menu)
+                        .frame(width: 300, alignment: .trailing)
+                    ),
+                    isOn: showLocationOverlay
+                )
+            }
+            .opacity(hideOverlay ? 0.4 : 1.0)
+            .disabled(hideOverlay)
             
              SettingsRow(
                  icon: "clock.arrow.circlepath",
@@ -238,6 +303,9 @@ struct SlideshowSettings: View {
     @State var slideshowBackgroundColor = "white"
     @State var use24HourClock = true
     @State var hideOverlay = true
+    @State var showCurrentTimeWidget = true
+    @State var photoDateDisplayMode = "dateAndTime"
+    @State var showLocationOverlay = true
     @State var enableReflections = true
     @State var enableKenBurns = false
     @State var enableShuffle = false
@@ -251,6 +319,9 @@ struct SlideshowSettings: View {
         slideshowBackgroundColor: $slideshowBackgroundColor,
         use24HourClock: $use24HourClock,
         hideOverlay: $hideOverlay,
+        showCurrentTimeWidget: $showCurrentTimeWidget,
+        photoDateDisplayMode: $photoDateDisplayMode,
+        showLocationOverlay: $showLocationOverlay,
         enableReflections: $enableReflections,
         enableKenBurns: $enableKenBurns,
         enableShuffle: $enableShuffle,

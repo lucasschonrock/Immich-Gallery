@@ -19,6 +19,27 @@ extension UserDefaults {
         get { bool(forKey: UserDefaultsKeys.hideImageOverlay) }
         set { set(newValue, forKey: UserDefaultsKeys.hideImageOverlay) }
     }
+
+    var showCurrentTimeWidget: Bool {
+        get {
+            if object(forKey: UserDefaultsKeys.showCurrentTimeWidget) == nil { return true }
+            return bool(forKey: UserDefaultsKeys.showCurrentTimeWidget)
+        }
+        set { set(newValue, forKey: UserDefaultsKeys.showCurrentTimeWidget) }
+    }
+
+    var photoDateDisplayMode: String {
+        get { string(forKey: UserDefaultsKeys.photoDateDisplayMode) ?? "dateAndTime" }
+        set { set(newValue, forKey: UserDefaultsKeys.photoDateDisplayMode) }
+    }
+
+    var showLocationOverlay: Bool {
+        get {
+            if object(forKey: UserDefaultsKeys.showLocationOverlay) == nil { return true }
+            return bool(forKey: UserDefaultsKeys.showLocationOverlay)
+        }
+        set { set(newValue, forKey: UserDefaultsKeys.showLocationOverlay) }
+    }
     
     var slideshowInterval: TimeInterval {
         get { 

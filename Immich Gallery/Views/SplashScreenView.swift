@@ -33,6 +33,11 @@ struct WhatsNewView: View {
     
     private let changelogContent = """
 
+    VERSION|1.2.2
+
+    BUGFIX| Slideshow played the wrong album
+    - Pressing play on a specific album now plays that album, instead of always falling back to the auto-slideshow album.
+
     VERSION|1.2.1
 
     NEW_FEATURE| Granular Slideshow Overlay Controls

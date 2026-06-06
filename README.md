@@ -1,4 +1,4 @@
-![Platform](https://img.shields.io/badge/platform-TvOS-blue) ![Language](https://img.shields.io/github/languages/top/mensadilabs/Immich-Gallery)
+![Platform](https://img.shields.io/badge/platform-TvOS-blue) ![Language](https://img.shields.io/github/languages/top/mensadilabs/Immich-Gallery) [![Unit Tests](https://github.com/mensadilabs/Immich-Gallery/actions/workflows/unit-tests.yml/badge.svg?branch=dev)](https://github.com/mensadilabs/Immich-Gallery/actions/workflows/unit-tests.yml)
 
 # Immich Gallery for Apple TV
 
@@ -46,24 +46,19 @@ A native Apple TV app for browsing your self-hosted Immich photo library with a 
 3. Select Apple TV target device
 4. Build and run
 
-<img width="3840" height="2160" alt="Simulator Screenshot - Apple TV 4K (3rd generation) - 2025-08-11 at 18 23 16" src="https://github.com/user-attachments/assets/c802a515-e775-4068-af4c-0f90879cf41b" />
-<img width="1515" height="849" alt="image" src="https://github.com/user-attachments/assets/be1bcc49-2086-4a6f-9070-d3c62cb1be8a" />
+## Screenshots
 
-https://github.com/user-attachments/assets/78987a7a-ef62-497c-828f-f7b99851ffb3
+![Top Shelf](screenshots/TopShelf.png)
 
-<img width="1527" height="857" alt="image" src="https://github.com/user-attachments/assets/f109e3b9-a617-49bd-815a-de452cb30f70" />
+![Login](screenshots/login.png)
 
-<img width="1530" height="863" alt="image" src="https://github.com/user-attachments/assets/3fdcb427-33f7-4538-bced-62ceaab0e609" />
+![All Photos](screenshots/all-photos.png)
 
-![Full screen view with people](https://github.com/user-attachments/assets/16b56fc4-ee74-4506-984a-46884bc65228)
+![Albums](screenshots/albums.png)
 
-![Album tab](https://github.com/user-attachments/assets/1dafee22-a04d-43c3-b0fc-a6ff01036b60)
+![Search](screenshots/Search.png)
 
-<img width="1917" alt="image" src="https://github.com/user-attachments/assets/7a8eb077-0811-4101-8e7c-69b34b03a536" />
-
-<img width="3840" height="2160" alt="Simulator Screenshot - Apple TV 4K (3rd generation) - 2025-07-29 at 16 59 04" src="https://github.com/user-attachments/assets/f156ade2-1e59-4c00-ac15-6f05205ddb7a" />
-
-<img width="3840" height="2160" alt="Simulator Screenshot - Apple TV 4K (3rd generation) - 2025-07-29 at 17 00 05" src="https://github.com/user-attachments/assets/3f646593-e310-4d39-827c-c4d02179d45f" />
+![Settings](screenshots/Settings.png)
 
 ## Stats
 

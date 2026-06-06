@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://mensadilabs.github.io/Immich-Gallery/sitemap.xml

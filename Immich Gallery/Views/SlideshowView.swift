@@ -353,54 +353,93 @@ struct SlideshowView: View {
         }
     }
     
-    private func fetchConfigAndUpdateProvider() async {
-        guard let albumService = albumService else { 
-            // No album service, use fallback provider
-            await MainActor.run {
-                self.assetProvider = AssetProviderFactory.createProvider(
-                    albumId: albumId,
-                    personId: personId,
-                    tagId: tagId,
-                    city: city,
-                    isAllPhotos: false,
-                    isFavorite: isFavorite,
-                    assetService: assetService,
-                    albumService: albumService
-                )
-            }
-            return 
+    /// An explicit target the slideshow was launched with (a specific album,
+    /// person, tag, city, or favorites view).
+    struct SlideshowSelection: Equatable {
+        let albumId: String?
+        let personId: String?
+        let tagId: String?
+        let city: String?
+        let isFavorite: Bool
+
+        /// True when the slideshow was launched against a specific target rather
+        /// than the generic all-photos / auto-slideshow entry point.
+        var isExplicit: Bool {
+            albumId != nil || personId != nil || tagId != nil || city != nil || isFavorite
         }
-        
+    }
+
+    /// Where the slideshow should source its assets from.
+    enum SlideshowSource: Equatable {
+        /// Use the explicit selection the user launched the slideshow with.
+        case selection(SlideshowSelection)
+        /// Use the auto-slideshow config (the `immich-gallery-config` album).
+        case config(SlideshowConfig)
+    }
+
+    /// Pure decision: given the launch selection and the fetched auto-slideshow
+    /// config, decide which one drives the slideshow.
+    static func resolveSlideshowSource(selection: SlideshowSelection, config: SlideshowConfig) -> SlideshowSource {
+        // An explicit selection (a specific album, person, tag, city, or favorites)
+        // always wins. The auto-slideshow config only drives the generic
+        // all-photos / inactivity entry point where nothing specific was chosen.
+        let configHasValues = !config.albumIds.isEmpty || !config.personIds.isEmpty
+        if !selection.isExplicit && configHasValues {
+            return .config(config)
+        }
+        return .selection(selection)
+    }
+
+    private func makeProvider(for source: SlideshowSource) -> AssetProvider {
+        switch source {
+        case .selection(let selection):
+            return AssetProviderFactory.createProvider(
+                albumId: selection.albumId,
+                personId: selection.personId,
+                tagId: selection.tagId,
+                city: selection.city,
+                isAllPhotos: false,
+                isFavorite: selection.isFavorite,
+                assetService: assetService,
+                albumService: albumService
+            )
+        case .config(let config):
+            return AssetProviderFactory.createProvider(
+                albumId: nil,
+                personId: nil,
+                tagId: nil,
+                isAllPhotos: false,
+                isFavorite: false,
+                assetService: assetService,
+                albumService: albumService,
+                config: config
+            )
+        }
+    }
+
+    private func fetchConfigAndUpdateProvider() async {
+        let selection = SlideshowSelection(
+            albumId: albumId,
+            personId: personId,
+            tagId: tagId,
+            city: city,
+            isFavorite: isFavorite
+        )
+
+        guard let albumService = albumService else {
+            // No album service available: fall back to the explicit selection.
+            await MainActor.run {
+                self.assetProvider = makeProvider(for: .selection(selection))
+            }
+            return
+        }
+
         let configService = SlideshowConfigService(albumService: albumService)
         let config = await configService.fetchSlideshowConfig()
-        
+
         await MainActor.run {
             self.slideshowConfig = config
-            
-            // If config has values, use it; otherwise fallback to original parameters
-            if !config.albumIds.isEmpty || !config.personIds.isEmpty {
-                self.assetProvider = AssetProviderFactory.createProvider(
-                    albumId: nil, // Use config instead of individual IDs
-                    personId: nil,
-                    tagId: nil,
-                    isAllPhotos: false,
-                    isFavorite: isFavorite,
-                    assetService: assetService,
-                    albumService: albumService,
-                    config: config
-                )
-            } else {
-                self.assetProvider = AssetProviderFactory.createProvider(
-                    albumId: albumId,
-                    personId: personId,
-                    tagId: tagId,
-                    city: city,
-                    isAllPhotos: false,
-                    isFavorite: isFavorite,
-                    assetService: assetService,
-                    albumService: albumService
-                )
-            }
+            self.assetProvider = makeProvider(for: SlideshowView.resolveSlideshowSource(selection: selection, config: config))
         }
     }
 

@@ -7,10 +7,10 @@
 
 import Foundation
 
-struct SlideshowConfig {
+struct SlideshowConfig: Equatable {
     let albumIds: [String]
     let personIds: [String]
-    
+
     static let empty = SlideshowConfig(albumIds: [], personIds: [])
 }
 

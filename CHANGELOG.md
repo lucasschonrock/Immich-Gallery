@@ -1,3 +1,14 @@
+# VERSION|1.2.2
+
+BUGFIX| Slideshow ignored the album you picked
+- Pressing play on any album fell back to the auto-slideshow album, so no other album was playable — the selected album now wins.
+
+IMPROVEMENT| Locked the slideshow fix down with a test
+- Extracted the "which album plays" decision into a pure function so a unit test guards it, instead of relying on manual tvOS clicking.
+
+IMPROVEMENT| CI runs unit tests instead of a brittle build/analyze job
+- The old workflow broke whenever the runner dropped the pinned tvOS 18.2 simulator; replaced it with a unit-test workflow on latest-stable Xcode.
+
 # VERSION|1.1.4
 
 IMPROVEMENT| Performance Optimizations

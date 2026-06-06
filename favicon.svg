@@ -1,0 +1,26 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Immich Gallery">
+    <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#18C2C9" />
+            <stop offset="100%" stop-color="#7DE6DD" />
+        </linearGradient>
+        <radialGradient id="sun" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#FFF7B3" />
+            <stop offset="40%" stop-color="#FFE988" />
+            <stop offset="100%" stop-color="#FFD15C" />
+        </radialGradient>
+        <linearGradient id="play" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#FF6A5E" />
+            <stop offset="100%" stop-color="#FF9A5A" />
+        </linearGradient>
+    </defs>
+    <rect x="16" y="16" width="480" height="480" rx="104" fill="url(#sky)" />
+    <circle cx="248" cy="232" r="86" fill="url(#sun)" opacity="0.95" />
+    <path d="M70,392 L210,250 L350,392 Z" fill="#C8CFDC" />
+    <path d="M170,392 L330,210 L470,392 Z" fill="#98A1B2" />
+    <rect x="70" y="392" width="372" height="14" fill="#DFF2F2" />
+    <g transform="translate(396, 360)">
+        <circle cx="0" cy="0" r="64" fill="url(#play)" />
+        <polygon points="-16,-22 28,0 -16,22" fill="#FFFFFF" opacity="0.96" />
+    </g>
+</svg>

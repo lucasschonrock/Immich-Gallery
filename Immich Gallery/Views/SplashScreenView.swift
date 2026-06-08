@@ -33,6 +33,11 @@ struct WhatsNewView: View {
     
     private let changelogContent = """
 
+    VERSION|1.2.3
+
+    BUGFIX| Auto-slideshow stopped using your config
+    - After the 1.2.2 fix, auto-slideshow could play whatever album/person you were viewing instead of your configured slideshow. It now reliably plays your slideshow config (or all photos when none is set).
+
     VERSION|1.2.2
 
     BUGFIX| Slideshow played the wrong album

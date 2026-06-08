@@ -1,3 +1,11 @@
+# VERSION|1.2.3
+
+BUGFIX| Auto-slideshow stopped using your configured slideshow
+- The 1.2.2 fix let an explicit album/person win over the auto-slideshow config — but the inactivity trigger is broadcast to every photo grid, so whatever view you'd left open could hijack it. Only the All Photos grid now drives auto-slideshow, so it reliably plays your slideshow config (or all photos when none is set).
+
+IMPROVEMENT| Guarded the auto-slideshow trigger with a test
+- Extracted the "which grid handles auto-slideshow" decision into a pure function so a unit test locks it down.
+
 # VERSION|1.2.2
 
 BUGFIX| Slideshow ignored the album you picked

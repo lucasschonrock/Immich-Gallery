@@ -267,7 +267,7 @@ struct SlideshowSettings: View {
              SettingsRow(
                  icon: "clock.arrow.circlepath",
                  title: "Auto-Start Slideshow",
-                 subtitle: "Start slideshow after inactivity",
+                 subtitle: "Play all photos after inactivity (or your slideshow config album, if set)",
                  content: AnyView(AutoSlideshowTimeoutPicker(timeout: $autoSlideshowTimeout)),
                  isOn: autoSlideshowTimeout > 0
              )

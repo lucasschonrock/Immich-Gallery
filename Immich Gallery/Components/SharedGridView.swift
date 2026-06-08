@@ -349,3 +349,68 @@ struct SharedGridItemView<Item: GridDisplayable>: View {
         return nil
     }
 }
+
+// MARK: - Preview
+
+private struct PreviewGridItem: GridDisplayable {
+    let id: String
+    let primaryTitle: String
+    var secondaryTitle: String? = nil
+    var description: String? = nil
+    var thumbnailId: String? = nil
+    var itemCount: Int? = nil
+    var gridCreatedAt: String? = "2026-01-22T00:00:00.000Z"
+    var isFavorite: Bool? = false
+    var isShared: Bool? = false
+    var sharingText: String? = nil
+    var iconName: String = "folder"
+    var gridColor: Color? = nil
+}
+
+private struct PreviewThumbnailProvider: ThumbnailProvider {
+    /// Fetches a real Unsplash image so the preview shows an actual photo.
+    /// (Network runs in the live canvas; falls back to empty on failure.)
+    let urlString: String
+
+    func loadThumbnails(for item: any GridDisplayable) async -> [UIImage] {
+        guard let url = URL(string: urlString),
+              let (data, _) = try? await URLSession.shared.data(from: url),
+              let image = UIImage(data: data) else { return [] }
+        return [image]
+    }
+}
+
+/// Wraps the card exactly like `SharedGridView` does (Button + fixed frame +
+/// padding + style) so the preview reproduces the real grid layout.
+private func previewCard(_ item: PreviewGridItem, url: String, focused: Bool) -> some View {
+    Button(action: {}) {
+        SharedGridItemView(
+            item: item,
+            config: .albumStyle,
+            thumbnailProvider: PreviewThumbnailProvider(urlString: url),
+            isFocused: focused,
+            animationTrigger: 0,
+            enableThumbnailAnimation: false
+        )
+    }
+    .frame(width: GridConfig.albumStyle.itemWidth, height: GridConfig.albumStyle.itemHeight)
+    .padding(10)
+    .buttonStyle(CardButtonStyle())
+}
+
+#Preview("Grid Item Card") {
+    HStack(spacing: 60) {
+        previewCard(
+            PreviewGridItem(id: "1", primaryTitle: "Unknown Album"),
+            url: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80",
+            focused: false
+        )
+        previewCard(
+            PreviewGridItem(id: "2", primaryTitle: "Vacation 2024", secondaryTitle: "Sunny days", itemCount: 120),
+            url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80",
+            focused: true
+        )
+    }
+    .padding(80)
+    .background(Color.white)
+}

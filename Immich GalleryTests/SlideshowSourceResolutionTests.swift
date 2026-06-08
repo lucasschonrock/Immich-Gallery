@@ -77,4 +77,12 @@ struct SlideshowSourceResolutionTests {
 
         #expect(source == .selection(selection))
     }
+
+    /// Auto-slideshow is broadcast to every mounted grid; only the All Photos grid
+    /// (the single, non-explicit responder) should act on it. Explicit-target grids
+    /// must ignore it so they can't hijack or race the auto-slideshow presentation.
+    @Test func onlyAllPhotosGridHandlesAutoSlideshow() {
+        #expect(AssetGridView.shouldHandleAutoSlideshow(isAllPhotos: true))
+        #expect(!AssetGridView.shouldHandleAutoSlideshow(isAllPhotos: false))
+    }
 }

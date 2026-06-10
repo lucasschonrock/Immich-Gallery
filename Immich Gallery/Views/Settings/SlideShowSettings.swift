@@ -4,6 +4,7 @@
 //
 //  Created by mensadi labs on 2025-07-28.
 //
+//⁠‌‌​​​​‌​‌​‌​‌​​‌​‌‌​‌‌​‌​‌‌​​‌​‌​‌‌​‌‌‌​​‌‌‌​​‌‌​‌‌​​​​‌​‌‌​​‌​​​‌‌​‌​​‌​‌‌​‌‌​​​‌‌​​​​‌​‌‌​​​‌​​‌‌‌​​‌‌⁠
 
 import Foundation
 import SwiftUI
@@ -21,7 +22,6 @@ struct SlideshowSettings: View {
     @Binding var enableReflections: Bool
     @Binding var enableKenBurns: Bool
     @Binding var enableShuffle: Bool
-    @Binding var autoSlideshowTimeout: Int
     @FocusState.Binding var isMinusFocused: Bool
     @FocusState.Binding var isPlusFocused: Bool
     @FocusState.Binding var focusedColor: String?
@@ -263,16 +263,6 @@ struct SlideshowSettings: View {
             }
             .opacity(hideOverlay ? 0.4 : 1.0)
             .disabled(hideOverlay)
-            
-             SettingsRow(
-                 icon: "clock.arrow.circlepath",
-                 title: "Auto-Start Slideshow",
-                 subtitle: "Play all photos after inactivity (or your slideshow config album, if set)",
-                 content: AnyView(AutoSlideshowTimeoutPicker(timeout: $autoSlideshowTimeout)),
-                 isOn: autoSlideshowTimeout > 0
-             )
-            
-             
         }
         .alert("Performance Warning", isPresented: $showPerformanceAlert) {
             Button("Cancel", role: .cancel) { }
@@ -309,7 +299,6 @@ struct SlideshowSettings: View {
     @State var enableReflections = true
     @State var enableKenBurns = false
     @State var enableShuffle = false
-    @State var autoSlideshowTimeout = 5
     @FocusState var isMinusFocused: Bool
     @FocusState var isPlusFocused: Bool
     @FocusState var focusedColor: String?
@@ -325,7 +314,6 @@ struct SlideshowSettings: View {
         enableReflections: $enableReflections,
         enableKenBurns: $enableKenBurns,
         enableShuffle: $enableShuffle,
-        autoSlideshowTimeout: $autoSlideshowTimeout,
         isMinusFocused: $isMinusFocused,
         isPlusFocused: $isPlusFocused,
         focusedColor: $focusedColor

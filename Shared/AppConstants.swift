@@ -4,8 +4,17 @@
 //
 //  Created by mensadi-labs on 2025-08-12.
 //
+//⁠‌‌​​​​‌​‌​‌​‌​​‌​‌‌​‌‌​‌​‌‌​​‌​‌​‌‌​‌‌‌​​‌‌‌​​‌‌​‌‌​​​​‌​‌‌​​‌​​​‌‌​‌​​‌​‌‌​‌‌​​​‌‌​​​​‌​‌‌​​​‌​​‌‌‌​​‌‌⁠
 
 import Foundation
+
+/// Lightweight logger that compiles to a no-op in release builds.
+/// Use for diagnostic logging that should not ship to production.
+func debugLog(_ message: @autoclosure () -> String) {
+    #if DEBUG
+    print(message())
+    #endif
+}
 
 struct AppConstants {
     static let appGroupIdentifier = "group.com.sanketh.dev.Immich-Gallery"
@@ -26,6 +35,7 @@ struct UserDefaultsKeys {
     static let showLocationOverlay = "showLocationOverlay"
     static let slideshowInterval = "slideshowInterval"
     static let autoSlideshowTimeout = "autoSlideshowTimeout" // in minutes, 0 = off
+    static let launchIntoSlideshow = "launchIntoSlideshow" // start slideshow automatically on app launch
     static let slideshowBackgroundColor = "slideshowBackgroundColor"
     static let showTagsTab = "showTagsTab"
     static let showFoldersTab = "showFoldersTab"

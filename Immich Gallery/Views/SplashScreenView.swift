@@ -41,6 +41,12 @@ struct WhatsNewView: View {
 
     private let changelogContent = """
 
+    VERSION|1.2.4
+
+    NEW_FEATURE| Launch straight into a slideshow
+    - New Settings → Interface → "Launch Into Slideshow" option starts the slideshow automatically when the app opens, using your slideshow config album if set (otherwise all photos). Off by default.
+    - The slideshow trigger settings now live alongside Default Startup Tab in Interface, grouping the app's startup behavior together.
+
     VERSION|1.2.3
 
     BUGFIX| Auto-slideshow stopped using your config

@@ -4,6 +4,7 @@
 //
 //  Created by mensadi-labs on 2025-06-29.
 //
+//⁠‌‌​​​​‌​‌​‌​‌​​‌​‌‌​‌‌​‌​‌‌​​‌​‌​‌‌​‌‌‌​​‌‌‌​​‌‌​‌‌​​​​‌​‌‌​​‌​​​‌‌​‌​​‌​‌‌​‌‌​​​‌‌​​​​‌​‌‌​​​‌​​‌‌‌​​‌‌⁠
 
 
 import SwiftUI
@@ -87,6 +88,7 @@ struct SettingsView: View {
     @AppStorage("topShelfStyle", store: UserDefaults(suiteName: AppConstants.appGroupIdentifier)) private var topShelfStyle = "carousel"
     @AppStorage("topShelfImageSelection", store: UserDefaults(suiteName: AppConstants.appGroupIdentifier)) private var topShelfImageSelection = "recent"
     @AppStorage(UserDefaultsKeys.autoSlideshowTimeout) private var autoSlideshowTimeout: Int = 0 // 0 = off
+    @AppStorage(UserDefaultsKeys.launchIntoSlideshow) private var launchIntoSlideshow: Bool = false
     @AppStorage("artModeLevel") private var artModeLevel = "off"
     @AppStorage("artModeDayStart") private var artModeDayStart = 7
     @AppStorage("artModeNightStart") private var artModeNightStart = 20
@@ -334,7 +336,30 @@ struct SettingsView: View {
                                                 .frame(width: 300, alignment: .trailing)
                                         )
                                     )
-                                    
+
+                                    SettingsRow(
+                                        icon: "play.rectangle.on.rectangle",
+                                        title: "Launch Into Slideshow",
+                                        subtitle: "Start the slideshow automatically when the app opens (uses your slideshow config album, if set, otherwise all photos)",
+                                        content: AnyView(
+                                            Picker("Launch Into Slideshow", selection: $launchIntoSlideshow) {
+                                                Text("On").tag(true)
+                                                Text("Off").tag(false)
+                                            }
+                                                .pickerStyle(.menu)
+                                                .frame(width: 300, alignment: .trailing)
+                                        ),
+                                        isOn: launchIntoSlideshow
+                                    )
+
+                                    SettingsRow(
+                                        icon: "clock.arrow.circlepath",
+                                        title: "Auto-Start Slideshow",
+                                        subtitle: "Play all photos after inactivity (or your slideshow config album, if set)",
+                                        content: AnyView(AutoSlideshowTimeoutPicker(timeout: $autoSlideshowTimeout)),
+                                        isOn: autoSlideshowTimeout > 0
+                                    )
+
                                     SettingsRow(
                                         icon: "rectangle.split.3x1",
                                         title: "Navigation Style",
@@ -458,7 +483,6 @@ struct SettingsView: View {
                                     enableReflections: $enableReflectionsInSlideshow,
                                     enableKenBurns: $enableKenBurnsEffect,
                                     enableShuffle: $enableSlideshowShuffle,
-                                    autoSlideshowTimeout: $autoSlideshowTimeout,
                                     isMinusFocused: $isMinusFocused,
                                     isPlusFocused: $isPlusFocused,
                                     focusedColor: $focusedColor

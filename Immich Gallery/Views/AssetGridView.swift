@@ -260,7 +260,11 @@ struct AssetGridView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name(NotificationNames.startAutoSlideshow))) { _ in
             // Only the All Photos grid drives auto-slideshow: it plays the config
             // playlist, or all photos when no config is set. Other grids ignore it.
-            guard AssetGridView.shouldHandleAutoSlideshow(isAllPhotos: isAllPhotos) else { return }
+            guard AssetGridView.shouldHandleAutoSlideshow(isAllPhotos: isAllPhotos) else {
+                debugLog("AutoSlideshow: ignoring startAutoSlideshow (not the All Photos grid, isAllPhotos=\(isAllPhotos))")
+                return
+            }
+            debugLog("AutoSlideshow: All Photos grid handling startAutoSlideshow (\(assets.count) assets loaded)")
             startSlideshow()
         }
     }
@@ -452,6 +456,7 @@ struct AssetGridView: View {
     }
 
     private func startSlideshow() {
+        debugLog("AutoSlideshow: starting slideshow (stopping inactivity timer)")
         // Stop auto-slideshow timer before starting slideshow
         NotificationCenter.default.post(name: NSNotification.Name("stopAutoSlideshowTimer"), object: nil)
         showingSlideshow = true

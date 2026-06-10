@@ -439,7 +439,14 @@ struct SlideshowView: View {
 
         await MainActor.run {
             self.slideshowConfig = config
-            self.assetProvider = makeProvider(for: SlideshowView.resolveSlideshowSource(selection: selection, config: config))
+            let source = SlideshowView.resolveSlideshowSource(selection: selection, config: config)
+            switch source {
+            case .config(let cfg):
+                debugLog("AutoSlideshow: playing config album (albums=\(cfg.albumIds.count), people=\(cfg.personIds.count))")
+            case .selection(let sel):
+                debugLog("AutoSlideshow: playing \(sel.isExplicit ? "explicit selection" : "all photos")")
+            }
+            self.assetProvider = makeProvider(for: source)
         }
     }
 

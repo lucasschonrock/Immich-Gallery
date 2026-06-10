@@ -1,3 +1,9 @@
+# VERSION|1.2.4
+
+NEW_FEATURE| Launch straight into a slideshow
+- New Settings → Interface → "Launch Into Slideshow" option starts the slideshow automatically when the app opens, using your slideshow config album if set (otherwise all photos). Off by default.
+- The slideshow trigger settings (Launch Into Slideshow and Auto-Start Slideshow) now live alongside Default Startup Tab in the Interface section, grouping the app's startup/behavior settings together.
+
 # VERSION|1.2.3
 
 BUGFIX| Auto-slideshow stopped using your configured slideshow

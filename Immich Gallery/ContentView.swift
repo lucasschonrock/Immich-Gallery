@@ -4,6 +4,7 @@
 //
 //  Created by mensadi-labs on 2025-06-29.
 //
+//⁠‌‌​​​​‌​‌​‌​‌​​‌​‌‌​‌‌​‌​‌‌​​‌​‌​‌‌​‌‌‌​​‌‌‌​​‌‌​‌‌​​​​‌​‌‌​​‌​​​‌‌​‌​​‌​‌‌​‌‌​​​‌‌​​​​‌​‌‌​​​‌​​‌‌‌​​‌‌⁠
 
 import SwiftUI
 
@@ -51,6 +52,7 @@ extension Notification.Name {
 struct ContentView: View {
     // Auto slideshow state
     @AppStorage(UserDefaultsKeys.autoSlideshowTimeout) private var autoSlideshowTimeout: Int = 0
+    @AppStorage(UserDefaultsKeys.launchIntoSlideshow) private var launchIntoSlideshow: Bool = false
     @State private var inactivityTimer: Timer? = nil
     @State private var lastInteractionDate = Date()
     @StateObject private var userManager = UserManager()
@@ -186,6 +188,7 @@ struct ContentView: View {
                         setDefaultTab()
                         checkForAppUpdate()
                         startInactivityTimer()
+                        startLaunchSlideshowIfNeeded()
                     }
                     .onChange(of: selectedTab) { oldValue, newValue in
                         searchTabHighlighted = false
@@ -273,6 +276,20 @@ struct ContentView: View {
         }
     }
     
+    /// Kick off the auto-slideshow right after launch when the user has opted in.
+    /// Reuses the same `startAutoSlideshow` path as the inactivity timer, so the
+    /// All Photos grid resolves the config playlist (or all photos) and presents it.
+    private func startLaunchSlideshowIfNeeded() {
+        guard launchIntoSlideshow else { return }
+        print("ContentView: Launch-into-slideshow enabled, starting slideshow")
+        // Make sure the All Photos grid is the active tab so it handles the notification.
+        selectedTab = TabName.photos.rawValue
+        // Give the tab switch and initial asset load time to settle before presenting.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            NotificationCenter.default.post(name: NSNotification.Name(NotificationNames.startAutoSlideshow), object: nil)
+        }
+    }
+
     private func resetInactivityTimer() {
         print("ContentView: Resetting inactivity timer")
         lastInteractionDate = Date()

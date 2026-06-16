@@ -1,5 +1,8 @@
 ![Platform](https://img.shields.io/badge/platform-TvOS-blue) ![Language](https://img.shields.io/github/languages/top/mensadilabs/Immich-Gallery) [![Unit Tests](https://github.com/mensadilabs/Immich-Gallery/actions/workflows/unit-tests.yml/badge.svg?branch=dev)](https://github.com/mensadilabs/Immich-Gallery/actions/workflows/unit-tests.yml)
 
+
+[Download from Apple TV App Store](https://apps.apple.com/ca/app/immich-gallery/id6748482378)
+
 # Immich Gallery for Apple TV
 
 A native Apple TV app for browsing your self-hosted Immich photo library with a TV-optimized interface.

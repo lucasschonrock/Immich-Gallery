@@ -78,6 +78,7 @@ struct SettingsView: View {
     @AppStorage("use24HourClock") private var use24HourClock = true
     @AppStorage("enableReflectionsInSlideshow") private var enableReflectionsInSlideshow = true
     @AppStorage("enableKenBurnsEffect") private var enableKenBurnsEffect = false
+    @AppStorage("enableDynamicTransitions") private var enableDynamicTransitions = false
     @AppStorage("enableThumbnailAnimation") private var enableThumbnailAnimation = false
     @AppStorage("enableSlideshowShuffle") private var enableSlideshowShuffle = false
     @AppStorage("allPhotosSortOrder") private var allPhotosSortOrder = "desc"
@@ -482,6 +483,7 @@ struct SettingsView: View {
                                     showLocationOverlay: $showLocationOverlay,
                                     enableReflections: $enableReflectionsInSlideshow,
                                     enableKenBurns: $enableKenBurnsEffect,
+                                    enableDynamicTransitions: $enableDynamicTransitions,
                                     enableShuffle: $enableSlideshowShuffle,
                                     isMinusFocused: $isMinusFocused,
                                     isPlusFocused: $isPlusFocused,

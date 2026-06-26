@@ -21,6 +21,7 @@ struct SlideshowSettings: View {
     @Binding var showLocationOverlay: Bool
     @Binding var enableReflections: Bool
     @Binding var enableKenBurns: Bool
+    @Binding var enableDynamicTransitions: Bool
     @Binding var enableShuffle: Bool
     @FocusState.Binding var isMinusFocused: Bool
     @FocusState.Binding var isPlusFocused: Bool
@@ -140,7 +141,9 @@ struct SlideshowSettings: View {
                 content: AnyView(
                     Picker("Image Effects", selection: Binding(
                         get: {
-                            if enableKenBurns {
+                            if enableKenBurns && enableDynamicTransitions {
+                                return "kenBurnsPlus"
+                            } else if enableKenBurns {
                                 return "kenBurns"
                             } else if enableReflections {
                                 return "reflections"
@@ -150,21 +153,29 @@ struct SlideshowSettings: View {
                         },
                         set: { newValue in
                             switch newValue {
+                            case "kenBurnsPlus":
+                                enableKenBurns = true
+                                enableReflections = false
+                                enableDynamicTransitions = true
                             case "kenBurns":
                                 enableKenBurns = true
                                 enableReflections = false
+                                enableDynamicTransitions = false
                             case "reflections":
                                 enableKenBurns = false
                                 enableReflections = true
+                                enableDynamicTransitions = false
                             default: // "none"
                                 enableKenBurns = false
                                 enableReflections = false
+                                enableDynamicTransitions = false
                             }
                         }
                     )) {
                         Text("None").tag("none")
                         Text("Reflections").tag("reflections")
                         Text("Pan and Zoom").tag("kenBurns")
+                        Text("Pan & Zoom+").tag("kenBurnsPlus")
                     }
                     .pickerStyle(.menu)
                     .frame(width: 400, alignment: .trailing)
@@ -298,6 +309,7 @@ struct SlideshowSettings: View {
     @State var showLocationOverlay = true
     @State var enableReflections = true
     @State var enableKenBurns = false
+    @State var enableDynamicTransitions = false
     @State var enableShuffle = false
     @FocusState var isMinusFocused: Bool
     @FocusState var isPlusFocused: Bool
@@ -313,6 +325,7 @@ struct SlideshowSettings: View {
         showLocationOverlay: $showLocationOverlay,
         enableReflections: $enableReflections,
         enableKenBurns: $enableKenBurns,
+        enableDynamicTransitions: $enableDynamicTransitions,
         enableShuffle: $enableShuffle,
         isMinusFocused: $isMinusFocused,
         isPlusFocused: $isPlusFocused,

@@ -78,6 +78,11 @@ extension UserDefaults {
         get { bool(forKey: UserDefaultsKeys.enableKenBurnsEffect) }
         set { set(newValue, forKey: UserDefaultsKeys.enableKenBurnsEffect) }
     }
+
+    var enableDynamicTransitions: Bool {
+        get { bool(forKey: UserDefaultsKeys.enableDynamicTransitions) }
+        set { set(newValue, forKey: UserDefaultsKeys.enableDynamicTransitions) }
+    }
     
     var enableThumbnailAnimation: Bool {
         get { 

@@ -41,6 +41,13 @@ struct WhatsNewView: View {
 
     private let changelogContent = """
 
+    VERSION|1.2.5
+
+    NEW_FEATURE| Pan & Zoom+ slideshow effect
+    - Added a new Settings → Slideshow → Image Effects option called "Pan & Zoom+".
+    - Pan & Zoom+ keeps the Ken Burns motion but mixes in dynamic transitions like zoom, fade, spin, and flip animations between photos.
+    - Transition families are balanced so the slideshow cycles through different visual styles more evenly.
+
     VERSION|1.2.4
 
     NEW_FEATURE| Launch straight into a slideshow

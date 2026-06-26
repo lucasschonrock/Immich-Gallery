@@ -73,6 +73,7 @@ struct SlideshowView: View {
     @State private var hideImageOverlay: Bool = UserDefaults.standard.hideImageOverlay
     @State private var enableReflectionsInSlideshow: Bool = UserDefaults.standard.enableReflectionsInSlideshow
     @State private var enableKenBurnsEffect: Bool = UserDefaults.standard.enableKenBurnsEffect
+    @State private var enableDynamicTransitions: Bool = UserDefaults.standard.enableDynamicTransitions
     @State private var dimensionMultiplier:Double = UserDefaults.standard.enableReflectionsInSlideshow ?  0.9 : 1.0
     @State private var kenBurnsScale: CGFloat = 1.0
     @State private var kenBurnsOffset: CGSize = .zero
@@ -86,8 +87,9 @@ struct SlideshowView: View {
         return ArtModeLevel(rawValue: levelString) ?? .off
     }
 
-    enum SlideDirection {
+    enum SlideDirection: CaseIterable {
         case left, right, up, down, diagonal_up_left, diagonal_up_right, diagonal_down_left, diagonal_down_right, zoom_out
+        case zoom_in, fade, rotate, flip_horizontal, flip_vertical
 
         func offset(for size: CGSize) -> CGSize {
             let w = size.width * 1.2
@@ -101,27 +103,82 @@ struct SlideshowView: View {
             case .diagonal_up_right: return CGSize(width: w, height: -h)
             case .diagonal_down_left: return CGSize(width: -w, height: h)
             case .diagonal_down_right: return CGSize(width: w, height: h)
-            case .zoom_out: return CGSize.zero
+            case .zoom_out, .zoom_in, .fade, .rotate, .flip_horizontal, .flip_vertical:
+                return CGSize.zero // These transitions stay centered
             }
         }
 
         var scale: CGFloat {
             switch self {
             case .zoom_out: return 0.1 // Scale down to nearly invisible
-            default: return 1.0 // Normal scale
+            case .zoom_in: return 1.8  // Scale up past the frame
+            default: return 1.0        // Normal scale
             }
         }
 
         var opacity: Double {
             switch self {
-            case .zoom_out: return 0.0 // Fade out
-            default: return 1.0 // Normal opacity
+            // All in-place transitions fade so the swap is seamless
+            case .zoom_out, .zoom_in, .fade, .rotate, .flip_horizontal, .flip_vertical:
+                return 0.0
+            default:
+                return 1.0 // Sliding transitions stay fully opaque
+            }
+        }
+
+        /// 2D rotation applied during the transition (for the spin effect).
+        var rotation: Angle {
+            switch self {
+            case .rotate: return .degrees(90)
+            default: return .zero
+            }
+        }
+
+        /// 3D rotation (angle + axis) applied during the transition (for flip effects).
+        var rotation3D: (angle: Double, axis: (x: CGFloat, y: CGFloat, z: CGFloat)) {
+            switch self {
+            case .flip_horizontal: return (90, (x: 0, y: 1, z: 0))
+            case .flip_vertical:   return (90, (x: 1, y: 0, z: 0))
+            default:               return (0, (x: 0, y: 1, z: 0))
             }
         }
     }
 
     // Global slide animation duration for both slide-in and slide-out
     private let slideAnimationDuration: Double = 1.5
+
+    // Transitions picked at random for each new image. Declared once as static
+    // constants so they aren't reallocated on every slide advance.
+    //
+    // `basicTransitionPool` is the classic slide/zoom set used by the standard
+    // effects — a flat list picked uniformly.
+    private static let basicTransitionPool: [SlideDirection] = [
+        .left, .right, .up, .down,
+        .diagonal_up_left, .diagonal_up_right, .diagonal_down_left, .diagonal_down_right,
+        .zoom_out
+    ]
+
+    // For the "Pan & Zoom+" effect, transitions are grouped into visual families.
+    // We pick a family first (equal weight), then a variant within it — otherwise
+    // the eight slide directions would dominate (~57%) and rotate/flip would
+    // rarely appear. This gives each visual style roughly equal airtime.
+    private static let transitionFamilies: [[SlideDirection]] = [
+        [.left, .right, .up, .down,
+         .diagonal_up_left, .diagonal_up_right, .diagonal_down_left, .diagonal_down_right], // slide
+        [.zoom_out, .zoom_in],                                                              // zoom
+        [.fade],                                                                            // fade
+        [.rotate],                                                                          // spin
+        [.flip_horizontal, .flip_vertical]                                                  // flip
+    ]
+
+    /// Picks the next transition, balancing visual families in dynamic mode.
+    private func nextTransition() -> SlideDirection {
+        guard enableDynamicTransitions else {
+            return Self.basicTransitionPool.randomElement() ?? .right
+        }
+        let family = Self.transitionFamilies.randomElement() ?? Self.basicTransitionPool
+        return family.randomElement() ?? .right
+    }
 
     // Computed property to get current asset
     private var currentAsset: ImmichAsset? {
@@ -162,6 +219,12 @@ struct SlideshowView: View {
                                 .aspectRatio(contentMode: .fit)
                                 .frame(width: imageWidth, height: imageHeight)
                                 .drawingGroup() // Enable hardware acceleration for smooth animations
+                                .rotationEffect(isTransitioning ? slideDirection.rotation : .zero)
+                                .rotation3DEffect(
+                                    isTransitioning ? .degrees(slideDirection.rotation3D.angle) : .zero,
+                                    axis: slideDirection.rotation3D.axis,
+                                    perspective: 0.4
+                                )
                                 .offset(isTransitioning ? slideDirection.offset(for: geometry.size) : kenBurnsOffset)
                                 .scaleEffect(isTransitioning ? slideDirection.scale : kenBurnsScale)
                                 .opacity(isTransitioning ? slideDirection.opacity : 1.0)
@@ -256,6 +319,12 @@ struct SlideshowView: View {
                                     )
                                     .opacity(0.4)
                                     .drawingGroup() // Enable hardware acceleration for reflection
+                                    .rotationEffect(isTransitioning ? slideDirection.rotation : .zero)
+                                    .rotation3DEffect(
+                                        isTransitioning ? .degrees(slideDirection.rotation3D.angle) : .zero,
+                                        axis: slideDirection.rotation3D.axis,
+                                        perspective: 0.4
+                                    )
                                     .offset(isTransitioning ? slideDirection.offset(for: geometry.size) : kenBurnsOffset)
                                     .scaleEffect(isTransitioning ? slideDirection.scale : kenBurnsScale)
                                     .opacity(isTransitioning ? slideDirection.opacity * 0.4 : 0.4)
@@ -314,6 +383,7 @@ struct SlideshowView: View {
             hideImageOverlay = UserDefaults.standard.hideImageOverlay
             enableReflectionsInSlideshow = UserDefaults.standard.enableReflectionsInSlideshow
             enableKenBurnsEffect = UserDefaults.standard.enableKenBurnsEffect
+            enableDynamicTransitions = UserDefaults.standard.enableDynamicTransitions
 
             // Update dominant color if background color setting changed to/from auto
             if newBackgroundColor != previousBackgroundColor {
@@ -663,9 +733,8 @@ struct SlideshowView: View {
                 self.dominantColor = dominantColor
             }
 
-            // Set new slide direction for the incoming image
-            let directions: [SlideDirection] = [.left, .right, .up, .down, .diagonal_up_left, .diagonal_up_right, .diagonal_down_left, .diagonal_down_right, .zoom_out]
-            self.slideDirection = directions.randomElement() ?? .right
+            // Set new slide direction/transition for the incoming image.
+            self.slideDirection = self.nextTransition()
 
             // Ensure slide-in animation plays
             withAnimation(.easeInOut(duration: self.slideAnimationDuration)) {

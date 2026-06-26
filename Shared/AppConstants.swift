@@ -42,6 +42,7 @@ struct UserDefaultsKeys {
     static let use24HourClock = "use24HourClock"
     static let enableReflectionsInSlideshow = "enableReflectionsInSlideshow"
     static let enableKenBurnsEffect = "enableKenBurnsEffect"
+    static let enableDynamicTransitions = "enableDynamicTransitions"
     static let enableThumbnailAnimation = "enableThumbnailAnimation"
     static let enableSlideshowShuffle = "enableSlideshowShuffle"
     static let allPhotosSortOrder = "allPhotosSortOrder"

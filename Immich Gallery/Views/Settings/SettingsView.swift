@@ -81,6 +81,7 @@ struct SettingsView: View {
     @AppStorage("enableDynamicTransitions") private var enableDynamicTransitions = false
     @AppStorage("enableThumbnailAnimation") private var enableThumbnailAnimation = false
     @AppStorage("enableSlideshowShuffle") private var enableSlideshowShuffle = false
+    @AppStorage(UserDefaultsKeys.reverseFullscreenHorizontalNavigation) private var reverseFullscreenHorizontalNavigation = false
     @AppStorage("allPhotosSortOrder") private var allPhotosSortOrder = "desc"
     @AppStorage(UserDefaultsKeys.hideAllPhotosFilterAndSortButtons) private var hideAllPhotosFilterAndSortButtons = false
     @AppStorage(UserDefaultsKeys.appBackgroundStyle) private var appBackgroundStyle = AppBackgroundStyle.ocean.rawValue
@@ -377,6 +378,21 @@ struct SettingsView: View {
                                                 .pickerStyle(.menu)
                                                 .frame(width: 300, alignment: .trailing)
                                         )
+                                    )
+
+                                    SettingsRow(
+                                        icon: "arrow.left.arrow.right",
+                                        title: "Reverse Fullscreen Left/Right",
+                                        subtitle: "Flip horizontal navigation in the fullscreen image viewer.",
+                                        content: AnyView(
+                                            Picker("Reverse Fullscreen Left/Right", selection: $reverseFullscreenHorizontalNavigation) {
+                                                Text("Off").tag(false)
+                                                Text("On").tag(true)
+                                            }
+                                            .pickerStyle(.menu)
+                                            .frame(width: 300, alignment: .trailing)
+                                        ),
+                                        isOn: reverseFullscreenHorizontalNavigation
                                     )
                                 }
                             )

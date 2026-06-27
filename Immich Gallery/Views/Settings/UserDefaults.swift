@@ -99,6 +99,11 @@ extension UserDefaults {
         get { bool(forKey: UserDefaultsKeys.enableSlideshowShuffle) }
         set { set(newValue, forKey: UserDefaultsKeys.enableSlideshowShuffle) }
     }
+
+    var reverseFullscreenHorizontalNavigation: Bool {
+        get { bool(forKey: UserDefaultsKeys.reverseFullscreenHorizontalNavigation) }
+        set { set(newValue, forKey: UserDefaultsKeys.reverseFullscreenHorizontalNavigation) }
+    }
     
     var navigationStyle: String {
         get { string(forKey: UserDefaultsKeys.navigationStyle) ?? NavigationStyle.tabs.rawValue }

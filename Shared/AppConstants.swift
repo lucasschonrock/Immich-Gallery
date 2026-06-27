@@ -45,6 +45,7 @@ struct UserDefaultsKeys {
     static let enableDynamicTransitions = "enableDynamicTransitions"
     static let enableThumbnailAnimation = "enableThumbnailAnimation"
     static let enableSlideshowShuffle = "enableSlideshowShuffle"
+    static let reverseFullscreenHorizontalNavigation = "reverseFullscreenHorizontalNavigation"
     static let allPhotosSortOrder = "allPhotosSortOrder"
     static let allPhotosFilterCity = "allPhotosFilterCity"
     static let allPhotosFilterYear = "allPhotosFilterYear"

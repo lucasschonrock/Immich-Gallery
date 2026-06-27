@@ -35,15 +35,43 @@ struct ChangelogSection: Identifiable, Codable {
 struct ChangelogVersion: Identifiable, Codable {
     let id = UUID()
     let version: String
+    let releaseDate: String?
     var changes: [ChangelogSection]
 
     enum CodingKeys: String, CodingKey {
         case version
+        case releaseDate
         case changes
+    }
+
+    var formattedReleaseDate: String? {
+        ChangelogRepository.formattedDate(releaseDate)
+    }
+
+    var versionDisplayText: String {
+        guard let formattedReleaseDate else {
+            return "Version \(version)"
+        }
+
+        return "Version \(version) - \(formattedReleaseDate)"
     }
 }
 
 private enum ChangelogRepository {
+    private static let inputFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return formatter
+    }()
+
+    private static let outputFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "MMM d, yyyy"
+        return formatter
+    }()
+
     static func load() -> [ChangelogVersion] {
         guard
             let url = Bundle.main.url(forResource: "releases", withExtension: "json"),
@@ -54,6 +82,17 @@ private enum ChangelogRepository {
         }
 
         return versions
+    }
+
+    static func formattedDate(_ value: String?) -> String? {
+        guard
+            let value,
+            let date = inputFormatter.date(from: value)
+        else {
+            return nil
+        }
+
+        return outputFormatter.string(from: date)
     }
 }
 
@@ -89,16 +128,17 @@ struct WhatsNewView: View {
 
 private extension WhatsNewView {
     var brandPanel: some View {
-        let latest = versions.first?.version
+        let latest = versions.first
 
         return VStack(alignment: .leading, spacing: 24) {
             Image("icon")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(width: 140, height: 140)
+//                .frame(width: 168, height: 168)
                 .clipShape(RoundedRectangle(cornerRadius: 28))
+                .padding(.top, 60)
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 20) {
                 Text("What's New")
                     .font(.system(size: 52, weight: .bold))
                     .foregroundColor(.white)
@@ -106,18 +146,23 @@ private extension WhatsNewView {
                 Text("Immich Gallery")
                     .font(.system(size: 26, weight: .medium))
                     .foregroundColor(.gray)
-            }
+                
+                if let latest {
+                    HStack(spacing: 10) {
+                        Text("Version \(latest.version)")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(
+                                Capsule().fill(Color.white.opacity(0.12))
+                            )
+                    }
+                }
+                
+            }.padding(.leading, 10)
 
-            if let latest {
-                Text("Version \(latest)")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(
-                        Capsule().fill(Color.white.opacity(0.12))
-                    )
-            }
+            
 
             Spacer()
 
@@ -190,17 +235,21 @@ private extension WhatsNewView {
 
     func versionGroup(_ version: ChangelogVersion, isPrimary: Bool) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            versionHeader(version.version, isPrimary: isPrimary)
+            versionHeader(version, isPrimary: isPrimary)
             ForEach(version.changes) { ChangelogCard(section: $0) }
         }
         .padding(.bottom, 12)
     }
 
-    func versionHeader(_ version: String, isPrimary: Bool) -> some View {
-        HStack(spacing: 14) {
-            Text("Version \(version)")
+    func versionHeader(_ version: ChangelogVersion, isPrimary: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 14) {
+                Text(version.versionDisplayText)
                 .font(.system(size: isPrimary ? 30 : 24, weight: .bold))
                 .foregroundColor(isPrimary ? .white : .gray)
+                
+                Spacer(minLength: 16)
+            }
             Rectangle()
                 .fill(Color.gray.opacity(0.3))
                 .frame(height: 1)

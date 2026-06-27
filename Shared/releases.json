@@ -1,0 +1,332 @@
+[
+  {
+    "version": "1.2.5",
+    "changes": [
+      {
+        "type": "new_feature",
+        "title": "Pan & Zoom+ slideshow effect",
+        "items": [
+          "Added a new Settings → Slideshow → Image Effects option called \"Pan & Zoom+\", which keeps the Ken Burns motion, mixes in dynamic transitions like zoom, fade, spin, and flip animations between photos, and balances transition families so the slideshow cycles through different visual styles more evenly.",
+          "Added a new Settings → Interface option to reverse left and right navigation in the fullscreen image viewer."
+        ]
+      }
+    ],
+    "releaseDate": "2026-06-27T00:00:00"
+  },
+  {
+    "version": "1.2.4",
+    "changes": [
+      {
+        "type": "new_feature",
+        "title": "Launch straight into a slideshow",
+        "items": [
+          "New Settings → Interface → \"Launch Into Slideshow\" option starts the slideshow automatically when the app opens, using your slideshow config album if set (otherwise all photos). Off by default.",
+          "The slideshow trigger settings now live alongside Default Startup Tab in Interface, grouping the app's startup behavior together."
+        ]
+      }
+    ],
+    "releaseDate": "2026-06-10T15:16:00"
+  },
+  {
+    "version": "1.2.3",
+    "changes": [
+      {
+        "type": "bug_fix",
+        "title": "Auto-slideshow stopped using your config",
+        "items": [
+          "After the 1.2.2 fix, auto-slideshow could play whatever album/person you were viewing instead of your configured slideshow. It now reliably plays your slideshow config (or all photos when none is set)."
+        ]
+      }
+    ],
+    "releaseDate": "2026-06-09T09:35:00"
+  },
+  {
+    "version": "1.2.2",
+    "changes": [
+      {
+        "type": "bug_fix",
+        "title": "Slideshow played the wrong album",
+        "items": [
+          "Pressing play on a specific album now plays that album, instead of always falling back to the auto-slideshow album."
+        ]
+      }
+    ],
+    "releaseDate": "2026-06-07T08:34:00"
+  },
+  {
+    "version": "1.2.1",
+    "changes": [
+      {
+        "type": "new_feature",
+        "title": "Granular Slideshow Overlay Controls",
+        "items": [
+          "New Settings → Slideshow toggles to independently show or hide the current time widget, the photo's taken date, and the location.",
+          "Photo Date now has three modes: Date and Time, Date Only, or None.",
+          "Existing behavior preserved by default — turn things off only if you want to."
+        ]
+      }
+    ],
+    "releaseDate": "2026-05-26T11:04:00"
+  },
+  {
+    "version": "1.1.9",
+    "changes": [
+      {
+        "type": "new_feature",
+        "title": "Background & Library Controls",
+        "items": [
+          "Added an app-wide background style picker in Settings → Interface, including a true black Midnight theme.",
+          "Added a new Settings → Sorting option to hide Filter and Sort buttons in the main library view.",
+          "When Filter and Sort buttons are hidden, the All Photos grid now reclaims that space to show more images."
+        ]
+      },
+      {
+        "type": "bug_fix",
+        "title": "Folders UI hangs on large libraries",
+        "items": [
+          "Fixed a bug where folders view may hang on large libraries.",
+          "Made some additional performance improvements to people and tags tab."
+        ]
+      }
+    ],
+    "releaseDate": "2026-03-03T11:55:00"
+  },
+  {
+    "version": "1.1.8",
+    "changes": [
+      {
+        "type": "new_feature",
+        "title": "All Photos Sort & Filter",
+        "items": [
+          "Added sort and filter controls to the main library (All Photos) view."
+        ]
+      }
+    ],
+    "releaseDate": "2026-02-11T09:39:00"
+  },
+  {
+    "version": "1.1.7",
+    "changes": [
+      {
+        "type": "new_feature",
+        "title": "Tabs vs Sidebar",
+        "items": [
+          "Pick your style in Settings → Interface. Tabs for the classics, Sidebar for the minimal."
+        ]
+      },
+      {
+        "type": "bug_fix",
+        "title": "Sort Order & album cover",
+        "items": [
+          "Fixed the sort order again.",
+          "If thumbnail animation is disabled, we now show album cover of the album."
+        ]
+      }
+    ],
+    "releaseDate": "2025-10-27T09:09:00"
+  },
+  {
+    "version": "1.1.6",
+    "changes": [
+      {
+        "type": "new_feature",
+        "title": "✨✨New Icon✨✨",
+        "items": [
+          "The Icon has been a placeholder for too long."
+        ]
+      },
+      {
+        "type": "bug_fix",
+        "title": "Fix shared album content. Discussion#81",
+        "items": [
+          "Thank you for reporting @madasus. Issue has been fixed."
+        ]
+      },
+      {
+        "type": "bug_fix",
+        "title": "The overlay windows were broken on TvOS 26. Add user/whats new etc.Part of issue #75",
+        "items": [
+          "Thanks for reporting @rmayergfx. This should fix that issue."
+        ]
+      }
+    ],
+    "releaseDate": "2025-10-18T14:10:00"
+  },
+  {
+    "version": "1.1.5",
+    "changes": [
+      {
+        "type": "new_feature",
+        "title": "Folders Tab",
+        "items": [
+          "New opt-in Folders tab allows you to view folders from your external library."
+        ]
+      },
+      {
+        "type": "bug_fix",
+        "title": "Sorting order",
+        "items": [
+          "We are once again respecting the sorting order selected in settings."
+        ]
+      },
+      {
+        "type": "improvement",
+        "title": "Performance Optimizations",
+        "items": [
+          "Hopefully better video player."
+        ]
+      }
+    ],
+    "releaseDate": "2025-10-16T20:24:00"
+  },
+  {
+    "version": "1.1.4",
+    "changes": [
+      {
+        "type": "improvement",
+        "title": "Performance Optimizations",
+        "items": [
+          "Various performance improvements throughout the app for smoother navigation.",
+          "Enhanced loading times and reduced memory usage.",
+          "More improvements coming next for people with large libraries, for now, but if you're experiencing crashes when scrolling, please report."
+        ]
+      },
+      {
+        "type": "new_feature",
+        "title": "Explore Tab",
+        "items": [
+          "New explore tab to discover your photos through statistics or by cities visited."
+        ]
+      },
+      {
+        "type": "improvement",
+        "title": "Top Shelf Enhancement",
+        "items": [
+          "Top shelf now shows only landscape orientation images for better visual presentation on Apple TV."
+        ]
+      }
+    ],
+    "releaseDate": "2025-09-09T00:58:00"
+  },
+  {
+    "version": "1.1.3",
+    "changes": [
+      {
+        "type": "new_feature",
+        "title": "Apple TV Top Shelf Customization",
+        "items": [
+          "Be brave, embrace choas: Now you can choose to display random photos on top shelf."
+        ]
+      },
+      {
+        "type": "improvement",
+        "title": "Raw Image Support",
+        "items": [
+          "Raw images now work kinda maybe. TV cannot display RAW images natively so I now load a fullsize version provided by immich."
+        ]
+      },
+      {
+        "type": "improvement",
+        "title": "Album & UI Enhancements",
+        "items": [
+          "Albums now show all favorite photos as a new album. Do not worry, the album does not exist in reality, like me.",
+          "Performance improvements to the all photos tab.",
+          "Changes to settings page as usual."
+        ]
+      },
+      {
+        "type": "experimental",
+        "title": "Auto Slideshow Configuration (experimental only)",
+        "items": [
+          "This may go away if I can't convince myself this is good.",
+          "Create empty album named \"immich-gallery-config\" with specific description format. Check settings for more info on setup.",
+          "Support for both album and person-based slideshow configuration"
+        ]
+      },
+      {
+        "type": "experimental",
+        "title": "Dimmed Slideshow",
+        "items": [
+          "Add support for dimmed slideshow in settings.",
+          "Time based dim level",
+          "How good does it work is a matter of personal opinion/s. Try it out and let me know. Yes, I'm talking to you specifically."
+        ]
+      }
+    ],
+    "releaseDate": "2025-09-04T07:39:00"
+  },
+  {
+    "version": "1.1.2",
+    "changes": [
+      {
+        "type": "new_feature",
+        "title": "Sign In With API key",
+        "items": [
+          "All of the SSO users can now use API keys to sign in. Not sure what will break if the API does not have needed scopes. Eventually maybe I'll list them out but for now, take a guess based on the available features."
+        ]
+      },
+      {
+        "type": "improvement",
+        "title": "Cleanups",
+        "items": [
+          "Bug fixes and performance improvements.",
+          "Album view now shows \"shared by you\" for the albums shared by you.",
+          "Cleaner settings view."
+        ]
+      }
+    ],
+    "releaseDate": "2025-09-01T06:57:00"
+  },
+  {
+    "version": "1.0.14",
+    "changes": [
+      {
+        "type": "improvement",
+        "title": "Slideshow optimizations",
+        "items": [
+          "Rewrite SlideshowView for loading assets dynamically"
+        ]
+      },
+      {
+        "type": "bug_fix",
+        "title": "Albums tab",
+        "items": [
+          "Fix shared albums are duplicated",
+          "Fix slideshow does not work for shared-in albums"
+        ]
+      }
+    ],
+    "releaseDate": "2025-08-29T01:02:00"
+  },
+  {
+    "version": "1.0.12",
+    "changes": [
+      {
+        "type": "bug_fix",
+        "title": "Fix more bugs",
+        "items": [
+          "Make slideshow truly random, just like life. Outsourced this to the server. - #43",
+          "Fix inactivity timer - Browse fast or the automatic slideshow will catch up to you - #43",
+          "Remove date of birth from people tab - WAF+10 - #44"
+        ]
+      }
+    ],
+    "releaseDate": "2025-08-18T04:21:00"
+  },
+  {
+    "version": "1.0.11",
+    "changes": [
+      {
+        "type": "bug_fix",
+        "title": "Fix bugs",
+        "items": [
+          "Top shef portraits no longer do unexpected headstands or cartwheels. I Hope.",
+          "Hopefully it also won't crash. But you may see reduced image quality in top shelf.",
+          "Better error handling.",
+          "Changed color gradient, this is much better on the eyes, I think."
+        ]
+      }
+    ],
+    "releaseDate": "2025-08-15T00:48:00"
+  }
+]

@@ -226,6 +226,11 @@ struct FullScreenImageView: View {
 
 // MARK: - Content Aware Modifier
 struct ContentAwareModifier: ViewModifier {
+    private enum HorizontalNavigation {
+        case previous
+        case next
+    }
+
     let isVideo: Bool
     let currentAssetIndex: Int
     let assets: [ImmichAsset]
@@ -237,6 +242,30 @@ struct ContentAwareModifier: ViewModifier {
     let onLoadImage: () -> Void
     let showingVideoPlayer: Bool
     let onPlayButtonTapped: () -> Void
+
+    private func horizontalNavigation(for direction: MoveCommandDirection) -> HorizontalNavigation? {
+        let reverseHorizontal = UserDefaults.standard.reverseFullscreenHorizontalNavigation
+
+        switch direction {
+        case .left:
+            return reverseHorizontal ? .next : .previous
+        case .right:
+            return reverseHorizontal ? .previous : .next
+        default:
+            return nil
+        }
+    }
+
+    private func navigatedIndex(for direction: MoveCommandDirection) -> Int? {
+        switch horizontalNavigation(for: direction) {
+        case .previous:
+            return currentAssetIndex - 1
+        case .next:
+            return currentAssetIndex + 1
+        case nil:
+            return nil
+        }
+    }
     
     
     func body(content: Content) -> some View {
@@ -274,21 +303,21 @@ struct ContentAwareModifier: ViewModifier {
                     switch direction {
                     case .left:
                         print("FullScreenImageView: Left navigation triggered (current: \(currentAssetIndex), total: \(assets.count))")
-                        if currentAssetIndex > 0 {
+                        if let nextIndex = navigatedIndex(for: direction), assets.indices.contains(nextIndex) {
                             withAnimation(.easeInOut(duration: 0.3)) {
-                                onNavigate(currentAssetIndex - 1)
+                                onNavigate(nextIndex)
                             }
                         } else {
-                            print("FullScreenImageView: Already at first photo, cannot navigate further")
+                            print("FullScreenImageView: No navigable asset for left command")
                         }
                     case .right:
                         print("FullScreenImageView: Right navigation triggered (current: \(currentAssetIndex), total: \(assets.count))")
-                        if currentAssetIndex < assets.count - 1 {
+                        if let nextIndex = navigatedIndex(for: direction), assets.indices.contains(nextIndex) {
                             withAnimation(.easeInOut(duration: 0.3)) {
-                                onNavigate(currentAssetIndex + 1)
+                                onNavigate(nextIndex)
                             }
                         } else {
-                            print("FullScreenImageView: Already at last photo, cannot navigate further")
+                            print("FullScreenImageView: No navigable asset for right command")
                         }
                     case .up:
                         print("FullScreenImageView: Up navigation triggered - toggling EXIF info")

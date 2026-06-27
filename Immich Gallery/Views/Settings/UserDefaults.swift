@@ -78,6 +78,11 @@ extension UserDefaults {
         get { bool(forKey: UserDefaultsKeys.enableKenBurnsEffect) }
         set { set(newValue, forKey: UserDefaultsKeys.enableKenBurnsEffect) }
     }
+
+    var enableDynamicTransitions: Bool {
+        get { bool(forKey: UserDefaultsKeys.enableDynamicTransitions) }
+        set { set(newValue, forKey: UserDefaultsKeys.enableDynamicTransitions) }
+    }
     
     var enableThumbnailAnimation: Bool {
         get { 
@@ -93,6 +98,11 @@ extension UserDefaults {
     var enableSlideshowShuffle: Bool {
         get { bool(forKey: UserDefaultsKeys.enableSlideshowShuffle) }
         set { set(newValue, forKey: UserDefaultsKeys.enableSlideshowShuffle) }
+    }
+
+    var reverseFullscreenHorizontalNavigation: Bool {
+        get { bool(forKey: UserDefaultsKeys.reverseFullscreenHorizontalNavigation) }
+        set { set(newValue, forKey: UserDefaultsKeys.reverseFullscreenHorizontalNavigation) }
     }
     
     var navigationStyle: String {

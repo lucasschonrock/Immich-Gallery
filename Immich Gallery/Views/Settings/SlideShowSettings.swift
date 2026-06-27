@@ -11,6 +11,13 @@ import SwiftUI
 
 // MARK: - Slideshow Settings Component
 
+private enum SlideshowImageEffect: String {
+    case none
+    case reflections
+    case kenBurns
+    case kenBurnsPlus
+}
+
 struct SlideshowSettings: View {
     @Binding var slideshowInterval: Double
     @Binding var slideshowBackgroundColor: String
@@ -21,11 +28,48 @@ struct SlideshowSettings: View {
     @Binding var showLocationOverlay: Bool
     @Binding var enableReflections: Bool
     @Binding var enableKenBurns: Bool
+    @Binding var enableDynamicTransitions: Bool
     @Binding var enableShuffle: Bool
     @FocusState.Binding var isMinusFocused: Bool
     @FocusState.Binding var isPlusFocused: Bool
     @FocusState.Binding var focusedColor: String?
     @State private var showPerformanceAlert = false
+
+    private var imageEffectSelection: Binding<SlideshowImageEffect> {
+        Binding(
+            get: {
+                if enableKenBurns && enableDynamicTransitions {
+                    return .kenBurnsPlus
+                } else if enableKenBurns {
+                    return .kenBurns
+                } else if enableReflections {
+                    return .reflections
+                } else {
+                    return .none
+                }
+            },
+            set: { newValue in
+                switch newValue {
+                case .kenBurnsPlus:
+                    enableKenBurns = true
+                    enableReflections = false
+                    enableDynamicTransitions = true
+                case .kenBurns:
+                    enableKenBurns = true
+                    enableReflections = false
+                    enableDynamicTransitions = false
+                case .reflections:
+                    enableKenBurns = false
+                    enableReflections = true
+                    enableDynamicTransitions = false
+                case .none:
+                    enableKenBurns = false
+                    enableReflections = false
+                    enableDynamicTransitions = false
+                }
+            }
+        )
+    }
     
     
     var body: some View {
@@ -138,33 +182,11 @@ struct SlideshowSettings: View {
                 title: "Image Effects",
                 subtitle: "Choose visual effects for slideshow images",
                 content: AnyView(
-                    Picker("Image Effects", selection: Binding(
-                        get: {
-                            if enableKenBurns {
-                                return "kenBurns"
-                            } else if enableReflections {
-                                return "reflections"
-                            } else {
-                                return "none"
-                            }
-                        },
-                        set: { newValue in
-                            switch newValue {
-                            case "kenBurns":
-                                enableKenBurns = true
-                                enableReflections = false
-                            case "reflections":
-                                enableKenBurns = false
-                                enableReflections = true
-                            default: // "none"
-                                enableKenBurns = false
-                                enableReflections = false
-                            }
-                        }
-                    )) {
-                        Text("None").tag("none")
-                        Text("Reflections").tag("reflections")
-                        Text("Pan and Zoom").tag("kenBurns")
+                    Picker("Image Effects", selection: imageEffectSelection) {
+                        Text("None").tag(SlideshowImageEffect.none)
+                        Text("Reflections").tag(SlideshowImageEffect.reflections)
+                        Text("Pan and Zoom").tag(SlideshowImageEffect.kenBurns)
+                        Text("Pan & Zoom+").tag(SlideshowImageEffect.kenBurnsPlus)
                     }
                     .pickerStyle(.menu)
                     .frame(width: 400, alignment: .trailing)
@@ -185,7 +207,7 @@ struct SlideshowSettings: View {
                 ),
                 isOn: enableShuffle
             )
-            
+
             // MARK: - Image Overlay group
             HStack {
                 Text("Image Overlay")
@@ -298,6 +320,7 @@ struct SlideshowSettings: View {
     @State var showLocationOverlay = true
     @State var enableReflections = true
     @State var enableKenBurns = false
+    @State var enableDynamicTransitions = false
     @State var enableShuffle = false
     @FocusState var isMinusFocused: Bool
     @FocusState var isPlusFocused: Bool
@@ -313,6 +336,7 @@ struct SlideshowSettings: View {
         showLocationOverlay: $showLocationOverlay,
         enableReflections: $enableReflections,
         enableKenBurns: $enableKenBurns,
+        enableDynamicTransitions: $enableDynamicTransitions,
         enableShuffle: $enableShuffle,
         isMinusFocused: $isMinusFocused,
         isPlusFocused: $isPlusFocused,
@@ -321,4 +345,3 @@ struct SlideshowSettings: View {
     .preferredColorScheme(.light)
     .padding()
 }
-

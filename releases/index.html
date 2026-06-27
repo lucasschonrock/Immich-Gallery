@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Immich Gallery Releases</title>
+    <meta name="description"
+        content="Release notes for Immich Gallery on Apple TV. Track new features, fixes, and improvements across every version.">
+    <link rel="canonical" href="https://mensadilabs.github.io/Immich-Gallery/releases/">
+    <meta name="theme-color" content="#000000">
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Immich Gallery">
+    <meta property="og:title" content="Immich Gallery Releases">
+    <meta property="og:description"
+        content="Track every feature, fix, and improvement shipped in Immich Gallery for Apple TV.">
+    <meta property="og:url" content="https://mensadilabs.github.io/Immich-Gallery/releases/">
+    <meta property="og:image" content="https://mensadilabs.github.io/Immich-Gallery/screenshots/TopShelf.png">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Immich Gallery Releases">
+    <meta name="twitter:description"
+        content="Track every feature, fix, and improvement shipped in Immich Gallery for Apple TV.">
+    <meta name="twitter:image" content="https://mensadilabs.github.io/Immich-Gallery/screenshots/TopShelf.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        teal: { light: '#7DE6DD', DEFAULT: '#18C2C9' },
+                        coral: { light: '#FF9A5A', DEFAULT: '#FF6A5E' },
+                        sun: '#FFD15C',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+    </style>
+</head>
+
+<body class="bg-black text-white overflow-x-hidden selection:bg-teal/30">
+    <header class="bg-black/80 backdrop-blur-xl border-b border-white/5 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3.5">
+            <div class="flex items-center justify-between gap-4">
+                <a href="../" class="flex items-center gap-3 shrink-0">
+                    <svg class="w-10 h-7" viewBox="0 0 640 440" xmlns="http://www.w3.org/2000/svg" role="img"
+                        aria-label="Immich Gallery logo">
+                        <defs>
+                            <filter id="softDrop" x="-50%" y="-50%" width="200%" height="200%">
+                                <feGaussianBlur in="SourceAlpha" stdDeviation="18" result="blur" />
+                                <feOffset dy="10" result="off" />
+                                <feColorMatrix in="off" type="matrix"
+                                    values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.25 0" result="shadow" />
+                                <feMerge>
+                                    <feMergeNode in="shadow" />
+                                    <feMergeNode in="SourceGraphic" />
+                                </feMerge>
+                            </filter>
+                            <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#18C2C9" />
+                                <stop offset="100%" stop-color="#7DE6DD" />
+                            </linearGradient>
+                            <radialGradient id="sunGrad" cx="50%" cy="50%" r="50%">
+                                <stop offset="0%" stop-color="#FFF7B3" />
+                                <stop offset="40%" stop-color="#FFE988" />
+                                <stop offset="100%" stop-color="#FFD15C" />
+                            </radialGradient>
+                            <linearGradient id="playGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#FF6A5E" />
+                                <stop offset="100%" stop-color="#FF9A5A" />
+                            </linearGradient>
+                            <linearGradient id="mountainBack" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#E2E5EC" />
+                                <stop offset="100%" stop-color="#C2CAD8" />
+                            </linearGradient>
+                            <linearGradient id="mountainMid" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#C8CFDC" />
+                                <stop offset="100%" stop-color="#A2ACBD" />
+                            </linearGradient>
+                            <linearGradient id="mountainFront" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#98A1B2" />
+                                <stop offset="100%" stop-color="#747F93" />
+                            </linearGradient>
+                        </defs>
+                        <g id="card" filter="url(#softDrop)">
+                            <rect x="0" y="0" width="640" height="440" rx="48" fill="url(#skyGrad)" />
+                        </g>
+                        <g id="art">
+                            <circle cx="330" cy="220" r="70" fill="url(#sunGrad)" opacity="0.95" />
+                            <path d="M60,370 L240,210 L400,370 Z" fill="url(#mountainBack)" />
+                            <path d="M140,370 L360,165 L560,370 Z" fill="url(#mountainMid)" />
+                            <path d="M280,370 L480,240 L600,370 Z" fill="url(#mountainFront)" />
+                            <rect x="60" y="370" width="540" height="10" fill="#DFF2F2" />
+                            <g id="playBadge" transform="translate(558, 324) scale(0.6)">
+                                <circle cx="0" cy="0" r="76" fill="url(#playGrad)" />
+                                <polygon points="-18,-26 32,0 -18,26" fill="#FFFFFF" opacity="0.96" />
+                                <ellipse cx="-16" cy="-34" rx="34" ry="14" fill="#FFFFFF" opacity="0.18" />
+                            </g>
+                        </g>
+                    </svg>
+                    <span class="text-lg font-bold tracking-tight">Immich Gallery</span>
+                </a>
+
+                <nav class="hidden md:flex items-center gap-8 text-sm text-gray-400">
+                    <a href="../" class="hover:text-white transition-colors">Home</a>
+                </nav>
+
+                <a href="https://apps.apple.com/ca/app/immich-gallery/id6748482378"
+                    class="shrink-0 inline-flex items-center gap-2 bg-teal text-black font-semibold text-sm px-5 py-2.5 rounded-full transition-transform duration-300 hover:scale-105">
+                    Get the app
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section id="timeline" class="pt-12 md:pt-16 pb-24">
+            <div class="max-w-7xl mx-auto px-4">
+            <div class="max-w-5xl mx-auto px-4">
+                <div class="mb-10">
+                    <h2 class="text-3xl md:text-4xl font-bold tracking-tight">Release timeline</h2>
+                    <p class="mt-3 text-gray-400 text-lg max-w-3xl leading-relaxed">
+                        New features, fixes, and improvements grouped by version. Experimental work stays labeled as
+                        experimental.
+                    </p>
+                </div>
+
+                <div id="release-list" class="space-y-6">
+                    <div class="rounded-3xl border border-white/10 bg-white/5 p-6 text-gray-400">
+                        Loading releases…
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="border-t border-white/5">
+        <div class="max-w-7xl mx-auto px-4 py-8 text-sm text-gray-400 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <a href="https://github.com/mensadilabs/Immich-Gallery"
+                class="hover:text-white transition-colors">View repository</a>
+        </div>
+    </footer>
+
+    <script>
+        const releaseList = document.getElementById('release-list');
+
+        const badgeMap = {
+            new_feature: {
+                label: 'New',
+                className: 'bg-teal/15 text-teal border border-teal/20'
+            },
+            bug_fix: {
+                label: 'Fixed',
+                className: 'bg-coral/15 text-coral-light border border-coral/20'
+            },
+            improvement: {
+                label: 'Improved',
+                className: 'bg-sun/15 text-sun border border-sun/20'
+            },
+            experimental: {
+                label: 'Experimental',
+                className: 'bg-white/10 text-white border border-white/10'
+            },
+            other: {
+                label: 'Info',
+                className: 'bg-white/10 text-gray-300 border border-white/10'
+            }
+        };
+
+        function escapeHtml(value) {
+            return String(value)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#39;');
+        }
+
+        function totalItems(version) {
+            return (version.changes || []).reduce((sum, change) => sum + ((change.items || []).length), 0);
+        }
+
+        function formatReleaseDate(value) {
+            if (!value) return '';
+
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return '';
+
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        function renderRelease(version) {
+            const sections = (version.changes || []).map((change) => {
+                const badge = badgeMap[change.type] || badgeMap.other;
+                const items = (change.items || [])
+                    .map((item) => `<li>${escapeHtml(item)}</li>`)
+                    .join('');
+
+                return `
+                    <article class="rounded-2xl border border-white/10 bg-black/30 p-5">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${badge.className}">
+                                ${badge.label}
+                            </span>
+                            <h3 class="text-xl font-semibold tracking-tight">${escapeHtml(change.title)}</h3>
+                        </div>
+                        <ul class="mt-4 space-y-3 pl-5 text-gray-400 leading-relaxed list-disc">
+                            ${items}
+                        </ul>
+                    </article>
+                `;
+            }).join('');
+
+            return `
+                <section class="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 md:p-8">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+                        <div>
+                            <p class="text-sm uppercase tracking-[0.18em] text-gray-500">Version</p>
+                            <h2 class="mt-1 text-3xl md:text-4xl font-bold tracking-tight">${escapeHtml(version.version)}</h2>
+                        </div>
+                        <div class="text-sm text-gray-400">
+                            ${escapeHtml(formatReleaseDate(version.releaseDate))}
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        ${sections}
+                    </div>
+                </section>
+            `;
+        }
+
+        async function loadReleases() {
+            try {
+                const response = await fetch('../Shared/releases.json', { cache: 'no-store' });
+                if (!response.ok) {
+                    throw new Error(`Request failed with ${response.status}`);
+                }
+
+                const versions = await response.json();
+                releaseList.innerHTML = versions.map(renderRelease).join('');
+            } catch (error) {
+                releaseList.innerHTML = `
+                    <div class="rounded-3xl border border-white/10 bg-white/5 p-6 text-gray-400 leading-relaxed">
+                        Could not load <code class="text-gray-300">Shared/releases.json</code>. Open this through GitHub Pages
+                        or a local static server rather than directly from the filesystem.
+                    </div>
+                `;
+            }
+        }
+
+        loadReleases();
+    </script>
+</body>
+
+</html>

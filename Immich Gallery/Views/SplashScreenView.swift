@@ -9,27 +9,52 @@ import SwiftUI
 
 // MARK: - Data Models
 
-enum ChangelogSectionType {
+enum ChangelogSectionType: String, Codable {
     case version
-    case newFeature
+    case newFeature = "new_feature"
     case improvement
-    case bugFix
+    case bugFix = "bug_fix"
     case experimental
     case other
 }
 
-struct ChangelogSection: Identifiable {
+struct ChangelogSection: Identifiable, Codable {
     let id = UUID()
     let title: String
     let type: ChangelogSectionType
     var items: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case title
+        case type
+        case items
+    }
 }
 
 /// A version and the change sections that belong to it.
-struct ChangelogVersion: Identifiable {
+struct ChangelogVersion: Identifiable, Codable {
     let id = UUID()
     let version: String
     var changes: [ChangelogSection]
+
+    enum CodingKeys: String, CodingKey {
+        case version
+        case changes
+    }
+}
+
+private enum ChangelogRepository {
+    static func load() -> [ChangelogVersion] {
+        guard
+            let url = Bundle.main.url(forResource: "releases", withExtension: "json"),
+            let data = try? Data(contentsOf: url),
+            let versions = try? JSONDecoder().decode([ChangelogVersion].self, from: data)
+        else {
+            return []
+        }
+
+        return versions
+    }
 }
 
 // MARK: - View
@@ -38,161 +63,7 @@ struct WhatsNewView: View {
     let onDismiss: () -> Void
     @State private var opacity: Double = 0
     @State private var showPreviousVersions = false
-
-    private let changelogContent = """
-
-    VERSION|1.2.5
-
-    NEW_FEATURE| Pan & Zoom+ slideshow effect
-    - Added a new Settings → Slideshow → Image Effects option called "Pan & Zoom+".
-    - Pan & Zoom+ keeps the Ken Burns motion but mixes in dynamic transitions like zoom, fade, spin, and flip animations between photos.
-    - Transition families are balanced so the slideshow cycles through different visual styles more evenly.
-
-    VERSION|1.2.4
-
-    NEW_FEATURE| Launch straight into a slideshow
-    - New Settings → Interface → "Launch Into Slideshow" option starts the slideshow automatically when the app opens, using your slideshow config album if set (otherwise all photos). Off by default.
-    - The slideshow trigger settings now live alongside Default Startup Tab in Interface, grouping the app's startup behavior together.
-
-    VERSION|1.2.3
-
-    BUGFIX| Auto-slideshow stopped using your config
-    - After the 1.2.2 fix, auto-slideshow could play whatever album/person you were viewing instead of your configured slideshow. It now reliably plays your slideshow config (or all photos when none is set).
-
-    VERSION|1.2.2
-
-    BUGFIX| Slideshow played the wrong album
-    - Pressing play on a specific album now plays that album, instead of always falling back to the auto-slideshow album.
-
-    VERSION|1.2.1
-
-    NEW_FEATURE| Granular Slideshow Overlay Controls
-    - New Settings → Slideshow toggles to independently show or hide the current time widget, the photo's taken date, and the location.
-    - Photo Date now has three modes: Date and Time, Date Only, or None.
-    - Existing behavior preserved by default — turn things off only if you want to.
-
-    VERSION|1.1.9
-
-    NEW_FEATURE| Background & Library Controls
-    - Added an app-wide background style picker in Settings → Interface, including a true black Midnight theme.
-    - Added a new Settings → Sorting option to hide Filter and Sort buttons in the main library view.
-    - When Filter and Sort buttons are hidden, the All Photos grid now reclaims that space to show more images.
-
-    BUGFIX| Folders UI hangs on large libraries
-    - Fixed a bug where folders view may hang on large libraries.
-    - Made some additional performance improvements to people and tags tab.
-
-    VERSION|1.1.8
-
-    NEW_FEATURE| All Photos Sort & Filter
-    - Added sort and filter controls to the main library (All Photos) view.
-
-    VERSION|1.1.7
-
-    NEW_FEATURE| Tabs vs Sidebar
-    - Pick your style in Settings → Interface. Tabs for the classics, Sidebar for the minimal.
-
-    BUGFIX| Sort Order & album cover
-    - Fixed the sort order again.
-    - If thumbnail animation is disabled, we now show album cover of the album.
-
-    VERSION|1.1.6
-
-    NEW_FEATURE| ✨✨New Icon✨✨
-    - The Icon has been a placeholder for too long.
-
-    BUGFIX| Fix shared album content. Discussion#81
-    - Thank you for reporting @madasus. Issue has been fixed.
-
-    BUGFIX| The overlay windows were broken on TvOS 26. Add user/whats new etc.Part of issue #75
-    - Thanks for reporting @rmayergfx. This should fix that issue.
-
-    VERSION|1.1.5
-
-    NEW_FEATURE| Folders Tab
-    - New opt-in Folders tab allows you to view folders from your external library.
-
-    BUGFIX| Sorting order
-    - We are once again respecting the sorting order selected in settings.
-
-    IMPROVEMENT| Performance Optimizations
-    - Hopefully better video player.
-
-    VERSION|1.1.4
-
-    IMPROVEMENT| Performance Optimizations
-    - Various performance improvements throughout the app for smoother navigation.
-    - Enhanced loading times and reduced memory usage.
-    - More improvements coming next for people with large libraries, for now, but if you're experiencing crashes when scrolling, please report.
-
-    NEW_FEATURE| Explore Tab
-    - New explore tab to discover your photos through statistics or by cities visited.
-
-    IMPROVEMENT| Top Shelf Enhancement
-    - Top shelf now shows only landscape orientation images for better visual presentation on Apple TV.
-
-
-    VERSION|1.1.3
-
-    NEW_FEATURE| Apple TV Top Shelf Customization
-    - Be brave, embrace choas: Now you can choose to display random photos on top shelf.
-
-
-    IMPROVEMENT| Raw Image Support
-    - Raw images now work kinda maybe. TV cannot display RAW images natively so I now load a fullsize version provided by immich.
-
-
-    IMPROVEMENT| Album & UI Enhancements
-    - Albums now show all favorite photos as a new album. Do not worry, the album does not exist in reality, like me.
-    - Performance improvements to the all photos tab.
-    - Changes to settings page as usual.
-
-    EXPERIMENTAL| Auto Slideshow Configuration (experimental only)
-    - This may go away if I can't convince myself this is good.
-    - Create empty album named "immich-gallery-config" with specific description format. Check settings for more info on setup.
-    - Support for both album and person-based slideshow configuration
-
-     EXPERIMENTAL| Dimmed Slideshow
-    - Add support for dimmed slideshow in settings.
-    - Time based dim level
-    - How good does it work is a matter of personal opinion/s. Try it out and let me know. Yes, I'm talking to you specifically.
-
-
-    VERSION|1.1.2
-
-    NEW_FEATURE| Sign In With API key
-    - All of the SSO users can now use API keys to sign in. Not sure what will break if the API does not have needed scopes. Eventually maybe I'll list them out but for now, take a guess based on the available features.
-
-    IMPROVEMENT| Cleanups
-    - Bug fixes and performance improvements.
-    - Album view now shows "shared by you" for the albums shared by you.
-    - Cleaner settings view.
-
-
-    VERSION|1.0.14
-
-    IMPROVEMENT| Slideshow optimizations
-    - Rewrite SlideshowView for loading assets dynamically
-
-    BUGFIX| Albums tab
-    - Fix shared albums are duplicated
-    - Fix slideshow does not work for shared-in albums
-
-
-    VERSION|1.0.12
-
-    BUGFIX| Fix more bugs
-    - Make slideshow truly random, just like life. Outsourced this to the server. - #43
-    - Fix inactivity timer - Browse fast or the automatic slideshow will catch up to you - #43
-    - Remove date of birth from people tab - WAF+10 - #44
-
-    VERSION|1.0.11
-    BUGFIX| Fix bugs
-    - Top shef portraits no longer do unexpected headstands or cartwheels. I Hope.
-    - Hopefully it also won't crash. But you may see reduced image quality in top shelf.
-    - Better error handling.
-    - Changed color gradient, this is much better on the eyes, I think.
-    """
+    private let versions = ChangelogRepository.load()
 
     var body: some View {
         GeometryReader { geo in
@@ -218,7 +89,6 @@ struct WhatsNewView: View {
 
 private extension WhatsNewView {
     var brandPanel: some View {
-        let versions = parseVersions()
         let latest = versions.first?.version
 
         return VStack(alignment: .leading, spacing: 24) {
@@ -271,7 +141,6 @@ private extension WhatsNewView {
 
 private extension WhatsNewView {
     var changesPanel: some View {
-        let versions = parseVersions()
         let latest = versions.first
         let previous = Array(versions.dropFirst())
 
@@ -279,6 +148,8 @@ private extension WhatsNewView {
             LazyVStack(alignment: .leading, spacing: 20) {
                 if let latest {
                     versionGroup(latest, isPrimary: true)
+                } else {
+                    missingChangelogCard
                 }
 
                 if !previous.isEmpty {
@@ -293,6 +164,28 @@ private extension WhatsNewView {
             .padding(.top, 80)
             .padding(.bottom, 100)
         }
+    }
+
+    var missingChangelogCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Release notes unavailable")
+                .font(.system(size: 30, weight: .bold))
+                .foregroundColor(.white)
+
+            Text("The app could not load its bundled release notes file.")
+                .font(.system(size: 20))
+                .foregroundColor(.gray)
+        }
+        .padding(28)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white.opacity(0.05))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                )
+        )
     }
 
     func versionGroup(_ version: ChangelogVersion, isPrimary: Bool) -> some View {
@@ -330,67 +223,6 @@ private extension WhatsNewView {
             )
         }
         .buttonStyle(CardButtonStyle())
-    }
-}
-
-// MARK: - Parsing Logic
-
-private extension WhatsNewView {
-    /// Parses the changelog into versions, each carrying its change sections.
-    func parseVersions() -> [ChangelogVersion] {
-        var versions: [ChangelogVersion] = []
-
-        for section in parseChangelog() {
-            if section.type == .version {
-                versions.append(ChangelogVersion(version: section.title, changes: []))
-            } else {
-                versions.indices.last.map { versions[$0].changes.append(section) }
-            }
-        }
-
-        return versions
-    }
-
-    func parseChangelog() -> [ChangelogSection] {
-        var sections: [ChangelogSection] = []
-        var currentSection: ChangelogSection?
-
-        for line in changelogContent.components(separatedBy: .newlines) {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            guard !trimmed.isEmpty else { continue }
-
-            if trimmed.contains("|") {
-                if let section = currentSection {
-                    sections.append(section)
-                }
-                let (type, title) = parseHeader(trimmed)
-                currentSection = ChangelogSection(title: title, type: type, items: [])
-            } else if trimmed.hasPrefix("-") {
-                currentSection?.items.append(String(trimmed.dropFirst().trimmingCharacters(in: .whitespaces)))
-            }
-        }
-
-        if let section = currentSection {
-            sections.append(section)
-        }
-
-        return sections
-    }
-
-    func parseHeader(_ line: String) -> (ChangelogSectionType, String) {
-        let components = line.components(separatedBy: "|")
-        guard components.count == 2 else { return (.other, line) }
-
-        let type: ChangelogSectionType
-        switch components[0].trimmingCharacters(in: .whitespaces) {
-        case "VERSION": type = .version
-        case "NEW_FEATURE": type = .newFeature
-        case "IMPROVEMENT": type = .improvement
-        case "BUGFIX": type = .bugFix
-        case "EXPERIMENTAL": type = .experimental
-        default: type = .other
-        }
-        return (type, components[1].trimmingCharacters(in: .whitespaces))
     }
 }
 

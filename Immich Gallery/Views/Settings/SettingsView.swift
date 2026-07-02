@@ -82,6 +82,7 @@ struct SettingsView: View {
     @AppStorage("enableThumbnailAnimation") private var enableThumbnailAnimation = false
     @AppStorage("enableSlideshowShuffle") private var enableSlideshowShuffle = false
     @AppStorage(UserDefaultsKeys.reverseFullscreenHorizontalNavigation) private var reverseFullscreenHorizontalNavigation = false
+    @AppStorage(UserDefaultsKeys.photosViewMode) private var photosViewMode = "grid"
     @AppStorage("allPhotosSortOrder") private var allPhotosSortOrder = "desc"
     @AppStorage(UserDefaultsKeys.hideAllPhotosFilterAndSortButtons) private var hideAllPhotosFilterAndSortButtons = false
     @AppStorage(UserDefaultsKeys.appBackgroundStyle) private var appBackgroundStyle = AppBackgroundStyle.ocean.rawValue
@@ -302,6 +303,20 @@ struct SettingsView: View {
                                         isOn: enableThumbnailAnimation
                                     )
                                     
+                                    SettingsRow(
+                                        icon: "calendar",
+                                        title: "Photos View",
+                                        subtitle: "How the Photos tab displays your library. Timeline groups photos by month and loads each month on demand for better performance on large libraries.",
+                                        content: AnyView(
+                                            Picker("Photos View", selection: $photosViewMode) {
+                                                Text("Grid").tag("grid")
+                                                Text("Timeline - Beta").tag("timeline")
+                                            }
+                                                .pickerStyle(.menu)
+                                                .frame(width: 300, alignment: .trailing)
+                                        )
+                                    )
+
                                     SettingsRow(
                                         icon: "paintpalette",
                                         title: "App Background",

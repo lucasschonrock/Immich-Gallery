@@ -106,7 +106,48 @@ class AssetService: ObservableObject {
 
         return Array(Set(years)).sorted(by: >)
     }
-    
+
+    // MARK: - Timeline (sectioned-by-month view)
+
+    /// Fetches the list of monthly buckets (month + asset count) for the whole
+    /// library in a single lightweight request. Used to build the timeline's
+    /// section spine without loading any assets.
+    func fetchTimelineBuckets() async throws -> [TimelineBucket] {
+        let order = UserDefaults.standard.allPhotosSortOrder
+        let endpoint = "/api/timeline/buckets?isTrashed=false&order=\(order)"
+        return try await networkService.makeRequest(
+            endpoint: endpoint,
+            method: .GET,
+            responseType: [TimelineBucket].self
+        )
+    }
+
+    /// Fetches the assets for a single month bucket. The server returns a
+    /// compact columnar payload which is mapped into ImmichAsset values so the
+    /// existing thumbnail/fullscreen views can render them.
+    func fetchBucketAssets(timeBucket: String) async throws -> [ImmichAsset] {
+        let order = UserDefaults.standard.allPhotosSortOrder
+        let encoded = timeBucket.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? timeBucket
+        let endpoint = "/api/timeline/bucket?timeBucket=\(encoded)&isTrashed=false&order=\(order)"
+        let response: TimeBucketAssetResponse = try await networkService.makeRequest(
+            endpoint: endpoint,
+            method: .GET,
+            responseType: TimeBucketAssetResponse.self
+        )
+        return response.toAssets()
+    }
+
+    /// Fetches one full asset record, including EXIF, on demand. Timeline tiles
+    /// intentionally use the compact bucket payload, so fullscreen can hydrate
+    /// only the selected asset instead of loading metadata for every tile.
+    func fetchAssetDetails(assetId: String) async throws -> ImmichAsset {
+        try await networkService.makeRequest(
+            endpoint: "/api/assets/\(assetId)",
+            method: .GET,
+            responseType: ImmichAsset.self
+        )
+    }
+
     /// Fetches assets using slideshow configuration
     func fetchAssets(config: SlideshowConfig, page: Int = 1, limit: Int = 50, isAllPhotos: Bool = false) async throws -> SearchResult {
         // Use separate sort order for All Photos tab vs everything else

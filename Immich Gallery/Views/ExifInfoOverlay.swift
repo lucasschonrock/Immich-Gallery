@@ -89,9 +89,7 @@ struct ExifInfoOverlay: View {
         .padding(.horizontal, 150)
         .padding(.top, 30)
         .padding(.bottom, 30)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.black.opacity(0.6)))
+        .metadataOverlayBackground()
         
     }
     
@@ -109,6 +107,19 @@ struct ExifInfoOverlay: View {
         asset.exifInfo?.focalLength != nil || 
         asset.exifInfo?.iso != nil || 
         asset.exifInfo?.exposureTime != nil
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func metadataOverlayBackground() -> some View {
+        let shape = RoundedRectangle(cornerRadius: 12)
+
+        if #available(tvOS 26.0, *) {
+            self.glassEffect(.clear.tint(.black.opacity(0.8)), in: shape)
+        } else {
+            self.background(shape.fill(Color.black.opacity(0.42)))
+        }
     }
 }
 

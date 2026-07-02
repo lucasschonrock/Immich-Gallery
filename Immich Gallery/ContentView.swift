@@ -73,6 +73,7 @@ struct ContentView: View {
     @AppStorage(UserDefaultsKeys.defaultStartupTab) private var defaultStartupTab = "photos"
     @AppStorage(UserDefaultsKeys.lastSeenVersion) private var lastSeenVersion = ""
     @AppStorage(UserDefaultsKeys.navigationStyle) private var navigationStyle = NavigationStyle.tabs.rawValue
+    @AppStorage(UserDefaultsKeys.photosViewMode) private var photosViewMode = "grid"
     @State private var searchTabHighlighted = false
     @State private var deepLinkAssetId: String?
     
@@ -105,17 +106,26 @@ struct ContentView: View {
                 } else {
                     // Main app interface
                     TabView(selection: $selectedTab) {
-                        AssetGridView(
-                            assetService: assetService, 
-                            authService: authService, 
-                            assetProvider: AssetProviderFactory.createProvider(
-                                isAllPhotos: true,
-                                assetService: assetService
-                            ),
-                            albumId: nil, personId: nil, tagId: nil, city: nil, isAllPhotos: true, isFavorite: false,
-                            onAssetsLoaded: nil, 
-                            deepLinkAssetId: deepLinkAssetId
-                        )
+                        Group {
+                            if photosViewMode == "timeline" {
+                                TimelineView(
+                                    assetService: assetService,
+                                    authService: authService
+                                )
+                            } else {
+                                AssetGridView(
+                                    assetService: assetService,
+                                    authService: authService,
+                                    assetProvider: AssetProviderFactory.createProvider(
+                                        isAllPhotos: true,
+                                        assetService: assetService
+                                    ),
+                                    albumId: nil, personId: nil, tagId: nil, city: nil, isAllPhotos: true, isFavorite: false,
+                                    onAssetsLoaded: nil,
+                                    deepLinkAssetId: deepLinkAssetId
+                                )
+                            }
+                        }
                         .errorBoundary(context: "Photos Tab")
                         .tabItem {
                             Image(systemName: TabName.photos.iconName)

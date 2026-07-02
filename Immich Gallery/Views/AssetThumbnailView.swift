@@ -12,6 +12,7 @@ struct AssetThumbnailView: View {
     @ObservedObject var assetService: AssetService
     @ObservedObject private var thumbnailCache = ThumbnailCache.shared
     @State private var image: UIImage?
+    @State private var placeholder: UIImage?   // instant blur from thumbhash
     @State private var isLoading = true
     @State private var loadingTask: Task<Void, Never>?
     let isFocused: Bool
@@ -22,18 +23,31 @@ struct AssetThumbnailView: View {
              RoundedRectangle(cornerRadius: 12)
                  .fill(Color.gray.opacity(0.3))
                  .frame(width: 320, height: 320)
-            
-             if isLoading {
-                 ProgressView()
-                     .scaleEffect(1.2)
-             } else if let image = image {
+
+             // Instant placeholder decoded from the asset's thumbhash. Shows
+             // immediately (no network) and sits behind the real thumbnail,
+             // which crossfades in on top once loaded.
+             if let placeholder = placeholder {
+                 Image(uiImage: placeholder)
+                     .resizable()
+                     .aspectRatio(contentMode: .fill)
+                     .frame(width: 320, height: 320)
+                     .clipped()
+                     .cornerRadius(12)
+             }
+
+             if let image = image {
                  Image(uiImage: image)
                      .resizable()
                      .aspectRatio(contentMode: .fill)
                      .frame(width: 320, height: 320)
                      .clipped()
                      .cornerRadius(12)
-             } else {
+                     .transition(.opacity)
+             } else if placeholder == nil && isLoading {
+                 ProgressView()
+                     .scaleEffect(1.2)
+             } else if placeholder == nil {
                  Image(systemName: "photo")
                      .font(.system(size: 40))
                      .foregroundColor(.gray)
@@ -87,46 +101,64 @@ struct AssetThumbnailView: View {
         .frame(width: 320, height: 320)
         .shadow(color: .black.opacity(isFocused ? 0.5 : 0), radius: 15, y: 10)
         .onAppear {
+            if placeholder == nil {
+                placeholder = ThumbHash.image(fromBase64: asset.thumbhash)
+            }
             loadThumbnail()
         }
         .onDisappear {
-            // Disable this, I think its slowing down stuff.
-            // cancelLoading()
+            // Re-enabled: cancelling loads for tiles scrolled off-screen is what
+            // keeps fast scroll from piling up hundreds of in-flight loads. Paired
+            // with the debounce below and the thumbhash placeholder, the tile still
+            // shows content instantly, so cancellation no longer leaves blanks.
+            cancelLoading()
         }
     }
-    
+
     private func loadThumbnail() {
         // Cancel any existing loading task
         loadingTask?.cancel()
-        
+
         loadingTask = Task {
+            // Debounce: a tile that scroll/focus blows past is cancelled in
+            // onDisappear before this fires, so we never load tiles the user
+            // is racing past. The thumbhash placeholder covers this window.
+            try? await Task.sleep(nanoseconds: 150_000_000) // 150ms settle
+            if Task.isCancelled { return }
+
+            // Hard concurrency cap: even if SwiftUI's nested lazy grids
+            // instantiate far more tiles than are visible, at most a handful
+            // of loads/decodes run at once, so memory can't spike into a crash.
+            await ThumbnailLoadGate.shared.acquire()
             do {
-                // Check if task was cancelled before starting
                 try Task.checkCancellation()
-                
+
                 let thumbnail = try await thumbnailCache.getThumbnail(for: asset.id, size: "thumbnail") {
                     // Check cancellation before network request
                     try Task.checkCancellation()
                     // Load from server if not in cache
                     return try await assetService.loadImage(assetId: asset.id, size: "thumbnail")
                 }
-                
+
                 // Check cancellation before UI update
                 try Task.checkCancellation()
-                
+
                 await MainActor.run {
-                    self.image = thumbnail
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        self.image = thumbnail
+                    }
                     self.isLoading = false
                 }
             } catch is CancellationError {
                 // Task was cancelled - don't update UI or log error
-                print("Thumbnail loading cancelled for asset \(asset.id)")
             } catch {
                 print("Failed to load thumbnail for asset \(asset.id): \(error)")
                 await MainActor.run {
                     self.isLoading = false
                 }
             }
+            // Always release the slot, including on cancellation/error paths.
+            await ThumbnailLoadGate.shared.release()
         }
     }
     

@@ -17,6 +17,8 @@ struct FullScreenImageView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var image: UIImage?
     @State private var isLoading = true
+    @State private var imageLoadTask: Task<Void, Never>?
+    @State private var isLoadingPreviewImage = false
 
     @State private var currentAsset: ImmichAsset
     @State private var showingSwipeHint = false
@@ -24,6 +26,8 @@ struct FullScreenImageView: View {
     @State private var refreshToggle = false
     @State private var showingVideoPlayer = false
     @State private var showingExifInfo = false
+    @State private var hydratedAssets: [String: ImmichAsset] = [:]
+    @State private var failedHydrationAssetIds: Set<String> = []
     
     init(asset: ImmichAsset, assets: [ImmichAsset], currentIndex: Int, assetService: AssetService, authenticationService: AuthenticationService, currentAssetIndex: Binding<Int>) {
         print("FullScreenImageView: Initializing with currentIndex: \(currentIndex)")
@@ -83,6 +87,28 @@ struct FullScreenImageView: View {
                                         }
                                     }
                                 )
+
+                            if isLoadingPreviewImage {
+                                VStack {
+                                    HStack {
+                                        Spacer()
+                                        Text("Loading...")
+                                            .font(.caption)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 14)
+                                            .padding(.vertical, 8)
+                                            .background(
+                                                Capsule()
+                                                    .fill(Color.black.opacity(0.65))
+                                            )
+                                            .padding(.top, 40)
+                                            .padding(.trailing, 60)
+                                    }
+                                    Spacer()
+                                }
+                                .transition(.opacity)
+                            }
                         }
                     }
                     .ignoresSafeArea()
@@ -173,12 +199,15 @@ struct FullScreenImageView: View {
             showingExifInfo: $showingExifInfo,
             onNavigate: navigateToImage,
             onDismiss: { dismiss() },
-            onLoadImage: loadFullImage,
+            onLoadImage: loadDisplayImage,
             showingVideoPlayer: showingVideoPlayer,
             onPlayButtonTapped: {
                 showingVideoPlayer = true
             }
         ))
+        .task(id: currentAsset.id) {
+            await hydrateCurrentAssetIfNeeded()
+        }
     }
     
     private func navigateToImage(at index: Int) {
@@ -190,7 +219,8 @@ struct FullScreenImageView: View {
         print("FullScreenImageView: Navigating to asset ID: \(assets[index].id)")
         currentAssetIndex = index // This now updates the binding
         print("FullScreenImageView: Updated currentAssetIndex binding to \(index)")
-        currentAsset = assets[index]
+        let nextAsset = assets[index]
+        currentAsset = hydratedAssets[nextAsset.id] ?? nextAsset
         refreshToggle.toggle() // Force UI update
         
         // Reset overlay states when navigating
@@ -200,23 +230,78 @@ struct FullScreenImageView: View {
         } else {
             image = nil
             isLoading = true
-            loadFullImage()
+            isLoadingPreviewImage = false
+            loadDisplayImage()
+        }
+    }
+
+    private func hydrateCurrentAssetIfNeeded() async {
+        let assetId = currentAsset.id
+        if let hydratedAsset = hydratedAssets[assetId] {
+            await MainActor.run {
+                if currentAsset.id == assetId {
+                    currentAsset = hydratedAsset
+                }
+            }
+            return
+        }
+
+        guard currentAsset.exifInfo == nil, !failedHydrationAssetIds.contains(assetId) else { return }
+
+        do {
+            let fullAsset = try await assetService.fetchAssetDetails(assetId: assetId)
+            await MainActor.run {
+                hydratedAssets[assetId] = fullAsset
+                if currentAsset.id == assetId {
+                    currentAsset = fullAsset
+                }
+            }
+        } catch {
+            await MainActor.run {
+                failedHydrationAssetIds.insert(assetId)
+            }
+            print("FullScreenImageView: Failed to load asset details for \(assetId): \(error)")
         }
     }
     
-    private func loadFullImage() {
-        Task {
+    private func loadDisplayImage() {
+        imageLoadTask?.cancel()
+        let assetToLoad = currentAsset
+
+        imageLoadTask = Task {
             do {
-                print("Loading full image for asset \(currentAsset.id)")
-                let fullImage = try await assetService.loadFullImage(asset: currentAsset)
+                if let cachedThumbnail = await ThumbnailCache.shared.cachedThumbnail(for: assetToLoad.id, size: "thumbnail") {
+                    try Task.checkCancellation()
+                    await MainActor.run {
+                        guard currentAsset.id == assetToLoad.id else { return }
+                        print("FullScreenImageView: Showing cached thumbnail while loading preview image for asset \(assetToLoad.id)")
+                        self.image = cachedThumbnail
+                        self.isLoadingPreviewImage = true
+                        self.isLoading = false
+                    }
+                }
+
+                print("Loading preview image for asset \(assetToLoad.id)")
+                let previewImage = try await assetService.loadImage(assetId: assetToLoad.id, size: "preview")
+                try Task.checkCancellation()
                 await MainActor.run {
-                    print("Loaded image for asset \(currentAsset.id)")
-                    self.image = fullImage
+                    guard currentAsset.id == assetToLoad.id else { return }
+                    if let previewImage {
+                        print("FullScreenImageView: Replacing thumbnail with preview image for asset \(assetToLoad.id)")
+                        self.image = previewImage
+                    } else {
+                        print("FullScreenImageView: Preview image unavailable; keeping thumbnail for asset \(assetToLoad.id)")
+                    }
+                    self.isLoadingPreviewImage = false
                     self.isLoading = false
                 }
+            } catch is CancellationError {
+                print("Preview image loading cancelled for asset \(assetToLoad.id)")
             } catch {
-                print("Failed to load full image for asset \(currentAsset.id): \(error)")
+                print("Failed to load preview image for asset \(assetToLoad.id): \(error)")
                 await MainActor.run {
+                    guard currentAsset.id == assetToLoad.id else { return }
+                    self.isLoadingPreviewImage = false
                     self.isLoading = false
                 }
             }

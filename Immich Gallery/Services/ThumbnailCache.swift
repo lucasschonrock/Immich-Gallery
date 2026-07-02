@@ -103,6 +103,26 @@ class ThumbnailCache: NSObject, ObservableObject {
         
         return serverImage
     }
+
+    /// Returns a cached image only. This avoids a network request when another
+    /// view wants to reuse an already-loaded thumbnail as a temporary preview.
+    func cachedThumbnail(for assetId: String, size: String = "thumbnail") async -> UIImage? {
+        let cacheKey = cacheKey(for: assetId, size: size)
+
+        if let cachedImage = memoryCache.object(forKey: cacheKey as NSString) {
+            print("FullScreenImageView: Reusing cached \(size) image from memory for asset \(assetId)")
+            return cachedImage.image
+        }
+
+        if let diskImage = await loadFromDisk(cacheKey: cacheKey) {
+            print("FullScreenImageView: Reusing cached \(size) image from disk for asset \(assetId)")
+            let cachedImage = CachedImage(image: diskImage, size: diskImage.jpegData(compressionQuality: 0.8)?.count ?? 0)
+            memoryCache.setObject(cachedImage, forKey: cacheKey as NSString, cost: cachedImage.size)
+            return diskImage
+        }
+
+        return nil
+    }
     
     /// Preload thumbnails for better performance
     func preloadThumbnails(for assets: [ImmichAsset], size: String = "thumbnail") {

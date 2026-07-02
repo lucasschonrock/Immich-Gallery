@@ -46,6 +46,7 @@ struct UserDefaultsKeys {
     static let enableThumbnailAnimation = "enableThumbnailAnimation"
     static let enableSlideshowShuffle = "enableSlideshowShuffle"
     static let reverseFullscreenHorizontalNavigation = "reverseFullscreenHorizontalNavigation"
+    static let photosViewMode = "photosViewMode" // "grid" | "timeline"
     static let allPhotosSortOrder = "allPhotosSortOrder"
     static let allPhotosFilterCity = "allPhotosFilterCity"
     static let allPhotosFilterYear = "allPhotosFilterYear"

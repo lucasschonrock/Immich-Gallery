@@ -29,22 +29,39 @@ extension DateFormatter {
         for options in formatOptions {
             isoFormatter.formatOptions = options
             if let date = isoFormatter.date(from: cleanedTimestamp) {
-                let outputFormatter = DateFormatter()
-                
-                // Choose format based on includeTime parameter
-                if includeTime {
-                    outputFormatter.dateFormat = "yyyy-MMM-dd HH:mm:ss"
-                } else {
-                    outputFormatter.dateFormat = "yyyy-MMM-dd"
-                }
-                
-                outputFormatter.timeZone = TimeZone(abbreviation: "UTC")
-                outputFormatter.locale = Locale(identifier: "en_US_POSIX")
-                
-                return outputFormatter.string(from: date).uppercased()
+                return formatDisplayDate(date, includeTime: includeTime)
+            }
+        }
+
+        let fallbackFormats = [
+            "yyyyMMdd'T'HHmmss",
+            "yyyyMMdd'T'HHmmss.SSS",
+            "yyyy-MM-dd'T'HH:mm:ss",
+            "yyyy-MM-dd'T'HH:mm:ss.SSS",
+            "yyyy:MM:dd HH:mm:ss",
+            "yyyy-MM-dd"
+        ]
+
+        for dateFormat in fallbackFormats {
+            let inputFormatter = DateFormatter()
+            inputFormatter.locale = Locale(identifier: "en_US_POSIX")
+            inputFormatter.timeZone = TimeZone(abbreviation: "UTC")
+            inputFormatter.dateFormat = dateFormat
+
+            if let date = inputFormatter.date(from: cleanedTimestamp) {
+                return formatDisplayDate(date, includeTime: includeTime)
             }
         }
         
         return utcTimestamp
+    }
+
+    private static func formatDisplayDate(_ date: Date, includeTime: Bool) -> String {
+        let outputFormatter = DateFormatter()
+        outputFormatter.dateFormat = includeTime ? "yyyy-MMM-dd HH:mm:ss" : "yyyy-MMM-dd"
+        outputFormatter.timeZone = TimeZone(abbreviation: "UTC")
+        outputFormatter.locale = Locale(identifier: "en_US_POSIX")
+
+        return outputFormatter.string(from: date).uppercased()
     }
 }

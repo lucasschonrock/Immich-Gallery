@@ -110,6 +110,11 @@ extension UserDefaults {
         set { set(newValue, forKey: UserDefaultsKeys.navigationStyle) }
     }
     
+    var photosViewMode: String {
+        get { string(forKey: UserDefaultsKeys.photosViewMode) ?? "grid" }
+        set { set(newValue, forKey: UserDefaultsKeys.photosViewMode) }
+    }
+
     var allPhotosSortOrder: String {
         get { string(forKey: UserDefaultsKeys.allPhotosSortOrder) ?? "desc" }
         set { set(newValue, forKey: UserDefaultsKeys.allPhotosSortOrder) }

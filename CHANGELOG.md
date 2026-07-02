@@ -1,3 +1,9 @@
+# VERSION|1.2.6
+
+NEW_FEATURE| ✨ Timeline is here ✨
+- New Settings → Interface → Photos View option for Timeline - Beta. Timeline groups All Photos by month and loads sections on demand, making large libraries significantly faster to browse.
+- Timeline is still under testing, so keep using Grid if you want the most proven All Photos experience. Please share feedback or issues on GitHub.
+
 # VERSION|1.2.4
 
 NEW_FEATURE| Launch straight into a slideshow

@@ -13,9 +13,10 @@ struct AssetThumbnailView: View {
     @ObservedObject private var thumbnailCache = ThumbnailCache.shared
     @State private var image: UIImage?
     @State private var placeholder: UIImage?   // instant blur from thumbhash
-    @State private var isLoading = true
     @State private var loadingTask: Task<Void, Never>?
     let isFocused: Bool
+    var shouldLoadThumbnail = true
+    var allowsThumbhashPlaceholder = true
     
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -44,13 +45,11 @@ struct AssetThumbnailView: View {
                      .clipped()
                      .cornerRadius(12)
                      .transition(.opacity)
-             } else if placeholder == nil && isLoading {
-                 ProgressView()
-                     .scaleEffect(1.2)
              } else if placeholder == nil {
-                 Image(systemName: "photo")
-                     .font(.system(size: 40))
-                     .foregroundColor(.gray)
+                 Image(systemName: "icloud")
+                     .font(.system(size: 32))
+                     .foregroundColor(.white.opacity(0.35))
+                     .frame(width: 320, height: 320, alignment: .center)
              }
             
             // Video indicator
@@ -101,17 +100,26 @@ struct AssetThumbnailView: View {
         .frame(width: 320, height: 320)
         .shadow(color: .black.opacity(isFocused ? 0.5 : 0), radius: 15, y: 10)
         .onAppear {
-            if placeholder == nil {
+            if allowsThumbhashPlaceholder && placeholder == nil {
                 placeholder = ThumbHash.image(fromBase64: asset.thumbhash)
             }
-            loadThumbnail()
+            if shouldLoadThumbnail {
+                loadThumbnail()
+            }
         }
         .onDisappear {
             // Re-enabled: cancelling loads for tiles scrolled off-screen is what
-            // keeps fast scroll from piling up hundreds of in-flight loads. Paired
-            // with the debounce below and the thumbhash placeholder, the tile still
-            // shows content instantly, so cancellation no longer leaves blanks.
+            // keeps fast scroll from piling up hundreds of in-flight loads.
             cancelLoading()
+        }
+        .onChange(of: shouldLoadThumbnail) { _, canLoad in
+            if canLoad {
+                if image == nil {
+                    loadThumbnail()
+                }
+            } else {
+                cancelLoading()
+            }
         }
     }
 
@@ -122,7 +130,7 @@ struct AssetThumbnailView: View {
         loadingTask = Task {
             // Debounce: a tile that scroll/focus blows past is cancelled in
             // onDisappear before this fires, so we never load tiles the user
-            // is racing past. The thumbhash placeholder covers this window.
+            // is racing past.
             try? await Task.sleep(nanoseconds: 150_000_000) // 150ms settle
             if Task.isCancelled { return }
 
@@ -147,15 +155,11 @@ struct AssetThumbnailView: View {
                     withAnimation(.easeOut(duration: 0.2)) {
                         self.image = thumbnail
                     }
-                    self.isLoading = false
                 }
             } catch is CancellationError {
                 // Task was cancelled - don't update UI or log error
             } catch {
                 print("Failed to load thumbnail for asset \(asset.id): \(error)")
-                await MainActor.run {
-                    self.isLoading = false
-                }
             }
             // Always release the slot, including on cancellation/error paths.
             await ThumbnailLoadGate.shared.release()

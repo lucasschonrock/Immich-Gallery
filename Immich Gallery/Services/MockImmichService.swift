@@ -253,7 +253,7 @@ class MockPeopleService: PeopleService {
         super.init(networkService: networkService)
     }
     
-    override func getAllPeople(page: Int = 1, size: Int = 100, withHidden: Bool = false) async throws -> [Person] {
+    override func getPeoplePage(page: Int = 1, size: Int = 100, withHidden: Bool = false) async throws -> PeoplePage {
         // Return mock people
         let mockPeople = [
             Person(
@@ -278,7 +278,12 @@ class MockPeopleService: PeopleService {
             )
         ]
         
-        return mockPeople
+        return PeoplePage(
+            people: mockPeople,
+            hasNextPage: false,
+            total: mockPeople.count,
+            hidden: 0
+        )
     }
     
     override func loadPersonThumbnail(personId: String) async throws -> UIImage? {

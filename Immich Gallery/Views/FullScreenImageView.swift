@@ -295,10 +295,30 @@ struct FullScreenImageView: View {
                     self.isLoadingPreviewImage = false
                     self.isLoading = false
                 }
+
+                do {
+                    guard currentAsset.id == assetToLoad.id else { return }
+                    print("FullScreenImageView: Loading original image for asset \(assetToLoad.id)")
+                    let originalImage = try await assetService.loadFullImage(asset: assetToLoad)
+                    try Task.checkCancellation()
+                    await MainActor.run {
+                        guard currentAsset.id == assetToLoad.id else { return }
+                        if let originalImage {
+                            print("FullScreenImageView: Replacing preview with original image for asset \(assetToLoad.id)")
+                            self.image = originalImage
+                        } else {
+                            print("FullScreenImageView: Original image unavailable; keeping preview for asset \(assetToLoad.id)")
+                        }
+                    }
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    print("FullScreenImageView: Failed to load original image for asset \(assetToLoad.id); keeping preview: \(error)")
+                }
             } catch is CancellationError {
-                print("Preview image loading cancelled for asset \(assetToLoad.id)")
+                print("Image loading cancelled for asset \(assetToLoad.id)")
             } catch {
-                print("Failed to load preview image for asset \(assetToLoad.id): \(error)")
+                print("Failed to load display image for asset \(assetToLoad.id): \(error)")
                 await MainActor.run {
                     guard currentAsset.id == assetToLoad.id else { return }
                     self.isLoadingPreviewImage = false

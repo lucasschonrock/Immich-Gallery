@@ -17,7 +17,7 @@ class ContentProvider: TVTopShelfContentProvider {
         print("TopShelf: loadTopShelfContent() called")
         
         // Check if Top Shelf is enabled in settings (default to true if not set)
-        let isTopShelfEnabled = sharedDefaults.bool(forKey: UserDefaultsKeys.enableTopShelf)
+        let isTopShelfEnabled = isTopShelfEnabled
         print("TopShelf: Top Shelf enabled in settings: \(isTopShelfEnabled)")
         
         if !isTopShelfEnabled {
@@ -42,7 +42,7 @@ class ContentProvider: TVTopShelfContentProvider {
         print("TopShelf: Fetched \(assets.count) assets")
         
         // Check user preference for TopShelf style
-        let topShelfStyle = sharedDefaults.string(forKey: UserDefaultsKeys.topShelfStyle) ?? "carousel"
+        let topShelfStyle = sharedDefaults.string(forKey: UserDefaultsKeys.topShelfStyle) ?? "sectioned"
         print("TopShelf: Using style: \(topShelfStyle)")
         
         if topShelfStyle == "sectioned" {
@@ -178,7 +178,7 @@ class ContentProvider: TVTopShelfContentProvider {
     }
     
     private func createFallbackContent() -> TVTopShelfContent {
-        let topShelfStyle = sharedDefaults.string(forKey: UserDefaultsKeys.topShelfStyle) ?? "carousel"
+        let topShelfStyle = sharedDefaults.string(forKey: UserDefaultsKeys.topShelfStyle) ?? "sectioned"
         print("TopShelf: Creating fallback content with style: \(topShelfStyle)")
         
         if topShelfStyle == "sectioned" {
@@ -206,12 +206,19 @@ class ContentProvider: TVTopShelfContentProvider {
         print(defaults)
         return defaults
     }
+
+    private var isTopShelfEnabled: Bool {
+        if sharedDefaults.object(forKey: UserDefaultsKeys.enableTopShelf) == nil {
+            return true
+        }
+        return sharedDefaults.bool(forKey: UserDefaultsKeys.enableTopShelf)
+    }
     
     private func fetchPhotos() async throws -> [SimpleAsset] {
         print("TopShelf: Starting to fetch \(TOTAL_ITEMS_COUNT) photos")
         
         let (serverURL, accessToken, authType) = getCurrentUserCredentials()
-        let isTopShelfEnabledFromDefaults = sharedDefaults.bool(forKey: UserDefaultsKeys.enableTopShelf)
+        let isTopShelfEnabledFromDefaults = isTopShelfEnabled
         let imageSelection = sharedDefaults.string(forKey: UserDefaultsKeys.topShelfImageSelection) ?? "recent"
         
         print("TopShelf: enabled=\(isTopShelfEnabledFromDefaults), imageSelection=\(imageSelection)")
@@ -297,25 +304,20 @@ class ContentProvider: TVTopShelfContentProvider {
     }
     
     private func fetchRandomPhotos(serverURL: String, accessToken: String, authType: SavedUser.AuthType) async throws -> [SimpleAsset] {
-        let urlString = "\(serverURL)/api/assets/random"
+        let urlString = "\(serverURL)/api/search/random"
         print("TopShelf: Making request to: \(urlString)")
         guard let url = URL(string: urlString) else {
             print("TopShelf: Invalid URL: \(urlString)")
             throw TopShelfError.invalidURL
         }
-        
-        var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false)
-        urlComponents?.queryItems = [
-            URLQueryItem(name: "count", value: String(TOTAL_ITEMS_COUNT))
+
+        let searchRequest: [String: Any] = [
+            "size": TOTAL_ITEMS_COUNT,
+            "withExif": true,
         ]
-        
-        guard let finalURL = urlComponents?.url else {
-            print("TopShelf: Failed to construct URL with query parameters")
-            throw TopShelfError.invalidURL
-        }
-        
-        var request = URLRequest(url: finalURL)
-        request.httpMethod = "GET"
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
         
         // Set authentication header based on auth type
         if authType == .apiKey {
@@ -323,7 +325,10 @@ class ContentProvider: TVTopShelfContentProvider {
         } else {
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         }
-        
+
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: searchRequest)
+
         print("TopShelf: Sending random API request...")
         let (data, response) = try await URLSession.shared.data(for: request)
         

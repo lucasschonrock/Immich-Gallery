@@ -53,8 +53,6 @@ class AssetService: ObservableObject {
         }
         if let folderPath = folderPath, !folderPath.isEmpty {
             searchRequest["originalPath"] = folderPath
-            searchRequest["path"] = folderPath
-            searchRequest["originalPathPrefix"] = folderPath
         }
         let result: SearchResponse = try await networkService.makeRequest(
             endpoint: "/api/search/metadata",
@@ -303,8 +301,6 @@ class AssetService: ObservableObject {
         }
         if let folderPath = folderPath, !folderPath.isEmpty {
             searchRequest["originalPath"] = folderPath
-            searchRequest["path"] = folderPath
-            searchRequest["originalPathPrefix"] = folderPath
         }
         
         let assets: [ImmichAsset] = try await networkService.makeRequest(

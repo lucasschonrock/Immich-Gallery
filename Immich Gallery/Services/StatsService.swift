@@ -78,16 +78,15 @@ class StatsService: ObservableObject {
         
         // Fetch all people with pagination
         while true {
-            let people = try await peopleService.getAllPeople(page: page, size: pageSize, withHidden: true)
+            let response = try await peopleService.getPeoplePage(page: page, size: pageSize, withHidden: true)
             
-            if people.isEmpty {
+            if response.people.isEmpty {
                 break
             }
             
-            allPeople.append(contentsOf: people)
+            allPeople.append(contentsOf: response.people)
             
-            // If we got less than the page size, we've reached the end
-            if people.count < pageSize {
+            if response.hasNextPage != true {
                 break
             }
             

@@ -19,7 +19,6 @@ class SearchService: ObservableObject {
         let searchRequest: [String: Any] = [
             "page": page,
             "withExif": true,
-            "isVisible": true,
             "language": "en-CA",
             "query": query
         ]

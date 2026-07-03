@@ -6,6 +6,13 @@
 import Foundation
 import UIKit
 
+struct PeoplePage: Codable {
+    let people: [Person]
+    let hasNextPage: Bool?
+    let total: Int?
+    let hidden: Int?
+}
+
 /// Service responsible for people/face recognition and thumbnails
 class PeopleService: ObservableObject {
     private let networkService: NetworkService
@@ -14,16 +21,15 @@ class PeopleService: ObservableObject {
         self.networkService = networkService
     }
 
-    func getAllPeople(page: Int = 1, size: Int = 100, withHidden: Bool = false) async throws -> [Person] {
+    func getPeoplePage(page: Int = 1, size: Int = 100, withHidden: Bool = false) async throws -> PeoplePage {
         let endpoint = "/api/people?page=\(page)&size=\(size)&withHidden=\(withHidden)"
         print("PeopleService: Fetching people from \(endpoint)")
-        struct PeopleResponse: Codable { let people: [Person] }
-        let response: PeopleResponse = try await networkService.makeRequest(
+        let response: PeoplePage = try await networkService.makeRequest(
             endpoint: endpoint,
-            responseType: PeopleResponse.self
+            responseType: PeoplePage.self
         )
         print("PeopleService: Received \(response.people.count) people")
-        return response.people
+        return response
     }
 
     func loadPersonThumbnail(personId: String) async throws -> UIImage? {

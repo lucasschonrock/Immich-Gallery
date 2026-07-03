@@ -17,7 +17,7 @@ class ContentProvider: TVTopShelfContentProvider {
         print("TopShelf: loadTopShelfContent() called")
         
         // Check if Top Shelf is enabled in settings (default to true if not set)
-        let isTopShelfEnabled = sharedDefaults.bool(forKey: UserDefaultsKeys.enableTopShelf)
+        let isTopShelfEnabled = isTopShelfEnabled
         print("TopShelf: Top Shelf enabled in settings: \(isTopShelfEnabled)")
         
         if !isTopShelfEnabled {
@@ -42,7 +42,7 @@ class ContentProvider: TVTopShelfContentProvider {
         print("TopShelf: Fetched \(assets.count) assets")
         
         // Check user preference for TopShelf style
-        let topShelfStyle = sharedDefaults.string(forKey: UserDefaultsKeys.topShelfStyle) ?? "carousel"
+        let topShelfStyle = sharedDefaults.string(forKey: UserDefaultsKeys.topShelfStyle) ?? "sectioned"
         print("TopShelf: Using style: \(topShelfStyle)")
         
         if topShelfStyle == "sectioned" {
@@ -178,7 +178,7 @@ class ContentProvider: TVTopShelfContentProvider {
     }
     
     private func createFallbackContent() -> TVTopShelfContent {
-        let topShelfStyle = sharedDefaults.string(forKey: UserDefaultsKeys.topShelfStyle) ?? "carousel"
+        let topShelfStyle = sharedDefaults.string(forKey: UserDefaultsKeys.topShelfStyle) ?? "sectioned"
         print("TopShelf: Creating fallback content with style: \(topShelfStyle)")
         
         if topShelfStyle == "sectioned" {
@@ -206,12 +206,19 @@ class ContentProvider: TVTopShelfContentProvider {
         print(defaults)
         return defaults
     }
+
+    private var isTopShelfEnabled: Bool {
+        if sharedDefaults.object(forKey: UserDefaultsKeys.enableTopShelf) == nil {
+            return true
+        }
+        return sharedDefaults.bool(forKey: UserDefaultsKeys.enableTopShelf)
+    }
     
     private func fetchPhotos() async throws -> [SimpleAsset] {
         print("TopShelf: Starting to fetch \(TOTAL_ITEMS_COUNT) photos")
         
         let (serverURL, accessToken, authType) = getCurrentUserCredentials()
-        let isTopShelfEnabledFromDefaults = sharedDefaults.bool(forKey: UserDefaultsKeys.enableTopShelf)
+        let isTopShelfEnabledFromDefaults = isTopShelfEnabled
         let imageSelection = sharedDefaults.string(forKey: UserDefaultsKeys.topShelfImageSelection) ?? "recent"
         
         print("TopShelf: enabled=\(isTopShelfEnabledFromDefaults), imageSelection=\(imageSelection)")

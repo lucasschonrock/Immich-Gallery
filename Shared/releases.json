@@ -1,5 +1,26 @@
 [
   {
+    "version": "1.2.7",
+    "changes": [
+      {
+        "type": "new_feature",
+        "title": "Immich V3 compatibility",
+        "items": [
+          "Does what it says on the tin. Some additional imrpovements are coming."
+        ]
+      },
+      {
+        "type": "improvement",
+        "title": "Fullscreen and Top Shelf polish",
+        "items": [
+          "Fixed a broken top shelf thing",
+          "Fullscreen view now makes an extra api call but should load images much faster, focusing on a few more optimizations for this month considering I can no longer afford to switch to the new Apple Tvs"
+        ]
+      }
+    ],
+    "releaseDate": "2026-07-03T00:00:00"
+  },
+  {
     "version": "1.2.6",
     "changes": [
       {

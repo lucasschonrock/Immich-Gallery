@@ -286,11 +286,6 @@ struct SharedGridItemView<Item: GridDisplayable>: View {
                                     .foregroundColor(.blue)
                             }
                             
-                            if let createdAt = item.gridCreatedAt, let formattedDate = formatDate(createdAt) {
-                                Text("Created \(formattedDate)")
-                                    .font(.caption2)
-                                    .foregroundColor(.gray)
-                            }
                         }
                     }
                 }

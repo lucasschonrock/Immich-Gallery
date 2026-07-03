@@ -17,16 +17,16 @@ class AlbumService: ObservableObject {
     func fetchAlbums() async throws -> [ImmichAlbum] {
         print("AlbumService: Fetching albums from /api/albums")
         let albums = try await networkService.makeRequest(
-            endpoint: "/api/albums?shared=false",
+            endpoint: "/api/albums",
             responseType: [ImmichAlbum].self
         )
 
-        let sharedAlbums = try await networkService.makeRequest(
-            endpoint: "/api/albums?shared=true",
-            responseType: [ImmichAlbum].self
-        )
-        print("AlbumService: Received \(albums.count) albums")
-        return [albums, sharedAlbums].flatMap { $0 }
+        var seenAlbumIds = Set<String>()
+        let dedupedAlbums = albums.filter { album in
+            seenAlbumIds.insert(album.id).inserted
+        }
+        print("AlbumService: Received \(dedupedAlbums.count) albums")
+        return dedupedAlbums
     }
 
     func getAlbumInfo(albumId: String, withoutAssets: Bool = false) async throws -> ImmichAlbum {

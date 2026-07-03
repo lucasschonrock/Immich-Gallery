@@ -18,7 +18,7 @@ extension ImmichAlbum: GridDisplayable {
     var isShared: Bool? { shared }
     var sharingText: String? { 
         if shared {
-            return owner.name
+            return owner?.name ?? albumUsers.first?.user.name
         }
         return nil
     }

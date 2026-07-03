@@ -79,7 +79,7 @@ class AlbumThumbnailProvider: ThumbnailProvider {
     
     private func loadAnimatedThumbnails(for album: ImmichAlbum) async -> [UIImage] {
         do {
-            let albumProvider = AlbumAssetProvider(albumService: albumService, albumId: album.id)
+            let albumProvider = AlbumAssetProvider(assetService: assetService, albumId: album.id)
             let searchResult = try await albumProvider.fetchAssets(page: 1, limit: animatedThumbnailLimit)
             let imageAssets = searchResult.assets.filter { $0.type == .image }
             

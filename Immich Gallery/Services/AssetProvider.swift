@@ -21,8 +21,8 @@ struct AssetProviderFactory {
         config: SlideshowConfig? = nil
     ) -> AssetProvider {
         
-        if let albumId = albumId, let albumService = albumService {
-            return AlbumAssetProvider(albumService: albumService, albumId: albumId)
+        if let albumId = albumId, albumService != nil {
+            return AlbumAssetProvider(assetService: assetService, albumId: albumId)
         } else {
             return GeneralAssetProvider(
                 assetService: assetService,
@@ -46,7 +46,7 @@ protocol AssetProvider {
 }
 
 class AlbumAssetProvider: AssetProvider {
-    private let albumService: AlbumService
+    private let assetService: AssetService
     private let albumId: String
     private var cachedAssets: [ImmichAsset]?
     
@@ -67,8 +67,8 @@ class AlbumAssetProvider: AssetProvider {
         return formatter
     }()
 
-    init(albumService: AlbumService, albumId: String) {
-        self.albumService = albumService
+    init(assetService: AssetService, albumId: String) {
+        self.assetService = assetService
         self.albumId = albumId
     }
 
@@ -77,10 +77,9 @@ class AlbumAssetProvider: AssetProvider {
             return cachedAssets
         }
 
-        // Fetch the album with full asset list; Immich includes assets unless withoutAssets is true
-        let album = try await albumService.getAlbumInfo(albumId: albumId, withoutAssets: false)
-        cachedAssets = album.assets
-        return album.assets
+        let result = try await assetService.fetchAssets(page: 1, limit: nil, albumId: albumId)
+        cachedAssets = result.assets
+        return result.assets
     }
     
     func fetchAssets(page: Int, limit: Int) async throws -> SearchResult {

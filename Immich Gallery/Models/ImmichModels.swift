@@ -11,8 +11,8 @@ import SwiftUI
 // MARK: - Asset Models
 struct ImmichAsset: Codable, Identifiable, Equatable {
     let id: String
-    let deviceAssetId: String
-    let deviceId: String
+    let deviceAssetId: String?
+    let deviceId: String?
     let ownerId: String
     let libraryId: String?
     let type: AssetType
@@ -43,6 +43,101 @@ struct ImmichAsset: Codable, Identifiable, Equatable {
         case originalMimeType, resized, thumbhash, fileModifiedAt, fileCreatedAt, localDateTime, updatedAt
         case isFavorite, isArchived, isOffline, isTrashed, checksum, duration, hasMetadata, livePhotoVideoId
         case people, visibility, duplicateId, exifInfo
+    }
+
+    init(
+        id: String,
+        deviceAssetId: String?,
+        deviceId: String?,
+        ownerId: String,
+        libraryId: String?,
+        type: AssetType,
+        originalPath: String,
+        originalFileName: String,
+        originalMimeType: String?,
+        resized: Bool?,
+        thumbhash: String?,
+        fileModifiedAt: String,
+        fileCreatedAt: String,
+        localDateTime: String,
+        updatedAt: String,
+        isFavorite: Bool,
+        isArchived: Bool,
+        isOffline: Bool,
+        isTrashed: Bool,
+        checksum: String,
+        duration: String?,
+        hasMetadata: Bool,
+        livePhotoVideoId: String?,
+        people: [Person],
+        visibility: String,
+        duplicateId: String?,
+        exifInfo: ExifInfo?
+    ) {
+        self.id = id
+        self.deviceAssetId = deviceAssetId
+        self.deviceId = deviceId
+        self.ownerId = ownerId
+        self.libraryId = libraryId
+        self.type = type
+        self.originalPath = originalPath
+        self.originalFileName = originalFileName
+        self.originalMimeType = originalMimeType
+        self.resized = resized
+        self.thumbhash = thumbhash
+        self.fileModifiedAt = fileModifiedAt
+        self.fileCreatedAt = fileCreatedAt
+        self.localDateTime = localDateTime
+        self.updatedAt = updatedAt
+        self.isFavorite = isFavorite
+        self.isArchived = isArchived
+        self.isOffline = isOffline
+        self.isTrashed = isTrashed
+        self.checksum = checksum
+        self.duration = duration
+        self.hasMetadata = hasMetadata
+        self.livePhotoVideoId = livePhotoVideoId
+        self.people = people
+        self.visibility = visibility
+        self.duplicateId = duplicateId
+        self.exifInfo = exifInfo
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        deviceAssetId = try container.decodeIfPresent(String.self, forKey: .deviceAssetId)
+        deviceId = try container.decodeIfPresent(String.self, forKey: .deviceId)
+        ownerId = try container.decode(String.self, forKey: .ownerId)
+        libraryId = try container.decodeIfPresent(String.self, forKey: .libraryId)
+        type = try container.decode(AssetType.self, forKey: .type)
+        originalPath = try container.decode(String.self, forKey: .originalPath)
+        originalFileName = try container.decode(String.self, forKey: .originalFileName)
+        originalMimeType = try container.decodeIfPresent(String.self, forKey: .originalMimeType)
+        resized = try container.decodeIfPresent(Bool.self, forKey: .resized)
+        thumbhash = try container.decodeIfPresent(String.self, forKey: .thumbhash)
+        fileModifiedAt = try container.decode(String.self, forKey: .fileModifiedAt)
+        fileCreatedAt = try container.decode(String.self, forKey: .fileCreatedAt)
+        localDateTime = try container.decode(String.self, forKey: .localDateTime)
+        updatedAt = try container.decode(String.self, forKey: .updatedAt)
+        isFavorite = try container.decode(Bool.self, forKey: .isFavorite)
+        isArchived = try container.decode(Bool.self, forKey: .isArchived)
+        isOffline = try container.decode(Bool.self, forKey: .isOffline)
+        isTrashed = try container.decode(Bool.self, forKey: .isTrashed)
+        checksum = try container.decode(String.self, forKey: .checksum)
+        if let stringDuration = try? container.decodeIfPresent(String.self, forKey: .duration) {
+            duration = stringDuration
+        } else if let intDuration = try? container.decodeIfPresent(Int.self, forKey: .duration) {
+            duration = String(intDuration)
+        } else {
+            duration = nil
+        }
+        hasMetadata = try container.decode(Bool.self, forKey: .hasMetadata)
+        livePhotoVideoId = try container.decodeIfPresent(String.self, forKey: .livePhotoVideoId)
+        people = try container.decodeIfPresent([Person].self, forKey: .people) ?? []
+        visibility = try container.decodeIfPresent(String.self, forKey: .visibility) ?? "timeline"
+        duplicateId = try container.decodeIfPresent(String.self, forKey: .duplicateId)
+        exifInfo = try container.decodeIfPresent(ExifInfo.self, forKey: .exifInfo)
     }
     
     // Equatable conformance - compare by id since it should be unique
@@ -183,8 +278,8 @@ struct ImmichAlbum: Codable, Identifiable {
     let albumUsers: [AlbumUser]
     let assets: [ImmichAsset]
     let assetCount: Int
-    let ownerId: String
-    let owner: Owner
+    let ownerId: String?
+    let owner: Owner?
     let shared: Bool
     let hasSharedLink: Bool
     let isActivityEnabled: Bool
@@ -192,6 +287,75 @@ struct ImmichAlbum: Codable, Identifiable {
     let order: String?
     let startDate: String?
     let endDate: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, albumName, description, albumThumbnailAssetId, createdAt, updatedAt, albumUsers
+        case assets, assetCount, ownerId, owner, shared, hasSharedLink, isActivityEnabled
+        case lastModifiedAssetTimestamp, order, startDate, endDate
+    }
+
+    init(
+        id: String,
+        albumName: String,
+        description: String?,
+        albumThumbnailAssetId: String?,
+        createdAt: String,
+        updatedAt: String,
+        albumUsers: [AlbumUser],
+        assets: [ImmichAsset],
+        assetCount: Int,
+        ownerId: String?,
+        owner: Owner?,
+        shared: Bool,
+        hasSharedLink: Bool,
+        isActivityEnabled: Bool,
+        lastModifiedAssetTimestamp: String?,
+        order: String?,
+        startDate: String?,
+        endDate: String?
+    ) {
+        self.id = id
+        self.albumName = albumName
+        self.description = description
+        self.albumThumbnailAssetId = albumThumbnailAssetId
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.albumUsers = albumUsers
+        self.assets = assets
+        self.assetCount = assetCount
+        self.ownerId = ownerId
+        self.owner = owner
+        self.shared = shared
+        self.hasSharedLink = hasSharedLink
+        self.isActivityEnabled = isActivityEnabled
+        self.lastModifiedAssetTimestamp = lastModifiedAssetTimestamp
+        self.order = order
+        self.startDate = startDate
+        self.endDate = endDate
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        albumName = try container.decode(String.self, forKey: .albumName)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        albumThumbnailAssetId = try container.decodeIfPresent(String.self, forKey: .albumThumbnailAssetId)
+        createdAt = try container.decode(String.self, forKey: .createdAt)
+        updatedAt = try container.decode(String.self, forKey: .updatedAt)
+        albumUsers = try container.decodeIfPresent([AlbumUser].self, forKey: .albumUsers) ?? []
+        assets = try container.decodeIfPresent([ImmichAsset].self, forKey: .assets) ?? []
+        assetCount = try container.decode(Int.self, forKey: .assetCount)
+        let decodedOwner = try container.decodeIfPresent(Owner.self, forKey: .owner)
+        owner = decodedOwner ?? albumUsers.first?.user
+        ownerId = try container.decodeIfPresent(String.self, forKey: .ownerId) ?? owner?.id
+        shared = try container.decodeIfPresent(Bool.self, forKey: .shared) ?? !albumUsers.isEmpty
+        hasSharedLink = try container.decodeIfPresent(Bool.self, forKey: .hasSharedLink) ?? false
+        isActivityEnabled = try container.decodeIfPresent(Bool.self, forKey: .isActivityEnabled) ?? false
+        lastModifiedAssetTimestamp = try container.decodeIfPresent(String.self, forKey: .lastModifiedAssetTimestamp)
+        order = try container.decodeIfPresent(String.self, forKey: .order)
+        startDate = try container.decodeIfPresent(String.self, forKey: .startDate)
+        endDate = try container.decodeIfPresent(String.self, forKey: .endDate)
+    }
 }
 
 struct AlbumUser: Codable {

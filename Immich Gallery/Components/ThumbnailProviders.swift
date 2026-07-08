@@ -49,6 +49,7 @@ class AlbumThumbnailProvider: ThumbnailProvider {
     
     func loadThumbnails(for item: GridDisplayable) async -> [UIImage] {
         guard let album = item as? ImmichAlbum else { return [] }
+        guard album.id != "smart_locked" else { return [] }
         
         if shouldUseStaticThumbnail(),
            let staticThumbnail = await loadStaticThumbnail(for: album) {

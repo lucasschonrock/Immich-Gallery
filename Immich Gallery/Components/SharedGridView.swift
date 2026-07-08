@@ -232,10 +232,10 @@ struct SharedGridItemView<Item: GridDisplayable>: View {
                         HStack(spacing: 6) {
                             // Special icons for different types
                             if item.id.hasPrefix("smart_") {
-                                Image(systemName: "heart.fill")
+                                Image(systemName: item.iconName)
                                     .font(.title3)
                                     .fontWeight(.semibold)
-                                    .foregroundColor(.red)
+                                    .foregroundColor(item.gridColor ?? .red)
                             }
                             
                             Text(item.primaryTitle)
@@ -308,7 +308,7 @@ struct SharedGridItemView<Item: GridDisplayable>: View {
             }
         }
     }
-    
+
     private func loadThumbnails() {
         guard !isLoadingThumbnails else { return }
         isLoadingThumbnails = true

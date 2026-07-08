@@ -99,7 +99,6 @@ struct SettingsView: View {
     @FocusState private var isPlusFocused: Bool
     @FocusState private var focusedColor: String?
     
-    
     private var serverInfoSection: some View {
         Button(action: {
             refreshServerConnection()
@@ -147,7 +146,6 @@ struct SettingsView: View {
         }
         .buttonStyle(CardButtonStyle())
     }
-    
     private var userActionsSection: some View {
         VStack(spacing: 16) {
             if userManager.savedUsers.count > 0 {
@@ -832,7 +830,6 @@ struct SettingsView: View {
             }
         }
     }
-    
     private func requestAppStoreReview() {
         let appStoreID = "id6748482378"
         if let url = URL(string: "itms-apps://itunes.apple.com/app/id\(appStoreID)?action=write-review") {

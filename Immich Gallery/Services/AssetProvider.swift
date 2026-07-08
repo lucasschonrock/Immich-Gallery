@@ -15,12 +15,16 @@ struct AssetProviderFactory {
         city: String? = nil,
         isAllPhotos: Bool = false,
         isFavorite: Bool = false,
+        isLocked: Bool = false,
         folderPath: String? = nil,
         assetService: AssetService,
         albumService: AlbumService? = nil,
         config: SlideshowConfig? = nil
     ) -> AssetProvider {
-        
+        if isLocked {
+            return LockedAssetProvider(assetService: assetService)
+        }
+
         if let albumId = albumId, albumService != nil {
             return AlbumAssetProvider(assetService: assetService, albumId: albumId)
         } else {
@@ -256,5 +260,69 @@ class GeneralAssetProvider: AssetProvider {
 
     func fetchAllYears() async throws -> [Int] {
         return try await assetService.fetchAllYears()
+    }
+}
+
+class LockedAssetProvider: AssetProvider {
+    private let assetService: AssetService
+    private var cachedAssets: [ImmichAsset]?
+
+    init(assetService: AssetService) {
+        self.assetService = assetService
+    }
+
+    private func loadLockedAssets() async throws -> [ImmichAsset] {
+        if let cachedAssets {
+            return cachedAssets
+        }
+
+        let result = try await assetService.fetchLockedAssets(page: 1, limit: nil)
+        cachedAssets = result.assets
+        return result.assets
+    }
+
+    func fetchAssets(page: Int, limit: Int) async throws -> SearchResult {
+        let assets = try await loadLockedAssets()
+        let pageSize = max(limit, 1)
+        let startIndex = max((page - 1) * pageSize, 0)
+        let endIndex = min(startIndex + pageSize, assets.count)
+
+        let pageAssets = startIndex < endIndex ? Array(assets[startIndex..<endIndex]) : []
+        let nextPage = endIndex < assets.count ? String(page + 1) : nil
+
+        return SearchResult(assets: pageAssets, total: assets.count, nextPage: nextPage)
+    }
+
+    func fetchRandomAssets(limit: Int) async throws -> SearchResult {
+        let assets = try await loadLockedAssets()
+        guard !assets.isEmpty else {
+            return SearchResult(assets: [], total: 0, nextPage: nil)
+        }
+
+        let sampleCount = min(limit, assets.count)
+        return SearchResult(
+            assets: Array(assets.shuffled().prefix(sampleCount)),
+            total: assets.count,
+            nextPage: nil
+        )
+    }
+
+    func fetchAllCities() async throws -> [String] {
+        let assets = try await loadLockedAssets()
+        let cities = assets.compactMap { asset in
+            if let city = asset.exifInfo?.city, !city.isEmpty {
+                return city
+            }
+            return nil
+        }
+        return Array(Set(cities)).sorted()
+    }
+
+    func fetchAllYears() async throws -> [Int] {
+        let assets = try await loadLockedAssets()
+        let years = assets.compactMap { asset in
+            Int(asset.localDateTime.prefix(4))
+        }
+        return Array(Set(years)).sorted(by: >)
     }
 }

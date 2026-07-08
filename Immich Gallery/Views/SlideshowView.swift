@@ -15,6 +15,7 @@ struct SlideshowView: View {
     let city: String?
     let startingIndex: Int
     let isFavorite: Bool
+    let isLocked: Bool
     @Environment(\.dismiss) private var dismiss
 
     // Services created internally
@@ -25,13 +26,14 @@ struct SlideshowView: View {
     @State private var assetProvider: AssetProvider?
     @State private var slideshowConfig: SlideshowConfig?
 
-    init(albumId: String? = nil, personId: String? = nil, tagId: String? = nil, city: String? = nil, startingIndex: Int = 0, isFavorite: Bool = false) {
+    init(albumId: String? = nil, personId: String? = nil, tagId: String? = nil, city: String? = nil, startingIndex: Int = 0, isFavorite: Bool = false, isLocked: Bool = false) {
         self.albumId = albumId
         self.personId = personId
         self.tagId = tagId
         self.city = city
         self.startingIndex = startingIndex
         self.isFavorite = isFavorite
+        self.isLocked = isLocked
 
         // Create services internally
         let userManager = UserManager()
@@ -47,6 +49,7 @@ struct SlideshowView: View {
             city: city,
             isAllPhotos: false, // Slideshow doesn't use "All Photos" mode
             isFavorite: isFavorite,
+            isLocked: isLocked,
             assetService: assetService,
             albumService: albumService,
             config: nil

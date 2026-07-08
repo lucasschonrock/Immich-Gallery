@@ -108,8 +108,9 @@ class NetworkService: ObservableObject {
         
         print("NetworkService: Response status code: \(httpResponse.statusCode)\(context.isEmpty ? "" : " (\(context))")")
         
-        guard httpResponse.statusCode == 200 else {
+        guard (200...299).contains(httpResponse.statusCode) else {
             print("NetworkService: HTTP error\(context.isEmpty ? "" : " in \(context)") with status \(httpResponse.statusCode)")
+            let responseMessage = makeResponseMessage(from: data)
             if let responseString = String(data: data, encoding: .utf8) {
                 print("NetworkService: Response body: \(responseString)")
             }
@@ -121,17 +122,35 @@ class NetworkService: ObservableObject {
             case 403:
                 throw ImmichError.forbidden
             case 500...599:
-                throw ImmichError.serverError(httpResponse.statusCode)
+                throw ImmichError.httpError(statusCode: httpResponse.statusCode, message: responseMessage)
             case 400...499:
-                throw ImmichError.clientError(httpResponse.statusCode)
+                throw ImmichError.httpError(statusCode: httpResponse.statusCode, message: responseMessage)
             default:
                 // For any other status codes, treat as server error
-                throw ImmichError.serverError(httpResponse.statusCode)
+                throw ImmichError.httpError(statusCode: httpResponse.statusCode, message: responseMessage)
             }
         }
         
         return data
     }
+
+    private func makeResponseMessage(from data: Data) -> String? {
+        guard !data.isEmpty else { return nil }
+
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            if let message = json["message"] as? String, !message.isEmpty {
+                return message
+            }
+            if let error = json["error"] as? String, !error.isEmpty {
+                return error
+            }
+        }
+
+        let responseString = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return responseString?.isEmpty == false ? responseString : nil
+    }
+
     func makeRequest<T: Codable>(
         endpoint: String,
         method: HTTPMethod = .GET,
@@ -182,6 +201,25 @@ class NetworkService: ObservableObject {
         
         return try processResponse(response, data: data, context: "makeDataRequest")
     }
+
+    func makeVoidRequest(
+        endpoint: String,
+        method: HTTPMethod = .POST,
+        body: [String: Any]? = nil
+    ) async throws {
+        let request = try buildAuthenticatedRequest(endpoint: endpoint, method: method, body: body)
+        print("NetworkService: Making void request to \(request.url?.absoluteString ?? endpoint)")
+
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            print("NetworkService: Network error occurred in makeVoidRequest: \(error)")
+            throw ImmichError.networkError
+        }
+
+        _ = try processResponse(response, data: data, context: "makeVoidRequest")
+    }
 }
 
 // MARK: - Supporting Types
@@ -200,12 +238,14 @@ enum ImmichError: Error, LocalizedError {
     case serverError(Int)          // 5xx - Server issues
     case networkError              // Network connectivity issues
     case clientError(Int)          // 4xx (except 401/403)
+    case httpError(statusCode: Int, message: String?)
+    case invalidUnlockCredentials  // No password or PIN code provided
     
     var shouldLogout: Bool {
         switch self {
         case .notAuthenticated, .forbidden:
             return true
-        case .serverError, .networkError, .invalidURL, .clientError:
+        case .serverError, .networkError, .invalidURL, .clientError, .httpError, .invalidUnlockCredentials:
             return false
         }
     }
@@ -224,6 +264,16 @@ enum ImmichError: Error, LocalizedError {
             return "Network error occurred"
         case .clientError(let statusCode):
             return "Client error occurred (HTTP \(statusCode))"
+        case .httpError(let statusCode, let message):
+            if let message, !message.isEmpty {
+                return message
+            }
+            if (400...499).contains(statusCode) {
+                return "Client error occurred (HTTP \(statusCode))"
+            }
+            return "Server error occurred (HTTP \(statusCode))"
+        case .invalidUnlockCredentials:
+            return "Enter your password or PIN code to unlock locked assets."
         }
     }
 } 

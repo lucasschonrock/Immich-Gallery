@@ -111,6 +111,32 @@ struct Immich_GalleryTests {
         #expect(response.assets.nextPage == "2")
     }
 
+    @Test func albumAssetProviderUsesBackendMetadataPaginationForRequestedPages() async throws {
+        let assetService = PaginatedAlbumAssetService()
+        let provider = AlbumAssetProvider(assetService: assetService, albumId: "album-1")
+
+        let firstPage = try await provider.fetchAssets(page: 1, limit: 200)
+        let thirdPage = try await provider.fetchAssets(page: 3, limit: 200)
+
+        #expect(assetService.requestedPages == [1, 3])
+        #expect(firstPage.assets.count == 200)
+        #expect(firstPage.total == 500)
+        #expect(firstPage.nextPage == "2")
+        #expect(thirdPage.assets.count == 100)
+        #expect(thirdPage.total == 500)
+        #expect(thirdPage.nextPage == nil)
+    }
+
+    @Test func albumAssetProviderLoadsAllMetadataPagesForAggregateAlbumOperations() async throws {
+        let assetService = PaginatedAlbumAssetService()
+        let provider = AlbumAssetProvider(assetService: assetService, albumId: "album-1")
+
+        let years = try await provider.fetchAllYears()
+
+        #expect(assetService.requestedPages == [1, 2, 3])
+        #expect(years == [2026])
+    }
+
     private func decodeAsset(durationJSON: String) throws -> ImmichAsset {
         let json = """
         {
@@ -147,4 +173,67 @@ struct Immich_GalleryTests {
         return try JSONDecoder().decode(ImmichAsset.self, from: json)
     }
 
+}
+
+private final class PaginatedAlbumAssetService: AssetService {
+    private(set) var requestedPages: [Int] = []
+
+    init() {
+        super.init(networkService: NetworkService(userManager: UserManager()))
+    }
+
+    override func fetchAssets(
+        page: Int = 1,
+        limit: Int? = nil,
+        albumId: String? = nil,
+        personId: String? = nil,
+        tagId: String? = nil,
+        city: String? = nil,
+        isAllPhotos: Bool = false,
+        isFavorite: Bool = false,
+        folderPath: String? = nil
+    ) async throws -> SearchResult {
+        requestedPages.append(page)
+        #expect(limit == 200)
+        #expect(albumId == "album-1")
+
+        let start = (page - 1) * 200
+        let count = page < 3 ? 200 : 100
+        let assets = (start..<(start + count)).map { makeAsset(index: $0) }
+        let nextPage = page < 3 ? String(page + 1) : nil
+
+        return SearchResult(assets: assets, total: 500, nextPage: nextPage)
+    }
+
+    private func makeAsset(index: Int) -> ImmichAsset {
+        ImmichAsset(
+            id: "asset-\(index)",
+            deviceAssetId: nil,
+            deviceId: nil,
+            ownerId: "user-1",
+            libraryId: nil,
+            type: .image,
+            originalPath: "/library/asset-\(index).jpg",
+            originalFileName: "asset-\(index).jpg",
+            originalMimeType: "image/jpeg",
+            resized: true,
+            thumbhash: nil,
+            fileModifiedAt: "2026-07-02T10:00:00.000Z",
+            fileCreatedAt: "2026-07-02T10:00:00.000Z",
+            localDateTime: "2026-07-02T10:00:00.000Z",
+            updatedAt: "2026-07-02T10:00:00.000Z",
+            isFavorite: false,
+            isArchived: false,
+            isOffline: false,
+            isTrashed: false,
+            checksum: "checksum-\(index)",
+            duration: nil,
+            hasMetadata: true,
+            livePhotoVideoId: nil,
+            people: [],
+            visibility: "timeline",
+            duplicateId: nil,
+            exifInfo: nil
+        )
+    }
 }

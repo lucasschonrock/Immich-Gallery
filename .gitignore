@@ -1,5 +1,10 @@
 # macOS metadata files
 ._*
+.DS_Store
+
+# Xcode local build artifacts
+.derivedData/
+
 CLAUDE.local.md
 .vscode/**
 .kiro/**

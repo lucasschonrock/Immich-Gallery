@@ -1,5 +1,26 @@
 [
   {
+    "version": "1.2.8",
+    "changes": [
+      {
+        "type": "new_feature",
+        "title": "Locked Folder is now supported.",
+        "items": [
+          "Unlock to view, back out of it and it locks automatically.",
+          "Always shows 0 images, this is not a bug but a privacy feature"
+        ]
+      },
+      {
+        "type": "bug_fix",
+        "title": "Images in album were limited to 250",
+        "items": [
+          "This is a result of Immich V3 upgrade. Anyway, should be fixed now"
+        ]
+      }
+    ],
+    "releaseDate": "2026-07-03T00:00:00"
+  },
+  {
     "version": "1.2.7",
     "changes": [
       {
@@ -166,16 +187,12 @@
       {
         "type": "new_feature",
         "title": "✨✨New Icon✨✨",
-        "items": [
-          "The Icon has been a placeholder for too long."
-        ]
+        "items": ["The Icon has been a placeholder for too long."]
       },
       {
         "type": "bug_fix",
         "title": "Fix shared album content. Discussion#81",
-        "items": [
-          "Thank you for reporting @madasus. Issue has been fixed."
-        ]
+        "items": ["Thank you for reporting @madasus. Issue has been fixed."]
       },
       {
         "type": "bug_fix",
@@ -207,9 +224,7 @@
       {
         "type": "improvement",
         "title": "Performance Optimizations",
-        "items": [
-          "Hopefully better video player."
-        ]
+        "items": ["Hopefully better video player."]
       }
     ],
     "releaseDate": "2025-10-16T20:24:00"
@@ -318,9 +333,7 @@
       {
         "type": "improvement",
         "title": "Slideshow optimizations",
-        "items": [
-          "Rewrite SlideshowView for loading assets dynamically"
-        ]
+        "items": ["Rewrite SlideshowView for loading assets dynamically"]
       },
       {
         "type": "bug_fix",

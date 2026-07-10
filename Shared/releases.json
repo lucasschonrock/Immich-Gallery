@@ -11,6 +11,14 @@
         ]
       },
       {
+        "type": "improvement",
+        "title": "UI has been redesigned to use more native media lockups ",
+        "items": [
+          "Additionally, I have removed animated thumbnails since they always were bad for performance",
+          "Dont worry though, there is a new option to pick randomized thumbnails instead of default, if you like"
+        ]
+      },
+      {
         "type": "bug_fix",
         "title": "Images in album were limited to 250",
         "items": [

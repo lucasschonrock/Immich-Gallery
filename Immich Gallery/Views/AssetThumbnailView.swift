@@ -17,6 +17,7 @@ struct AssetThumbnailView: View {
     let isFocused: Bool
     var shouldLoadThumbnail = true
     var allowsThumbhashPlaceholder = true
+    var showsDateOverlay = true
     
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -85,16 +86,18 @@ struct AssetThumbnailView: View {
                     }
                 }
             }
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(DateFormatter.formatSpecificISO8601(asset.exifInfo?.dateTimeOriginal ?? asset.fileCreatedAt, includeTime: false))
-                    .font(.caption2)
-                    .foregroundColor(.white.opacity(0.8))
+            if showsDateOverlay {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(DateFormatter.formatSpecificISO8601(asset.exifInfo?.dateTimeOriginal ?? asset.fileCreatedAt, includeTime: false))
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.8))
+                }
+                .padding(8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.black.opacity(0.4))
+                )
             }
-            .padding(8)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.black.opacity(0.4))
-            )
             
         }
         .frame(width: 320, height: 320)

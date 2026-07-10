@@ -79,10 +79,10 @@ struct SettingsView: View {
     @AppStorage("enableReflectionsInSlideshow") private var enableReflectionsInSlideshow = true
     @AppStorage("enableKenBurnsEffect") private var enableKenBurnsEffect = false
     @AppStorage("enableDynamicTransitions") private var enableDynamicTransitions = false
-    @AppStorage("enableThumbnailAnimation") private var enableThumbnailAnimation = false
     @AppStorage("enableSlideshowShuffle") private var enableSlideshowShuffle = false
     @AppStorage(UserDefaultsKeys.reverseFullscreenHorizontalNavigation) private var reverseFullscreenHorizontalNavigation = false
     @AppStorage(UserDefaultsKeys.photosViewMode) private var photosViewMode = "grid"
+    @AppStorage(UserDefaultsKeys.lockupThumbnailMode) private var lockupThumbnailMode = LockupThumbnailMode.current.rawValue
     @AppStorage("allPhotosSortOrder") private var allPhotosSortOrder = "desc"
     @AppStorage(UserDefaultsKeys.hideAllPhotosFilterAndSortButtons) private var hideAllPhotosFilterAndSortButtons = false
     @AppStorage(UserDefaultsKeys.appBackgroundStyle) private var appBackgroundStyle = AppBackgroundStyle.ocean.rawValue
@@ -98,7 +98,6 @@ struct SettingsView: View {
     @FocusState private var isMinusFocused: Bool
     @FocusState private var isPlusFocused: Bool
     @FocusState private var focusedColor: String?
-    
     
     private var serverInfoSection: some View {
         Button(action: {
@@ -147,7 +146,6 @@ struct SettingsView: View {
         }
         .buttonStyle(CardButtonStyle())
     }
-    
     private var userActionsSection: some View {
         VStack(spacing: 16) {
             if userManager.savedUsers.count > 0 {
@@ -296,14 +294,6 @@ struct SettingsView: View {
                                         isOn: showFoldersTab
                                     )
                                     SettingsRow(
-                                        icon: "play.rectangle.on.rectangle",
-                                        title: "Enable Thumbnail Animation",
-                                        subtitle: "Animate thumbnails in Albums, People, and Tags views(I recommend disabling this for larger libraries for significantly better performance).",
-                                        content: AnyView(Toggle("", isOn: $enableThumbnailAnimation).labelsHidden()),
-                                        isOn: enableThumbnailAnimation
-                                    )
-                                    
-                                    SettingsRow(
                                         icon: "calendar",
                                         title: "Photos View",
                                         subtitle: "How the Photos tab displays your library. Timeline groups photos by month and loads each month on demand for better performance on large libraries.",
@@ -311,6 +301,20 @@ struct SettingsView: View {
                                             Picker("Photos View", selection: $photosViewMode) {
                                                 Text("Grid").tag("grid")
                                                 Text("Timeline - Beta").tag("timeline")
+                                            }
+                                                .pickerStyle(.menu)
+                                                .frame(width: 300, alignment: .trailing)
+                                        )
+                                    )
+
+                                    SettingsRow(
+                                        icon: "photo.on.rectangle",
+                                        title: "Lockup Thumbnails",
+                                        subtitle: "Choose whether album, people, tag, and folder cards use the current cover or a random matching asset.",
+                                        content: AnyView(
+                                            Picker("Lockup Thumbnails", selection: $lockupThumbnailMode) {
+                                                Text("Current").tag(LockupThumbnailMode.current.rawValue)
+                                                Text("Random").tag(LockupThumbnailMode.random.rawValue)
                                             }
                                                 .pickerStyle(.menu)
                                                 .frame(width: 300, alignment: .trailing)
@@ -832,7 +836,6 @@ struct SettingsView: View {
             }
         }
     }
-    
     private func requestAppStoreReview() {
         let appStoreID = "id6748482378"
         if let url = URL(string: "itms-apps://itunes.apple.com/app/id\(appStoreID)?action=write-review") {

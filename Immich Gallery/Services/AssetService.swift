@@ -146,6 +146,63 @@ class AssetService: ObservableObject {
         )
     }
 
+    func fetchLockedAssets(page: Int = 1, limit: Int? = nil) async throws -> SearchResult {
+        let buckets = try await fetchLockedTimelineBuckets()
+        let total = buckets.reduce(0) { $0 + $1.count }
+        guard total > 0 else {
+            return SearchResult(assets: [], total: 0, nextPage: nil)
+        }
+
+        let bucketAssets = try await fetchLockedBucketAssets(for: buckets)
+        let assets = bucketAssets.flatMap { $0 }
+        let pageSize = max(limit ?? assets.count, 1)
+        let startIndex = max((page - 1) * pageSize, 0)
+        let endIndex = min(startIndex + pageSize, assets.count)
+
+        let pageAssets: [ImmichAsset]
+        if startIndex < endIndex {
+            pageAssets = Array(assets[startIndex..<endIndex])
+        } else {
+            pageAssets = []
+        }
+
+        let nextPage = endIndex < assets.count ? String(page + 1) : nil
+        return SearchResult(assets: pageAssets, total: total, nextPage: nextPage)
+    }
+
+    private func fetchLockedTimelineBuckets() async throws -> [TimelineBucket] {
+        let order = UserDefaults.standard.allPhotosSortOrder
+        let endpoint = "/api/timeline/buckets?visibility=locked&order=\(order)"
+        return try await networkService.makeRequest(
+            endpoint: endpoint,
+            method: .GET,
+            responseType: [TimelineBucket].self
+        )
+    }
+
+    private func fetchLockedBucketAssets(for buckets: [TimelineBucket]) async throws -> [[ImmichAsset]] {
+        var result: [[ImmichAsset]] = []
+        result.reserveCapacity(buckets.count)
+
+        for bucket in buckets {
+            result.append(try await fetchLockedBucketAssets(timeBucket: bucket.timeBucket))
+        }
+
+        return result
+    }
+
+    private func fetchLockedBucketAssets(timeBucket: String) async throws -> [ImmichAsset] {
+        let order = UserDefaults.standard.allPhotosSortOrder
+        let encoded = timeBucket.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? timeBucket
+        let endpoint = "/api/timeline/bucket?timeBucket=\(encoded)&visibility=locked&order=\(order)"
+        let response: TimeBucketAssetResponse = try await networkService.makeRequest(
+            endpoint: endpoint,
+            method: .GET,
+            responseType: TimeBucketAssetResponse.self
+        )
+        return response.toAssets()
+    }
+
     /// Fetches assets using slideshow configuration
     func fetchAssets(config: SlideshowConfig, page: Int = 1, limit: Int = 50, isAllPhotos: Bool = false) async throws -> SearchResult {
         // Use separate sort order for All Photos tab vs everything else

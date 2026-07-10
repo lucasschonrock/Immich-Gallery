@@ -225,6 +225,30 @@ class AuthenticationService: ObservableObject {
         }
     }
 
+    func unlockAuthSession(password: String? = nil, pinCode: String? = nil) async throws {
+        let trimmedPassword = password?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedPinCode = pinCode?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard
+            let credentialBody = makeUnlockRequestBody(password: trimmedPassword, pinCode: trimmedPinCode)
+        else {
+            throw ImmichError.invalidUnlockCredentials
+        }
+
+        try await networkService.makeVoidRequest(
+            endpoint: "/api/auth/session/unlock",
+            method: .POST,
+            body: credentialBody
+        )
+    }
+
+    func lockAuthSession() async throws {
+        try await networkService.makeVoidRequest(
+            endpoint: "/api/auth/session/lock",
+            method: .POST
+        )
+    }
+
     
     // MARK: - User Management
     
@@ -298,4 +322,18 @@ class AuthenticationService: ObservableObject {
             }
         }
     }
-} 
+
+    private func makeUnlockRequestBody(password: String?, pinCode: String?) -> [String: Any]? {
+        var body: [String: Any] = [:]
+
+        if let password, !password.isEmpty {
+            body["password"] = password
+        }
+
+        if let pinCode, !pinCode.isEmpty {
+            body["pinCode"] = pinCode
+        }
+
+        return body.isEmpty ? nil : body
+    }
+}

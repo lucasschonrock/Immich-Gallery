@@ -15,12 +15,16 @@ struct AssetProviderFactory {
         city: String? = nil,
         isAllPhotos: Bool = false,
         isFavorite: Bool = false,
+        isLocked: Bool = false,
         folderPath: String? = nil,
         assetService: AssetService,
         albumService: AlbumService? = nil,
         config: SlideshowConfig? = nil
     ) -> AssetProvider {
-        
+        if isLocked {
+            return LockedAssetProvider(assetService: assetService)
+        }
+
         if let albumId = albumId, albumService != nil {
             return AlbumAssetProvider(assetService: assetService, albumId: albumId)
         } else {
@@ -49,23 +53,7 @@ class AlbumAssetProvider: AssetProvider {
     private let assetService: AssetService
     private let albumId: String
     private var cachedAssets: [ImmichAsset]?
-    
-    private enum SortOrder {
-        case newestFirst
-        case oldestFirst
-    }
-    
-    private static let isoFormatterWithFractional: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter
-    }()
-    
-    private static let isoFormatter: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter
-    }()
+    private let albumPageSize = 200
 
     init(assetService: AssetService, albumId: String) {
         self.assetService = assetService
@@ -77,36 +65,25 @@ class AlbumAssetProvider: AssetProvider {
             return cachedAssets
         }
 
-        let result = try await assetService.fetchAssets(page: 1, limit: nil, albumId: albumId)
-        cachedAssets = result.assets
-        return result.assets
+        var nextPage: Int? = 1
+        var allAssets: [ImmichAsset] = []
+        var seenAssetIds = Set<String>()
+
+        while let page = nextPage {
+            let result = try await assetService.fetchAssets(page: page, limit: albumPageSize, albumId: albumId)
+            for asset in result.assets where seenAssetIds.insert(asset.id).inserted {
+                allAssets.append(asset)
+            }
+
+            nextPage = nextPageNumber(from: result.nextPage, after: page)
+        }
+
+        cachedAssets = allAssets
+        return allAssets
     }
     
     func fetchAssets(page: Int, limit: Int) async throws -> SearchResult {
-        let assets = try await loadAlbumAssets()
-        let sortedAssets = sortAssets(assets)
-        guard !assets.isEmpty else {
-            return SearchResult(assets: [], total: 0, nextPage: nil)
-        }
-
-        let pageSize = max(limit, 1)
-        let startIndex = max((page - 1) * pageSize, 0)
-        let endIndex = min(startIndex + pageSize, sortedAssets.count)
-
-        let pageAssets: [ImmichAsset]
-        if startIndex < endIndex {
-            pageAssets = Array(sortedAssets[startIndex..<endIndex])
-        } else {
-            pageAssets = []
-        }
-
-        let nextPage: String? = endIndex < sortedAssets.count ? String(page + 1) : nil
-
-        return SearchResult(
-            assets: pageAssets,
-            total: sortedAssets.count,
-            nextPage: nextPage
-        )
+        try await assetService.fetchAssets(page: page, limit: limit, albumId: albumId)
     }
     
     func fetchRandomAssets(limit: Int) async throws -> SearchResult {
@@ -144,54 +121,22 @@ class AlbumAssetProvider: AssetProvider {
         }
         return Array(Set(years)).sorted(by: >)
     }
-    
-    private func sortAssets(_ assets: [ImmichAsset]) -> [ImmichAsset] {
-        let sortOrder = currentSortOrder()
-        return assets.sorted { lhs, rhs in
-            let lhsDate = captureDate(for: lhs)
-            let rhsDate = captureDate(for: rhs)
-            
-            if lhsDate == rhsDate {
-                return lhs.id < rhs.id
-            }
-            
-            switch sortOrder {
-            case .newestFirst:
-                return lhsDate > rhsDate
-            case .oldestFirst:
-                return lhsDate < rhsDate
-            }
+
+    private func nextPageNumber(from nextPage: String?, after currentPage: Int) -> Int? {
+        guard let nextPage, !nextPage.isEmpty else { return nil }
+
+        if let pageNumber = Int(nextPage) {
+            return pageNumber
         }
-    }
-    
-    private func currentSortOrder() -> SortOrder {
-        let storedValue = UserDefaults.standard.string(forKey: UserDefaultsKeys.assetSortOrder) ?? "desc"
-        return storedValue.lowercased() == "asc" ? .oldestFirst : .newestFirst
-    }
-    
-    private func captureDate(for asset: ImmichAsset) -> Date {
-        if let date = parseDate(asset.exifInfo?.dateTimeOriginal) {
-            return date
+
+        if let url = URL(string: nextPage),
+           let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+           let pageParam = components.queryItems?.first(where: { $0.name == "page" }),
+           let pageNumber = Int(pageParam.value ?? "") {
+            return pageNumber
         }
-        if let date = parseDate(asset.fileCreatedAt) {
-            return date
-        }
-        if let date = parseDate(asset.fileModifiedAt) {
-            return date
-        }
-        if let date = parseDate(asset.updatedAt) {
-            return date
-        }
-        
-        return .distantPast
-    }
-    
-    private func parseDate(_ value: String?) -> Date? {
-        guard let value = value else { return nil }
-        if let date = AlbumAssetProvider.isoFormatterWithFractional.date(from: value) {
-            return date
-        }
-        return AlbumAssetProvider.isoFormatter.date(from: value)
+
+        return currentPage + 1
     }
 }
 
@@ -256,5 +201,69 @@ class GeneralAssetProvider: AssetProvider {
 
     func fetchAllYears() async throws -> [Int] {
         return try await assetService.fetchAllYears()
+    }
+}
+
+class LockedAssetProvider: AssetProvider {
+    private let assetService: AssetService
+    private var cachedAssets: [ImmichAsset]?
+
+    init(assetService: AssetService) {
+        self.assetService = assetService
+    }
+
+    private func loadLockedAssets() async throws -> [ImmichAsset] {
+        if let cachedAssets {
+            return cachedAssets
+        }
+
+        let result = try await assetService.fetchLockedAssets(page: 1, limit: nil)
+        cachedAssets = result.assets
+        return result.assets
+    }
+
+    func fetchAssets(page: Int, limit: Int) async throws -> SearchResult {
+        let assets = try await loadLockedAssets()
+        let pageSize = max(limit, 1)
+        let startIndex = max((page - 1) * pageSize, 0)
+        let endIndex = min(startIndex + pageSize, assets.count)
+
+        let pageAssets = startIndex < endIndex ? Array(assets[startIndex..<endIndex]) : []
+        let nextPage = endIndex < assets.count ? String(page + 1) : nil
+
+        return SearchResult(assets: pageAssets, total: assets.count, nextPage: nextPage)
+    }
+
+    func fetchRandomAssets(limit: Int) async throws -> SearchResult {
+        let assets = try await loadLockedAssets()
+        guard !assets.isEmpty else {
+            return SearchResult(assets: [], total: 0, nextPage: nil)
+        }
+
+        let sampleCount = min(limit, assets.count)
+        return SearchResult(
+            assets: Array(assets.shuffled().prefix(sampleCount)),
+            total: assets.count,
+            nextPage: nil
+        )
+    }
+
+    func fetchAllCities() async throws -> [String] {
+        let assets = try await loadLockedAssets()
+        let cities = assets.compactMap { asset in
+            if let city = asset.exifInfo?.city, !city.isEmpty {
+                return city
+            }
+            return nil
+        }
+        return Array(Set(cities)).sorted()
+    }
+
+    func fetchAllYears() async throws -> [Int] {
+        let assets = try await loadLockedAssets()
+        let years = assets.compactMap { asset in
+            Int(asset.localDateTime.prefix(4))
+        }
+        return Array(Set(years)).sorted(by: >)
     }
 }

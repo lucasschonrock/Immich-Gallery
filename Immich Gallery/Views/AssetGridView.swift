@@ -20,6 +20,7 @@ struct AssetGridView: View {
     let city: String? // Optional city to filter assets
     let isAllPhotos: Bool // Whether this is the All Photos tab
     let isFavorite: Bool // Whether this is showing favorite assets
+    let isLocked: Bool // Whether this is showing locked assets
     let onAssetsLoaded: (([ImmichAsset]) -> Void)? // Callback for when assets are loaded
     let deepLinkAssetId: String? // Asset ID to highlight from deep link
     @State private var assets: [ImmichAsset] = []
@@ -40,6 +41,34 @@ struct AssetGridView: View {
     @State private var showingSortModal = false
     @State private var filterCity: String? = UserDefaults.standard.allPhotosFilterCity
     @State private var filterYear: Int? = UserDefaults.standard.allPhotosFilterYear
+
+    init(
+        assetService: AssetService,
+        authService: AuthenticationService,
+        assetProvider: AssetProvider,
+        albumId: String?,
+        personId: String?,
+        tagId: String?,
+        city: String?,
+        isAllPhotos: Bool,
+        isFavorite: Bool,
+        isLocked: Bool = false,
+        onAssetsLoaded: (([ImmichAsset]) -> Void)?,
+        deepLinkAssetId: String?
+    ) {
+        self._assetService = ObservedObject(wrappedValue: assetService)
+        self._authService = ObservedObject(wrappedValue: authService)
+        self.assetProvider = assetProvider
+        self.albumId = albumId
+        self.personId = personId
+        self.tagId = tagId
+        self.city = city
+        self.isAllPhotos = isAllPhotos
+        self.isFavorite = isFavorite
+        self.isLocked = isLocked
+        self.onAssetsLoaded = onAssetsLoaded
+        self.deepLinkAssetId = deepLinkAssetId
+    }
     
     private let columns = [
         GridItem(.fixed(300), spacing: 50),
@@ -209,7 +238,7 @@ struct AssetGridView: View {
                 // Find the index of the current asset in the filtered image assets
                 let startingIndex = currentAssetIndex < assets.count ? 
                     (imageAssets.firstIndex(of: assets[currentAssetIndex]) ?? 0) : 0
-                SlideshowView(albumId: albumId, personId: personId, tagId: tagId, city: city, startingIndex: startingIndex, isFavorite: isFavorite)
+                SlideshowView(albumId: albumId, personId: personId, tagId: tagId, city: city, startingIndex: startingIndex, isFavorite: isFavorite, isLocked: isLocked)
             }
         }
         .onPlayPauseCommand(perform: {

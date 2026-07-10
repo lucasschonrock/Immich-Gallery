@@ -84,17 +84,6 @@ extension UserDefaults {
         set { set(newValue, forKey: UserDefaultsKeys.enableDynamicTransitions) }
     }
     
-    var enableThumbnailAnimation: Bool {
-        get { 
-            // Default to true if the key doesn't exist yet
-            if object(forKey: UserDefaultsKeys.enableThumbnailAnimation) == nil {
-                return true
-            }
-            return bool(forKey: UserDefaultsKeys.enableThumbnailAnimation)
-        }
-        set { set(newValue, forKey: UserDefaultsKeys.enableThumbnailAnimation) }
-    }
-    
     var enableSlideshowShuffle: Bool {
         get { bool(forKey: UserDefaultsKeys.enableSlideshowShuffle) }
         set { set(newValue, forKey: UserDefaultsKeys.enableSlideshowShuffle) }
@@ -113,6 +102,11 @@ extension UserDefaults {
     var photosViewMode: String {
         get { string(forKey: UserDefaultsKeys.photosViewMode) ?? "grid" }
         set { set(newValue, forKey: UserDefaultsKeys.photosViewMode) }
+    }
+
+    var lockupThumbnailMode: String {
+        get { string(forKey: UserDefaultsKeys.lockupThumbnailMode) ?? LockupThumbnailMode.current.rawValue }
+        set { set(newValue, forKey: UserDefaultsKeys.lockupThumbnailMode) }
     }
 
     var allPhotosSortOrder: String {

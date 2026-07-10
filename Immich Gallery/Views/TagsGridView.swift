@@ -19,13 +19,12 @@ struct TagsGridView: View {
     }
     
     var body: some View {
-        SharedGridView(
-            items: tags,
-            config: .tagsStyle,
+        TagLockupGridView(
+            tags: tags,
             thumbnailProvider: thumbnailProvider,
             isLoading: isLoading,
             errorMessage: errorMessage,
-            onItemSelected: { tag in
+            onTagSelected: { tag in
                 selectedTag = tag
             },
             onRetry: {
@@ -62,6 +61,135 @@ struct TagsGridView: View {
                 self.isLoading = false
             }
         }
+    }
+}
+
+private struct TagLockupGridView: View {
+    let tags: [Tag]
+    let thumbnailProvider: TagThumbnailProvider
+    let isLoading: Bool
+    let errorMessage: String?
+    let onTagSelected: (Tag) -> Void
+    let onRetry: () -> Void
+
+    private let cardWidth: CGFloat = 500
+    private let cardHeight: CGFloat = 300
+
+    private let columns = [
+        GridItem(.fixed(500), spacing: 30),
+        GridItem(.fixed(500), spacing: 30),
+        GridItem(.fixed(500), spacing: 30)
+    ]
+
+    var body: some View {
+        ZStack {
+            SharedGradientBackground()
+
+            if isLoading {
+                ProgressView("Loading tags...")
+                    .foregroundColor(.white)
+                    .scaleEffect(1.5)
+            } else if let errorMessage {
+                VStack(spacing: 14) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 60))
+                        .foregroundColor(.orange)
+                    Text("Error")
+                        .font(.title)
+                        .foregroundColor(.white)
+                    Text(errorMessage)
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 80)
+                    Button("Retry", action: onRetry)
+                        .buttonStyle(.borderedProminent)
+                }
+            } else if tags.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "tag")
+                        .font(.system(size: 60))
+                        .foregroundColor(.gray)
+                    Text("No Tags")
+                        .font(.title)
+                        .foregroundColor(.white)
+                    Text("Your tags will appear here.")
+                        .foregroundColor(.gray)
+                }
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: columns, alignment: .center, spacing: 30) {
+                        ForEach(tags) { tag in
+                            Button {
+                                onTagSelected(tag)
+                            } label: {
+                                TagLockupCard(
+                                    tag: tag,
+                                    thumbnailProvider: thumbnailProvider,
+                                    cardSize: CGSize(width: cardWidth, height: cardHeight)
+                                )
+                            }
+                            .frame(width: cardWidth, height: cardHeight)
+                            .buttonStyle(CardButtonStyle())
+                            .accessibilityLabel(accessibilityLabel(for: tag))
+                        }
+                    }
+                    .padding(.horizontal, 72)
+                    .padding(.vertical, 48)
+                }
+            }
+        }
+    }
+
+    private func accessibilityLabel(for tag: Tag) -> String {
+        let title = TagMetadataFormatter.displayName(for: tag)
+        if let subtitle = TagMetadataFormatter.subtitle(for: tag) {
+            return "\(title), \(subtitle)"
+        }
+        return title
+    }
+}
+
+private struct TagLockupCard: View {
+    let tag: Tag
+    let thumbnailProvider: TagThumbnailProvider
+    let cardSize: CGSize
+    @AppStorage(UserDefaultsKeys.lockupThumbnailMode) private var lockupThumbnailMode = LockupThumbnailMode.current.rawValue
+
+    var body: some View {
+        AsyncLandscapeOverlayLockupCard(
+            taskId: "\(tag.id)-\(lockupThumbnailMode)",
+            title: TagMetadataFormatter.displayName(for: tag),
+            subtitle: nil,
+            leadingIconName: tag.iconName,
+            primaryMetadata: TagMetadataFormatter.valueMetadata(for: tag),
+            secondaryMetadata: nil,
+            trailingStatusIconNames: [],
+            fallbackIconName: tag.iconName,
+            fallbackTint: tag.gridColor ?? .secondary,
+            cardSize: cardSize
+        ) {
+            await thumbnailProvider.loadCoverThumbnail(for: tag)
+        }
+    }
+}
+
+private enum TagMetadataFormatter {
+    static func displayName(for tag: Tag) -> String {
+        tag.name
+    }
+
+    static func subtitle(for tag: Tag) -> String? {
+        guard !tag.value.isEmpty, tag.value != tag.name else {
+            return nil
+        }
+        return tag.value
+    }
+
+    static func valueMetadata(for tag: Tag) -> String? {
+        guard !tag.value.isEmpty, tag.value != tag.name else {
+            return nil
+        }
+        return tag.value
     }
 }
 

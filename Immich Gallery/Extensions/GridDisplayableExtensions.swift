@@ -1,5 +1,5 @@
 //
-//  GridDisplayableExtensions.swift
+//  GridModelExtensions.swift
 //  Immich Gallery
 //
 //  Created by mensadi-labs on 2025-09-04.
@@ -7,14 +7,14 @@
 
 import SwiftUI
 
-// MARK: - ImmichAlbum + GridDisplayable
-extension ImmichAlbum: GridDisplayable {
+// MARK: - ImmichAlbum grid metadata
+extension ImmichAlbum {
     var primaryTitle: String { albumName }
     var secondaryTitle: String? { nil }
     var thumbnailId: String? { albumThumbnailAssetId }
     var itemCount: Int? { assetCount }
     var gridCreatedAt: String? { createdAt }
-    var isFavorite: Bool? { nil }
+    var isFavorite: Bool? { id == "smart_favorites" ? true : nil }
     var isShared: Bool? { shared }
     var sharingText: String? { 
         if shared {
@@ -22,12 +22,30 @@ extension ImmichAlbum: GridDisplayable {
         }
         return nil
     }
-    var iconName: String { "folder" }
-    var gridColor: Color? { nil }
+    var iconName: String {
+        switch id {
+        case "smart_favorites":
+            return "heart.fill"
+        case "smart_locked":
+            return "lock.fill"
+        default:
+            return "folder"
+        }
+    }
+    var gridColor: Color? {
+        switch id {
+        case "smart_favorites":
+            return Color.red.opacity(0.8)
+        case "smart_locked":
+            return Color.red.opacity(0.8)
+        default:
+            return nil
+        }
+    }
 }
 
-// MARK: - Person + GridDisplayable
-extension Person: GridDisplayable {
+// MARK: - Person grid metadata
+extension Person {
     var primaryTitle: String { name.isEmpty ? "Unknown Person" : name }
     var secondaryTitle: String? { nil }
     var description: String? { nil }
@@ -62,8 +80,8 @@ extension Person: GridDisplayable {
     }
 }
 
-// MARK: - Tag + GridDisplayable
-extension Tag: GridDisplayable {
+// MARK: - Tag grid metadata
+extension Tag {
     var primaryTitle: String { name }
     var secondaryTitle: String? { 
         if !value.isEmpty && value != name {

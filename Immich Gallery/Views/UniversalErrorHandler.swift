@@ -188,6 +188,10 @@ struct UniversalErrorDisplayView: View {
                 return "Network connection error. Please check your internet connection."
             case .clientError(let statusCode):
                 return "Request error (HTTP \(statusCode)). Please try again or contact support if the issue persists."
+            case .httpError(_, let message):
+                return message ?? error.localizedDescription
+            case .invalidUnlockCredentials:
+                return "Enter your account password or session PIN to unlock protected folders and assets."
             }
         }
         

@@ -206,7 +206,8 @@ struct TimelineView: View {
                 assetService: assetService,
                 isFocused: focusedAssetId == asset.id,
                 shouldLoadThumbnail: !isScrolling && shouldLoadThumbnail,
-                allowsThumbhashPlaceholder: false
+                allowsThumbhashPlaceholder: false,
+                showsDateOverlay: false
             )
         }
         .frame(width: tileWidth, height: tileHeight)

@@ -300,7 +300,6 @@ struct ExploreFirstRow: View {
                 FirstRowItem(
                     item: item,
                     assetService: assetService,
-                    isCurrentlyFocused: localFocusedItem == item.id,
                     onItemSelected: onItemSelected
                 )
                 .focused($localFocusedItem, equals: item.id)
@@ -328,59 +327,21 @@ struct ExploreFirstRow: View {
 struct FirstRowItem: View {
     let item: ExploreAsset
     let assetService: AssetService
-    let isCurrentlyFocused: Bool
     let onItemSelected: (ExploreAsset) -> Void
-    
-    @State private var thumbnailImage: UIImage?
+
+    private let cardSize = CGSize(width: 380, height: 260)
     
     var body: some View {
         Button(action: {
             onItemSelected(item)
         }) {
-            VStack(spacing: 8) {
-                // Thumbnail only, no bottom text
-                Group {
-                    if let thumbnailImage = thumbnailImage {
-                        Image(uiImage: thumbnailImage)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } else {
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.3))
-                            .overlay {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                            }
-                    }
-                }
-                .frame(width: GridConfig.peopleStyle.itemWidth, height: 250)
-                .cornerRadius(12)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(isCurrentlyFocused ? Color.white : Color.clear, lineWidth: isCurrentlyFocused ? 4 : 0)
-                )
-                .scaleEffect(isCurrentlyFocused ? 1.1 : 1.0)
-                .animation(.easeIn(duration: 0.5), value: isCurrentlyFocused)
-            }
+            ExploreLockupCard(item: item, assetService: assetService, cardSize: cardSize)
         }
+        .frame(width: cardSize.width, height: cardSize.height)
         .padding(.top, 100)
         .buttonStyle(CardButtonStyle())
         .onAppear {
             print("🎯 FirstRowItem (\(item.primaryTitle)): onAppear")
-        }
-        .task(id: item.id) {
-            await loadThumbnail()
-        }
-    }
-    
-    private func loadThumbnail() async {
-        do {
-            let image = try await assetService.loadImage(assetId: item.asset.id, size: "preview")
-            await MainActor.run {
-                thumbnailImage = image
-            }
-        } catch {
-            print("Failed to load thumbnail for first row item: \(error)")
         }
     }
 }
@@ -471,20 +432,15 @@ struct FocusableGridItem: View {
     let onItemSelected: (ExploreAsset) -> Void
     
     @Environment(\.isFocused) private var isFocused: Bool
+    private let cardSize = CGSize(width: 380, height: 260)
     
     var body: some View {
         Button(action: {
             onItemSelected(item)
         }) {
-            SharedGridItemView(
-                item: item,
-                config: .peopleStyle,
-                thumbnailProvider: ExploreThumbnailProvider(assetService: assetService),
-                isFocused: isFocused,
-                animationTrigger: 0
-            )
+            ExploreLockupCard(item: item, assetService: assetService, cardSize: cardSize)
         }
-        .frame(width: GridConfig.peopleStyle.itemWidth, height: GridConfig.peopleStyle.itemHeight)
+        .frame(width: cardSize.width, height: cardSize.height)
         .padding(10)
         .buttonStyle(CardButtonStyle())
         .onChange(of: isFocused) { _, newValue in
@@ -494,6 +450,48 @@ struct FocusableGridItem: View {
         .onAppear {
             print("🎯 FocusableGridItem (\(item.primaryTitle)): onAppear - initial isFocused: \(isFocused)")
         }
+    }
+}
+
+private struct ExploreLockupCard: View {
+    let item: ExploreAsset
+    let assetService: AssetService
+    let cardSize: CGSize
+
+    var body: some View {
+        AsyncLandscapeOverlayLockupCard(
+            taskId: item.id,
+            title: title,
+            subtitle: item.secondaryTitle,
+            leadingIconName: nil,
+            primaryMetadata: ExploreMetadataFormatter.createdDate(for: item),
+            secondaryMetadata: nil,
+            trailingStatusIconNames: trailingStatusIconNames,
+            fallbackIconName: item.iconName,
+            fallbackTint: item.gridColor ?? .secondary,
+            cardSize: cardSize
+        ) {
+            do {
+                return try await assetService.loadImage(assetId: item.asset.id, size: "preview")
+            } catch {
+                print("Failed to load thumbnail for explore item: \(error)")
+                return nil
+            }
+        }
+    }
+
+    private var title: String {
+        item.primaryTitle.isEmpty ? "Unknown City" : item.primaryTitle
+    }
+
+    private var trailingStatusIconNames: [String] {
+        item.asset.isFavorite ? ["heart.fill"] : []
+    }
+}
+
+private enum ExploreMetadataFormatter {
+    static func createdDate(for item: ExploreAsset) -> String {
+        DateFormatter.formatSpecificISO8601(item.asset.fileCreatedAt, includeTime: false)
     }
 }
 

@@ -343,10 +343,6 @@ private struct AlbumLockupGridView: View {
     private func accessibilityLabel(for album: ImmichAlbum) -> String {
         var parts = [album.albumName, AlbumMetadataFormatter.photoCount(album.assetCount)]
 
-        if let description = album.description, !description.isEmpty {
-            parts.append(description)
-        }
-
         if album.shared {
             parts.append("Shared")
         }
@@ -368,7 +364,7 @@ private struct AlbumLockupCard: View {
         AsyncLandscapeOverlayLockupCard(
             taskId: coverTaskId,
             title: album.albumName,
-            subtitle: subtitle,
+            subtitle: nil,
             leadingIconName: isSmartAlbum ? album.iconName : nil,
             primaryMetadata: AlbumMetadataFormatter.photoCount(album.assetCount),
             secondaryMetadata: AlbumMetadataFormatter.dateSummary(for: album),
@@ -379,30 +375,6 @@ private struct AlbumLockupCard: View {
         ) {
             await thumbnailProvider.loadCoverThumbnail(for: album)
         }
-    }
-
-    private var subtitle: String {
-        if let description = album.description, !description.isEmpty {
-            return description
-        }
-
-        if album.id == "smart_favorites" {
-            return "Favorite photos and videos"
-        }
-
-        if album.id == "smart_locked" {
-            return "Items protected by your locked folder PIN"
-        }
-
-        if album.shared, let sharingText = album.sharingText {
-            return "Shared by \(sharingText)"
-        }
-
-        if let ownerName = album.owner?.name, !ownerName.isEmpty {
-            return "Album by \(ownerName)"
-        }
-
-        return "Album"
     }
 
     private var coverTaskId: String {

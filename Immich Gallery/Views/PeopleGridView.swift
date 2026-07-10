@@ -222,6 +222,7 @@ private struct PersonLockupCard: View {
     let peopleService: PeopleService
     let thumbnailProvider: PeopleThumbnailProvider
     let cardSize: CGSize
+    @AppStorage(UserDefaultsKeys.lockupThumbnailMode) private var lockupThumbnailMode = LockupThumbnailMode.current.rawValue
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -247,7 +248,7 @@ private struct PersonLockupCard: View {
     }
 
     private var coverTaskId: String {
-        "\(person.id)-\(person.thumbnailPath)"
+        "\(person.id)-\(person.thumbnailPath)-\(lockupThumbnailMode)"
     }
 
     private var trailingStatusIconNames: [String] {

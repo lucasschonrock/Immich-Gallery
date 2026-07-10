@@ -1,5 +1,5 @@
 //
-//  GridDisplayableExtensions.swift
+//  GridModelExtensions.swift
 //  Immich Gallery
 //
 //  Created by mensadi-labs on 2025-09-04.
@@ -7,8 +7,8 @@
 
 import SwiftUI
 
-// MARK: - ImmichAlbum + GridDisplayable
-extension ImmichAlbum: GridDisplayable {
+// MARK: - ImmichAlbum grid metadata
+extension ImmichAlbum {
     var primaryTitle: String { albumName }
     var secondaryTitle: String? { nil }
     var thumbnailId: String? { albumThumbnailAssetId }
@@ -44,8 +44,8 @@ extension ImmichAlbum: GridDisplayable {
     }
 }
 
-// MARK: - Person + GridDisplayable
-extension Person: GridDisplayable {
+// MARK: - Person grid metadata
+extension Person {
     var primaryTitle: String { name.isEmpty ? "Unknown Person" : name }
     var secondaryTitle: String? { nil }
     var description: String? { nil }
@@ -80,8 +80,8 @@ extension Person: GridDisplayable {
     }
 }
 
-// MARK: - Tag + GridDisplayable
-extension Tag: GridDisplayable {
+// MARK: - Tag grid metadata
+extension Tag {
     var primaryTitle: String { name }
     var secondaryTitle: String? { 
         if !value.isEmpty && value != name {

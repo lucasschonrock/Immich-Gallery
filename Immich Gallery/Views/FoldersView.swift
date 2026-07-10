@@ -212,10 +212,11 @@ private struct FolderLockupCard: View {
     let folder: ImmichFolder
     let thumbnailProvider: FolderThumbnailProvider
     let cardSize: CGSize
+    @AppStorage(UserDefaultsKeys.lockupThumbnailMode) private var lockupThumbnailMode = LockupThumbnailMode.current.rawValue
 
     var body: some View {
         AsyncLandscapeOverlayLockupCard(
-            taskId: folder.path,
+            taskId: "\(folder.path)-\(lockupThumbnailMode)",
             title: FolderMetadataFormatter.displayName(for: folder),
             subtitle: nil,
             leadingIconName: folder.iconName,

@@ -158,7 +158,7 @@ struct ExploreView: View {
                         .padding(.horizontal)
                         
                         // Remaining Grid Items (Below the fold)
-                        if exploreItems.count > GridConfig.peopleStyle.columns.count {
+                        if exploreItems.count > ExploreGridMetrics.columnCount {
                             ExploreRemainingGrid(
                                 exploreItems: exploreItems,
                                 assetService: assetService,
@@ -266,7 +266,7 @@ struct ExploreView: View {
     //    }
     
     private func randomizeFirstRowItems() {
-        let columnsCount = GridConfig.peopleStyle.columns.count
+        let columnsCount = ExploreGridMetrics.columnCount
         if exploreItems.count > columnsCount {
             randomizedFirstRowItems = Array(exploreItems.shuffled().prefix(columnsCount))
         } else {
@@ -294,7 +294,7 @@ struct ExploreFirstRow: View {
     @FocusState private var localFocusedItem: String?
     
     var body: some View {
-        HStack(alignment: .top, spacing: GridConfig.peopleStyle.spacing) {
+        HStack(alignment: .top, spacing: ExploreGridMetrics.spacing) {
             Spacer()
             ForEach(exploreItems) { item in
                 FirstRowItem(
@@ -353,8 +353,8 @@ struct ExploreRemainingGrid: View {
     @Binding var focusedItemID: String?
     let onItemSelected: (ExploreAsset) -> Void
     
-    private let columns = GridConfig.peopleStyle.columns
-    private let spacing = GridConfig.peopleStyle.spacing
+    private let columns = ExploreGridMetrics.columns
+    private let spacing = ExploreGridMetrics.spacing
     
     var body: some View {
         LazyVStack(spacing: 20) {
@@ -386,8 +386,8 @@ struct ExploreCustomGrid: View {
     @Binding var focusedItemID: String?
     let onItemSelected: (ExploreAsset) -> Void
     
-    private let columns = GridConfig.peopleStyle.columns
-    private let spacing = GridConfig.peopleStyle.spacing
+    private let columns = ExploreGridMetrics.columns
+    private let spacing = ExploreGridMetrics.spacing
     
     var body: some View {
         LazyVStack(spacing: 20) {
@@ -783,25 +783,11 @@ struct FoldSnappingScrollTargetBehavior: ScrollTargetBehavior {
     }
 }
 
-// MARK: - Thumbnail Provider for Explore Items
-class ExploreThumbnailProvider: ThumbnailProvider {
-    private let assetService: AssetService
-    
-    init(assetService: AssetService) {
-        self.assetService = assetService
-    }
-    
-    func loadThumbnails(for item: GridDisplayable) async -> [UIImage] {
-        guard let exploreAsset = item as? ExploreAsset else { return [] }
-        
-        do {
-            if let image = try await assetService.loadImage(assetId: exploreAsset.asset.id, size: "preview") {
-                return [image]
-            }
-        } catch {
-            print("Failed to load thumbnail for explore asset: \(error)")
-        }
-        
-        return []
-    }
+private enum ExploreGridMetrics {
+    static let columnCount = 4
+    static let spacing: CGFloat = 50
+    static let columns = Array(
+        repeating: GridItem(.fixed(400), spacing: 20),
+        count: columnCount
+    )
 }

@@ -425,118 +425,8 @@ struct AssetStatistics: Codable {
 
 import SwiftUI
 
-// MARK: - Grid Item Protocol
-protocol GridDisplayable: Identifiable {
-    var id: String { get }
-    var primaryTitle: String { get }
-    var secondaryTitle: String? { get }
-    var description: String? { get }
-    var thumbnailId: String? { get }
-    var itemCount: Int? { get }
-    var gridCreatedAt: String? { get }
-    var isFavorite: Bool? { get }
-    var isShared: Bool? { get }
-    var sharingText: String? { get }
-    var iconName: String { get }
-    var gridColor: Color? { get }
-}
-
-// MARK: - Grid Configuration
-struct GridConfig {
-    let columns: [GridItem]
-    let itemWidth: CGFloat
-    let itemHeight: CGFloat
-    let spacing: CGFloat
-    let loadingText: String
-    let emptyStateText: String
-    let emptyStateDescription: String
-    let enableThumbnailAnimation: Bool
-    let enableFocusAnimation: Bool
-
-    init(
-        columns: [GridItem],
-        itemWidth: CGFloat,
-        itemHeight: CGFloat,
-        spacing: CGFloat,
-        loadingText: String,
-        emptyStateText: String,
-        emptyStateDescription: String,
-        enableThumbnailAnimation: Bool = true,
-        enableFocusAnimation: Bool = true
-    ) {
-        self.columns = columns
-        self.itemWidth = itemWidth
-        self.itemHeight = itemHeight
-        self.spacing = spacing
-        self.loadingText = loadingText
-        self.emptyStateText = emptyStateText
-        self.emptyStateDescription = emptyStateDescription
-        self.enableThumbnailAnimation = enableThumbnailAnimation
-        self.enableFocusAnimation = enableFocusAnimation
-    }
-    
-    static let albumStyle = GridConfig(
-        columns: [
-            GridItem(.fixed(500), spacing: 20),
-            GridItem(.fixed(500), spacing: 20),
-            GridItem(.fixed(500), spacing: 20)
-        ],
-        itemWidth: 490,
-        itemHeight: 400,
-        spacing: 100,
-        loadingText: "Loading albums...",
-        emptyStateText: "No Albums Found",
-        emptyStateDescription: "Your albums will appear here"
-    )
-    
-    static let peopleStyle = GridConfig(
-        columns: [
-            GridItem(.fixed(400), spacing: 20),
-            GridItem(.fixed(400), spacing: 20),
-            GridItem(.fixed(400), spacing: 20),
-            GridItem(.fixed(400), spacing: 20)
-        ],
-        itemWidth: 400,
-        itemHeight: 450,
-        spacing: 50,
-        loadingText: "Loading people...",
-        emptyStateText: "No People Found",
-        emptyStateDescription: "People detected in your photos will appear here"
-    )
-    
-    static let tagsStyle = GridConfig(
-        columns: [
-            GridItem(.fixed(500), spacing: 20),
-            GridItem(.fixed(500), spacing: 20),
-            GridItem(.fixed(500), spacing: 20)
-        ],
-        itemWidth: 490,
-        itemHeight: 400,
-        spacing: 100,
-        loadingText: "Loading tags...",
-        emptyStateText: "No Tags Found",
-        emptyStateDescription: "Your tags will appear here"
-    )
-    
-    static let foldersStyle = GridConfig(
-        columns: [
-            GridItem(.fixed(500), spacing: 20),
-            GridItem(.fixed(500), spacing: 20),
-            GridItem(.fixed(500), spacing: 20)
-        ],
-        itemWidth: 490,
-        itemHeight: 360,
-        spacing: 80,
-        loadingText: "Loading folders...",
-        emptyStateText: "No Folders Found",
-        emptyStateDescription: "Folders with indexed assets will appear here",
-        enableThumbnailAnimation: false,
-        enableFocusAnimation: false
-    )
-}
-
 // MARK: - Folder Model
-struct ImmichFolder: GridDisplayable, Equatable, Hashable {
+struct ImmichFolder: Identifiable, Equatable, Hashable {
     let path: String
     
     var id: String { path }
@@ -562,10 +452,9 @@ struct ImmichFolder: GridDisplayable, Equatable, Hashable {
 
 
 // MARK: - Explore Data Models
-struct ExploreAsset: GridDisplayable {
+struct ExploreAsset: Identifiable {
     let asset: ImmichAsset
     
-    // GridDisplayable conformance
     var id: String { asset.id }
     var primaryTitle: String { 
         asset.exifInfo?.city ?? ""

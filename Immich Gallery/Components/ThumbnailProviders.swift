@@ -7,37 +7,52 @@
 
 import SwiftUI
 
-private let animatedThumbnailLimit = 3
-
 private func loadSingleThumbnail(
     assetService: AssetService,
     thumbnailCache: ThumbnailCache,
     personId: String? = nil,
     tagId: String? = nil,
-    folderPath: String? = nil
+    folderPath: String? = nil,
+    mode: LockupThumbnailMode = .current
 ) async -> UIImage? {
     do {
-        let searchResult = try await assetService.fetchAssets(
-            page: 1,
-            limit: 1,
-            personId: personId,
-            tagId: tagId,
-            folderPath: folderPath
-        )
+        let searchResult: SearchResult
+        if mode == .random {
+            searchResult = try await assetService.fetchRandomAssets(
+                personIds: personId.map { [$0] },
+                tagIds: tagId.map { [$0] },
+                folderPath: folderPath,
+                limit: 10
+            )
+        } else {
+            searchResult = try await assetService.fetchAssets(
+                page: 1,
+                limit: 1,
+                personId: personId,
+                tagId: tagId,
+                folderPath: folderPath
+            )
+        }
+
         guard let asset = searchResult.assets.first(where: { $0.type == .image }) else {
             return nil
         }
 
-        return try await thumbnailCache.getThumbnail(for: asset.id, size: "thumbnail") {
-            try await assetService.loadImage(assetId: asset.id, size: "thumbnail")
+        return try await thumbnailCache.getThumbnail(for: asset.id, size: "preview") {
+            try await assetService.loadImage(assetId: asset.id, size: "preview")
         }
     } catch {
+        print("Failed to load \(mode.rawValue) lockup thumbnail: \(error)")
         return nil
     }
 }
 
+private func selectedLockupThumbnailMode() -> LockupThumbnailMode {
+    LockupThumbnailMode(rawValue: UserDefaults.standard.lockupThumbnailMode) ?? .current
+}
+
 // MARK: - Album Thumbnail Provider
-class AlbumThumbnailProvider: ThumbnailProvider {
+class AlbumThumbnailProvider {
     private let albumService: AlbumService
     private let assetService: AssetService
     private let thumbnailCache = ThumbnailCache.shared
@@ -47,30 +62,14 @@ class AlbumThumbnailProvider: ThumbnailProvider {
         self.assetService = assetService
     }
     
-    func loadThumbnails(for item: GridDisplayable) async -> [UIImage] {
-        guard let album = item as? ImmichAlbum else { return [] }
-        guard album.id != "smart_locked" else { return [] }
-        
-        if shouldUseStaticThumbnail(),
-           let staticThumbnail = await loadStaticThumbnail(for: album) {
-            return [staticThumbnail]
-        }
-        
-        return await loadAnimatedThumbnails(for: album)
-    }
-    
-    private func shouldUseStaticThumbnail() -> Bool {
-        return !UserDefaults.standard.enableThumbnailAnimation
-    }
-    
     private func loadStaticThumbnail(for album: ImmichAlbum) async -> UIImage? {
         guard let thumbnailId = album.albumThumbnailAssetId, !thumbnailId.isEmpty else {
             return nil
         }
         
         do {
-            return try await thumbnailCache.getThumbnail(for: thumbnailId, size: "thumbnail") {
-                try await self.assetService.loadImage(assetId: thumbnailId, size: "thumbnail")
+            return try await thumbnailCache.getThumbnail(for: thumbnailId, size: "preview") {
+                try await self.assetService.loadImage(assetId: thumbnailId, size: "preview")
             }
         } catch {
             print("Failed to load static thumbnail for album \(album.id): \(error)")
@@ -78,36 +77,14 @@ class AlbumThumbnailProvider: ThumbnailProvider {
         }
     }
     
-    private func loadAnimatedThumbnails(for album: ImmichAlbum) async -> [UIImage] {
-        do {
-            let albumProvider = AlbumAssetProvider(assetService: assetService, albumId: album.id)
-            let searchResult = try await albumProvider.fetchAssets(page: 1, limit: animatedThumbnailLimit)
-            let imageAssets = searchResult.assets.filter { $0.type == .image }
-            
-            var loadedThumbnails: [UIImage] = []
-            
-            for asset in imageAssets.prefix(animatedThumbnailLimit) {
-                do {
-                    let thumbnail = try await thumbnailCache.getThumbnail(for: asset.id, size: "thumbnail") {
-                        try await self.assetService.loadImage(assetId: asset.id, size: "thumbnail")
-                    }
-                    if let thumbnail = thumbnail {
-                        loadedThumbnails.append(thumbnail)
-                    }
-                } catch {
-                    print("Failed to load thumbnail for asset \(asset.id): \(error)")
-                }
-            }
-            
-            return loadedThumbnails
-        } catch {
-            print("Failed to fetch assets for album \(album.id): \(error)")
-            return []
-        }
-    }
-
     func loadCoverThumbnail(for album: ImmichAlbum) async -> UIImage? {
         guard album.id != "smart_locked" else { return nil }
+
+        if selectedLockupThumbnailMode() == .random,
+           !album.id.hasPrefix("smart_"),
+           let randomThumbnail = await loadRandomThumbnail(for: album) {
+            return randomThumbnail
+        }
 
         if let staticThumbnail = await loadStaticThumbnail(for: album) {
             return staticThumbnail
@@ -120,18 +97,34 @@ class AlbumThumbnailProvider: ThumbnailProvider {
                 return nil
             }
 
-            return try await thumbnailCache.getThumbnail(for: asset.id, size: "thumbnail") {
-                try await self.assetService.loadImage(assetId: asset.id, size: "thumbnail")
+            return try await thumbnailCache.getThumbnail(for: asset.id, size: "preview") {
+                try await self.assetService.loadImage(assetId: asset.id, size: "preview")
             }
         } catch {
             print("Failed to load cover thumbnail for album \(album.id): \(error)")
             return nil
         }
     }
+
+    private func loadRandomThumbnail(for album: ImmichAlbum) async -> UIImage? {
+        do {
+            let searchResult = try await assetService.fetchRandomAssets(albumIds: [album.id], limit: 10)
+            guard let asset = searchResult.assets.first(where: { $0.type == .image }) else {
+                return nil
+            }
+
+            return try await thumbnailCache.getThumbnail(for: asset.id, size: "preview") {
+                try await self.assetService.loadImage(assetId: asset.id, size: "preview")
+            }
+        } catch {
+            print("Failed to load random cover thumbnail for album \(album.id): \(error)")
+            return nil
+        }
+    }
 }
 
 // MARK: - People Thumbnail Provider
-class PeopleThumbnailProvider: ThumbnailProvider {
+class PeopleThumbnailProvider {
     private let assetService: AssetService
     private let thumbnailCache = ThumbnailCache.shared
     
@@ -139,65 +132,31 @@ class PeopleThumbnailProvider: ThumbnailProvider {
         self.assetService = assetService
     }
     
-    func loadThumbnails(for item: GridDisplayable) async -> [UIImage] {
-        guard let person = item as? Person else { return [] }
-
-        if shouldUseStaticThumbnail() {
-            if let thumbnail = await loadStaticThumbnail(for: person) {
-                return [thumbnail]
-            }
-            return []
-        }
-        
-        do {
-            let searchResult = try await assetService.fetchAssets(page: 1, limit: animatedThumbnailLimit, personId: person.id)
-            let imageAssets = searchResult.assets.filter { $0.type == .image }
-            
-            var loadedThumbnails: [UIImage] = []
-            
-            for asset in imageAssets.prefix(animatedThumbnailLimit) {
-                do {
-                    let thumbnail = try await thumbnailCache.getThumbnail(for: asset.id, size: "thumbnail") {
-                        try await self.assetService.loadImage(assetId: asset.id, size: "thumbnail")
-                    }
-                    if let thumbnail = thumbnail {
-                        loadedThumbnails.append(thumbnail)
-                    }
-                } catch {
-                    print("Failed to load thumbnail for asset \(asset.id): \(error)")
-                }
-            }
-            
-            return loadedThumbnails
-        } catch {
-            print("Failed to fetch assets for person \(person.id): \(error)")
-            return []
-        }
-    }
-
     func loadCoverThumbnail(for person: Person) async -> UIImage? {
-        await loadStaticThumbnail(for: person)
+        if selectedLockupThumbnailMode() == .random,
+           let randomThumbnail = await loadThumbnail(for: person, mode: .random) {
+            return randomThumbnail
+        }
+
+        return await loadThumbnail(for: person, mode: .current)
     }
 
-    private func shouldUseStaticThumbnail() -> Bool {
-        return !UserDefaults.standard.enableThumbnailAnimation
-    }
-
-    private func loadStaticThumbnail(for person: Person) async -> UIImage? {
+    private func loadThumbnail(for person: Person, mode: LockupThumbnailMode) async -> UIImage? {
         let thumbnail = await loadSingleThumbnail(
             assetService: assetService,
             thumbnailCache: thumbnailCache,
-            personId: person.id
+            personId: person.id,
+            mode: mode
         )
         if thumbnail == nil {
-            print("Failed to load static thumbnail for person \(person.id)")
+            print("Failed to load \(mode.rawValue) thumbnail for person \(person.id)")
         }
         return thumbnail
     }
 }
 
 // MARK: - Tag Thumbnail Provider
-class TagThumbnailProvider: ThumbnailProvider {
+class TagThumbnailProvider {
     private let assetService: AssetService
     private let thumbnailCache = ThumbnailCache.shared
     
@@ -205,65 +164,31 @@ class TagThumbnailProvider: ThumbnailProvider {
         self.assetService = assetService
     }
     
-    func loadThumbnails(for item: GridDisplayable) async -> [UIImage] {
-        guard let tag = item as? Tag else { return [] }
-
-        if shouldUseStaticThumbnail() {
-            if let thumbnail = await loadStaticThumbnail(for: tag) {
-                return [thumbnail]
-            }
-            return []
-        }
-        
-        do {
-            let searchResult = try await assetService.fetchAssets(page: 1, limit: animatedThumbnailLimit, tagId: tag.id)
-            let imageAssets = searchResult.assets.filter { $0.type == .image }
-            
-            var loadedThumbnails: [UIImage] = []
-            
-            for asset in imageAssets.prefix(animatedThumbnailLimit) {
-                do {
-                    let thumbnail = try await thumbnailCache.getThumbnail(for: asset.id, size: "thumbnail") {
-                        try await self.assetService.loadImage(assetId: asset.id, size: "thumbnail")
-                    }
-                    if let thumbnail = thumbnail {
-                        loadedThumbnails.append(thumbnail)
-                    }
-                } catch {
-                    print("Failed to load thumbnail for asset \(asset.id): \(error)")
-                }
-            }
-            
-            return loadedThumbnails
-        } catch {
-            print("Failed to fetch assets for tag \(tag.id): \(error)")
-            return []
-        }
-    }
-
     func loadCoverThumbnail(for tag: Tag) async -> UIImage? {
-        await loadStaticThumbnail(for: tag)
+        if selectedLockupThumbnailMode() == .random,
+           let randomThumbnail = await loadThumbnail(for: tag, mode: .random) {
+            return randomThumbnail
+        }
+
+        return await loadThumbnail(for: tag, mode: .current)
     }
 
-    private func shouldUseStaticThumbnail() -> Bool {
-        return !UserDefaults.standard.enableThumbnailAnimation
-    }
-
-    private func loadStaticThumbnail(for tag: Tag) async -> UIImage? {
+    private func loadThumbnail(for tag: Tag, mode: LockupThumbnailMode) async -> UIImage? {
         let thumbnail = await loadSingleThumbnail(
             assetService: assetService,
             thumbnailCache: thumbnailCache,
-            tagId: tag.id
+            tagId: tag.id,
+            mode: mode
         )
         if thumbnail == nil {
-            print("Failed to load static thumbnail for tag \(tag.id)")
+            print("Failed to load \(mode.rawValue) thumbnail for tag \(tag.id)")
         }
         return thumbnail
     }
 }
 
 // MARK: - Folder Thumbnail Provider
-class FolderThumbnailProvider: ThumbnailProvider {
+class FolderThumbnailProvider {
     private let assetService: AssetService
     private let thumbnailCache = ThumbnailCache.shared
     private let coordinator = FolderThumbnailCoordinator(maxConcurrentLoads: 4)
@@ -272,22 +197,19 @@ class FolderThumbnailProvider: ThumbnailProvider {
         self.assetService = assetService
     }
 
-    func loadThumbnails(for item: GridDisplayable) async -> [UIImage] {
-        guard let folder = item as? ImmichFolder else { return [] }
-
-        if let thumbnail = await loadCoverThumbnail(for: folder) {
-            return [thumbnail]
+    func loadCoverThumbnail(for folder: ImmichFolder) async -> UIImage? {
+        let mode = selectedLockupThumbnailMode()
+        if mode == .random,
+           let randomThumbnail = await loadCoverThumbnail(for: folder.path, mode: .random) {
+            return randomThumbnail
         }
 
-        return []
+        return await loadCoverThumbnail(for: folder.path, mode: .current)
     }
 
-    func loadCoverThumbnail(for folder: ImmichFolder) async -> UIImage? {
-        return await loadCoverThumbnail(for: folder.path)
-    }
-
-    private func loadCoverThumbnail(for path: String) async -> UIImage? {
-        if let inFlight = await coordinator.inFlightTask(for: path) {
+    private func loadCoverThumbnail(for path: String, mode: LockupThumbnailMode) async -> UIImage? {
+        let key = "\(mode.rawValue)-\(path)"
+        if let inFlight = await coordinator.inFlightTask(for: key) {
             if let thumbnail = await inFlight.value {
                 return thumbnail
             }
@@ -299,15 +221,16 @@ class FolderThumbnailProvider: ThumbnailProvider {
             let thumbnail = await loadSingleThumbnail(
                 assetService: assetService,
                 thumbnailCache: thumbnailCache,
-                folderPath: path
+                folderPath: path,
+                mode: mode
             )
             await coordinator.releaseSlot()
             return thumbnail
         }
 
-        await coordinator.setInFlightTask(task, for: path)
+        await coordinator.setInFlightTask(task, for: key)
         let thumbnail = await task.value
-        await coordinator.clearInFlightTask(for: path)
+        await coordinator.clearInFlightTask(for: key)
 
         return thumbnail
     }

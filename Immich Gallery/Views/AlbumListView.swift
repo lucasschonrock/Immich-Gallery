@@ -355,6 +355,7 @@ private struct AlbumLockupCard: View {
     let album: ImmichAlbum
     let thumbnailProvider: AlbumThumbnailProvider
     let cardSize: CGSize
+    @AppStorage(UserDefaultsKeys.lockupThumbnailMode) private var lockupThumbnailMode = LockupThumbnailMode.current.rawValue
 
     private var isSmartAlbum: Bool {
         album.id.hasPrefix("smart_")
@@ -378,7 +379,7 @@ private struct AlbumLockupCard: View {
     }
 
     private var coverTaskId: String {
-        "\(album.id)-\(album.albumThumbnailAssetId ?? "none")"
+        "\(album.id)-\(album.albumThumbnailAssetId ?? "none")-\(lockupThumbnailMode)"
     }
 
     private var trailingStatusIconNames: [String] {

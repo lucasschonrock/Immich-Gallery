@@ -153,10 +153,11 @@ private struct TagLockupCard: View {
     let tag: Tag
     let thumbnailProvider: TagThumbnailProvider
     let cardSize: CGSize
+    @AppStorage(UserDefaultsKeys.lockupThumbnailMode) private var lockupThumbnailMode = LockupThumbnailMode.current.rawValue
 
     var body: some View {
         AsyncLandscapeOverlayLockupCard(
-            taskId: tag.id,
+            taskId: "\(tag.id)-\(lockupThumbnailMode)",
             title: TagMetadataFormatter.displayName(for: tag),
             subtitle: nil,
             leadingIconName: tag.iconName,

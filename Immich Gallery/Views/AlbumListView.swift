@@ -25,11 +25,11 @@ struct AlbumListView: View {
     @State private var lockedPinError: String?
     @State private var isUnlockingLockedAlbum = false
     @State private var isLockedFolderDetailOpen = false
-    
+
     private var thumbnailProvider: AlbumThumbnailProvider {
         AlbumThumbnailProvider(albumService: albumService, assetService: assetService)
     }
-    
+
     private var allAlbums: [ImmichAlbum] {
         var result = albums
         if let lockedAlbum = createLockedAlbum() {
@@ -40,15 +40,14 @@ struct AlbumListView: View {
         }
         return result
     }
-    
+
     var body: some View {
-        SharedGridView(
-            items: allAlbums,
-            config: .albumStyle,
+        AlbumLockupGridView(
+            albums: allAlbums,
             thumbnailProvider: thumbnailProvider,
             isLoading: isLoading,
             errorMessage: errorMessage,
-            onItemSelected: { album in
+            onAlbumSelected: { album in
                 handleAlbumSelection(album)
             },
             onRetry: loadAlbums
@@ -75,9 +74,9 @@ struct AlbumListView: View {
             )
         }
     }
-    
+
     private func createFavoritesAlbum() -> ImmichAlbum?  {
-        
+
         if let user = userManager.currentUser {
             let owner = Owner(
                 id: user.id,
@@ -87,7 +86,7 @@ struct AlbumListView: View {
                 profileChangedAt: "",
                 avatarColor: "primary"
             )
-            
+
             return ImmichAlbum(
                 id: "smart_favorites",
                 albumName: "Favorites",
@@ -147,10 +146,10 @@ struct AlbumListView: View {
             endDate: nil
         )
     }
-    
+
     private func loadFavoritesCount() {
         guard authService.isAuthenticated else { return }
-        
+
         Task {
             do {
                 let result = try await assetService.fetchAssets(page: 1, limit: nil, isFavorite: true)
@@ -178,16 +177,16 @@ struct AlbumListView: View {
             }
         }
     }
-    
+
     private func loadAlbums() {
         guard authService.isAuthenticated else {
             errorMessage = "Not authenticated. Please check your credentials."
             return
         }
-        
+
         isLoading = true
         errorMessage = nil
-        
+
         Task {
             do {
                 let fetchedAlbums = try await albumService.fetchAlbums()
@@ -262,6 +261,185 @@ struct AlbumListView: View {
                 print("Failed to lock auth session after leaving locked folder: \(error)")
             }
         }
+    }
+}
+
+private struct AlbumLockupGridView: View {
+    let albums: [ImmichAlbum]
+    let thumbnailProvider: AlbumThumbnailProvider
+    let isLoading: Bool
+    let errorMessage: String?
+    let onAlbumSelected: (ImmichAlbum) -> Void
+    let onRetry: () -> Void
+
+    private let cardWidth: CGFloat = 500
+    private let cardHeight: CGFloat = 300
+
+    private let columns = [
+        GridItem(.fixed(500), spacing: 30),
+        GridItem(.fixed(500), spacing: 30),
+        GridItem(.fixed(500), spacing: 30)
+    ]
+
+    var body: some View {
+        ZStack {
+            SharedGradientBackground()
+
+            if isLoading {
+                ProgressView("Loading albums...")
+                    .foregroundColor(.white)
+                    .scaleEffect(1.5)
+            } else if let errorMessage {
+                VStack(spacing: 14) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 60))
+                        .foregroundColor(.orange)
+                    Text("Error")
+                        .font(.title)
+                        .foregroundColor(.white)
+                    Text(errorMessage)
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 80)
+                    Button("Retry", action: onRetry)
+                        .buttonStyle(.borderedProminent)
+                }
+            } else if albums.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "folder")
+                        .font(.system(size: 60))
+                        .foregroundColor(.gray)
+                    Text("No Albums")
+                        .font(.title)
+                        .foregroundColor(.white)
+                    Text("Create albums in Immich to see them here.")
+                        .foregroundColor(.gray)
+                }
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: columns, alignment: .center, spacing: 30) {
+                        ForEach(albums) { album in
+                            Button {
+                                onAlbumSelected(album)
+                            } label: {
+                                AlbumLockupCard(
+                                    album: album,
+                                    thumbnailProvider: thumbnailProvider,
+                                    cardSize: CGSize(width: cardWidth, height: cardHeight)
+                                )
+                            }
+                            .frame(width: cardWidth, height: cardHeight)
+                            .buttonStyle(CardButtonStyle())
+                            .accessibilityLabel(accessibilityLabel(for: album))
+                        }
+                    }
+                    .padding(.horizontal, 72)
+                    .padding(.vertical, 48)
+                }
+            }
+        }
+    }
+
+    private func accessibilityLabel(for album: ImmichAlbum) -> String {
+        var parts = [album.albumName, AlbumMetadataFormatter.photoCount(album.assetCount)]
+
+        if let description = album.description, !description.isEmpty {
+            parts.append(description)
+        }
+
+        if album.shared {
+            parts.append("Shared")
+        }
+
+        return parts.joined(separator: ", ")
+    }
+}
+
+private struct AlbumLockupCard: View {
+    let album: ImmichAlbum
+    let thumbnailProvider: AlbumThumbnailProvider
+    let cardSize: CGSize
+
+    private var isSmartAlbum: Bool {
+        album.id.hasPrefix("smart_")
+    }
+
+    var body: some View {
+        AsyncLandscapeOverlayLockupCard(
+            taskId: coverTaskId,
+            title: album.albumName,
+            subtitle: subtitle,
+            leadingIconName: isSmartAlbum ? album.iconName : nil,
+            primaryMetadata: AlbumMetadataFormatter.photoCount(album.assetCount),
+            secondaryMetadata: AlbumMetadataFormatter.dateSummary(for: album),
+            trailingStatusIconNames: trailingStatusIconNames,
+            fallbackIconName: album.iconName,
+            fallbackTint: album.gridColor ?? .secondary,
+            cardSize: cardSize
+        ) {
+            await thumbnailProvider.loadCoverThumbnail(for: album)
+        }
+    }
+
+    private var subtitle: String {
+        if let description = album.description, !description.isEmpty {
+            return description
+        }
+
+        if album.id == "smart_favorites" {
+            return "Favorite photos and videos"
+        }
+
+        if album.id == "smart_locked" {
+            return "Items protected by your locked folder PIN"
+        }
+
+        if album.shared, let sharingText = album.sharingText {
+            return "Shared by \(sharingText)"
+        }
+
+        if let ownerName = album.owner?.name, !ownerName.isEmpty {
+            return "Album by \(ownerName)"
+        }
+
+        return "Album"
+    }
+
+    private var coverTaskId: String {
+        "\(album.id)-\(album.albumThumbnailAssetId ?? "none")"
+    }
+
+    private var trailingStatusIconNames: [String] {
+        var icons: [String] = []
+
+        if album.shared {
+            icons.append("person.2.fill")
+        }
+
+        if album.hasSharedLink {
+            icons.append("link")
+        }
+
+        return icons
+    }
+}
+
+private enum AlbumMetadataFormatter {
+    static func photoCount(_ count: Int) -> String {
+        let formatted = count.formatted(.number)
+        return count == 1 ? "\(formatted) photo" : "\(formatted) photos"
+    }
+
+    static func dateSummary(for album: ImmichAlbum) -> String? {
+        if let startDate = album.startDate, let endDate = album.endDate {
+            return "\(shortDate(startDate)) - \(shortDate(endDate))"
+        }
+
+        return "Updated \(shortDate(album.lastModifiedAssetTimestamp ?? album.updatedAt))"
+    }
+
+    private static func shortDate(_ value: String) -> String {
+        DateFormatter.formatSpecificISO8601(value, includeTime: false)
     }
 }
 
@@ -342,13 +520,13 @@ struct AlbumDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var albumAssets: [ImmichAsset] = []
     @State private var slideshowTrigger: Bool = false
-    
+
     var body: some View {
         NavigationView {
             ZStack {
                 Color.black
                     .ignoresSafeArea()
-                
+
                 AssetGridView(
                     assetService: assetService,
                     authService: authService,
@@ -375,7 +553,7 @@ struct AlbumDetailView: View {
                     }
                     .disabled(albumAssets.isEmpty)
                 }
-                
+
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { dismiss() }) {
                         Image(systemName: "xmark.circle")
@@ -399,7 +577,7 @@ struct AlbumDetailView: View {
             print("Album defaul view")
         }
     }
-    
+
     private func createAssetProvider(for album: ImmichAlbum) -> AssetProvider {
         if album.id == "smart_favorites" {
             return AssetProviderFactory.createProvider(
@@ -419,7 +597,7 @@ struct AlbumDetailView: View {
             )
         }
     }
-    
+
     private func startSlideshow() {
         // Stop auto-slideshow timer before starting slideshow
         NotificationCenter.default.post(name: NSNotification.Name("stopAutoSlideshowTimer"), object: nil)

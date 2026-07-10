@@ -20,23 +20,22 @@ struct PeopleGridView: View {
     @State private var selectedPerson: Person?
 
     private let pageSize = 100
-    
+
     private var thumbnailProvider: PeopleThumbnailProvider {
         PeopleThumbnailProvider(assetService: assetService)
     }
-    
+
     var body: some View {
-        SharedGridView(
-            items: people,
-            config: .peopleStyle,
+        PeopleLockupGridView(
+            people: people,
             thumbnailProvider: thumbnailProvider,
             isLoading: isLoading,
             errorMessage: errorMessage,
-            onItemSelected: { person in
+            onPersonSelected: { person in
                 print("Person selected: \(person.id)")
                 selectedPerson = person
             },
-            onItemAppear: loadMorePeopleIfNeeded,
+            onPersonAppear: loadMorePeopleIfNeeded,
             onRetry: loadPeople
         )
         .fullScreenCover(item: $selectedPerson) { person in
@@ -49,23 +48,23 @@ struct PeopleGridView: View {
             }
         }
     }
-    
+
     private func loadPeople() {
         print("PeopleGridView: loadPeople called - isAuthenticated: \(authService.isAuthenticated)")
         guard authService.isAuthenticated else {
             errorMessage = "Not authenticated. Please check your credentials."
             return
         }
-        
+
         print("Loading people - isAuthenticated: \(authService.isAuthenticated), baseURL: \(authService.baseURL)")
-        
+
         isLoading = true
         isLoadingMore = false
         currentPage = 1
         hasNextPage = false
         errorMessage = nil
         print("PeopleGridView: Set loading state to true")
-        
+
         Task {
             do {
                 let response = try await peopleService.getPeoplePage(page: 1, size: pageSize)
@@ -119,6 +118,169 @@ struct PeopleGridView: View {
     }
 }
 
+private struct PeopleLockupGridView: View {
+    let people: [Person]
+    let thumbnailProvider: PeopleThumbnailProvider
+    let isLoading: Bool
+    let errorMessage: String?
+    let onPersonSelected: (Person) -> Void
+    let onPersonAppear: (Person) -> Void
+    let onRetry: () -> Void
+
+    private let cardWidth: CGFloat = 380
+    private let cardHeight: CGFloat = 380
+
+    private let columns = [
+        GridItem(.fixed(380), spacing: 30),
+        GridItem(.fixed(380), spacing: 30),
+        GridItem(.fixed(380), spacing: 30),
+        GridItem(.fixed(380), spacing: 30)
+    ]
+
+    var body: some View {
+        ZStack {
+            SharedGradientBackground()
+
+            if isLoading {
+                ProgressView("Loading people...")
+                    .foregroundColor(.white)
+                    .scaleEffect(1.5)
+            } else if let errorMessage {
+                VStack(spacing: 14) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 60))
+                        .foregroundColor(.orange)
+                    Text("Error")
+                        .font(.title)
+                        .foregroundColor(.white)
+                    Text(errorMessage)
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 80)
+                    Button("Retry", action: onRetry)
+                        .buttonStyle(.borderedProminent)
+                }
+            } else if people.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "person.crop.circle")
+                        .font(.system(size: 60))
+                        .foregroundColor(.gray)
+                    Text("No People")
+                        .font(.title)
+                        .foregroundColor(.white)
+                    Text("People recognized by Immich will appear here.")
+                        .foregroundColor(.gray)
+                }
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: columns, alignment: .center, spacing: 30) {
+                        ForEach(people) { person in
+                            Button {
+                                onPersonSelected(person)
+                            } label: {
+                                PersonLockupCard(
+                                    person: person,
+                                    thumbnailProvider: thumbnailProvider,
+                                    cardSize: CGSize(width: cardWidth, height: cardHeight)
+                                )
+                            }
+                            .frame(width: cardWidth, height: cardHeight)
+                            .buttonStyle(CardButtonStyle())
+                            .accessibilityLabel(accessibilityLabel(for: person))
+                            .onAppear {
+                                onPersonAppear(person)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 72)
+                    .padding(.vertical, 48)
+                }
+            }
+        }
+    }
+
+    private func accessibilityLabel(for person: Person) -> String {
+        var parts = [PeopleMetadataFormatter.accessibilityName(for: person)]
+
+        if person.isFavorite == true {
+            parts.append("Favorite")
+        }
+
+        if person.isHidden {
+            parts.append("Hidden")
+        }
+
+        return parts.joined(separator: ", ")
+    }
+}
+
+private struct PersonLockupCard: View {
+    let person: Person
+    let thumbnailProvider: PeopleThumbnailProvider
+    let cardSize: CGSize
+
+    var body: some View {
+        AsyncLandscapeOverlayLockupCard(
+            taskId: coverTaskId,
+            title: PeopleMetadataFormatter.displayName(for: person),
+            subtitle: subtitle,
+            leadingIconName: nil,
+            primaryMetadata: nil,
+            secondaryMetadata: PeopleMetadataFormatter.updatedDate(for: person),
+            trailingStatusIconNames: trailingStatusIconNames,
+            fallbackIconName: "person.crop.rectangle",
+            fallbackTint: person.gridColor ?? .secondary,
+            cardSize: cardSize
+        ) {
+            await thumbnailProvider.loadCoverThumbnail(for: person)
+        }
+    }
+
+    private var subtitle: String? {
+        if let birthDate = person.birthDate, !birthDate.isEmpty {
+            return DateFormatter.formatSpecificISO8601(birthDate, includeTime: false)
+        }
+
+        return nil
+    }
+
+    private var coverTaskId: String {
+        "\(person.id)-\(person.thumbnailPath)"
+    }
+
+    private var trailingStatusIconNames: [String] {
+        var icons: [String] = []
+
+        if person.isFavorite == true {
+            icons.append("heart.fill")
+        }
+
+        if person.isHidden {
+            icons.append("eye.slash.fill")
+        }
+
+        return icons
+    }
+}
+
+private enum PeopleMetadataFormatter {
+    static func displayName(for person: Person) -> String {
+        person.name
+    }
+
+    static func accessibilityName(for person: Person) -> String {
+        person.name.isEmpty ? "Unnamed person" : person.name
+    }
+
+    static func updatedDate(for person: Person) -> String? {
+        guard let updatedAt = person.updatedAt, !updatedAt.isEmpty else {
+            return nil
+        }
+
+        return "Updated \(DateFormatter.formatSpecificISO8601(updatedAt, includeTime: false))"
+    }
+}
+
 
 struct PersonPhotosView: View {
     let person: Person
@@ -128,13 +290,13 @@ struct PersonPhotosView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var personAssets: [ImmichAsset] = []
     @State private var slideshowTrigger: Bool = false
-    
+
     var body: some View {
         NavigationView {
             ZStack {
                 Color.black
                     .ignoresSafeArea()
-                
+
                 AssetGridView(
                     assetService: assetService,
                     authService: authService,
@@ -163,7 +325,7 @@ struct PersonPhotosView: View {
                     }
                     .disabled(personAssets.isEmpty)
                 }
-                
+
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Done") {
                         dismiss()
@@ -176,7 +338,7 @@ struct PersonPhotosView: View {
             SlideshowView(albumId: nil, personId: person.id, tagId: nil, city: nil, startingIndex: 0, isFavorite: false)
         }
     }
-    
+
     private func startSlideshow() {
         // Stop auto-slideshow timer before starting slideshow
         NotificationCenter.default.post(name: NSNotification.Name("stopAutoSlideshowTimer"), object: nil)

@@ -105,6 +105,29 @@ class AlbumThumbnailProvider: ThumbnailProvider {
             return []
         }
     }
+
+    func loadCoverThumbnail(for album: ImmichAlbum) async -> UIImage? {
+        guard album.id != "smart_locked" else { return nil }
+
+        if let staticThumbnail = await loadStaticThumbnail(for: album) {
+            return staticThumbnail
+        }
+
+        do {
+            let albumProvider = AlbumAssetProvider(assetService: assetService, albumId: album.id)
+            let searchResult = try await albumProvider.fetchAssets(page: 1, limit: 1)
+            guard let asset = searchResult.assets.first(where: { $0.type == .image }) else {
+                return nil
+            }
+
+            return try await thumbnailCache.getThumbnail(for: asset.id, size: "thumbnail") {
+                try await self.assetService.loadImage(assetId: asset.id, size: "thumbnail")
+            }
+        } catch {
+            print("Failed to load cover thumbnail for album \(album.id): \(error)")
+            return nil
+        }
+    }
 }
 
 // MARK: - People Thumbnail Provider
@@ -150,6 +173,10 @@ class PeopleThumbnailProvider: ThumbnailProvider {
             print("Failed to fetch assets for person \(person.id): \(error)")
             return []
         }
+    }
+
+    func loadCoverThumbnail(for person: Person) async -> UIImage? {
+        await loadStaticThumbnail(for: person)
     }
 
     private func shouldUseStaticThumbnail() -> Bool {

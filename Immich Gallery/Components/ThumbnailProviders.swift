@@ -241,6 +241,10 @@ class TagThumbnailProvider: ThumbnailProvider {
         }
     }
 
+    func loadCoverThumbnail(for tag: Tag) async -> UIImage? {
+        await loadStaticThumbnail(for: tag)
+    }
+
     private func shouldUseStaticThumbnail() -> Bool {
         return !UserDefaults.standard.enableThumbnailAnimation
     }
@@ -271,11 +275,23 @@ class FolderThumbnailProvider: ThumbnailProvider {
     func loadThumbnails(for item: GridDisplayable) async -> [UIImage] {
         guard let folder = item as? ImmichFolder else { return [] }
 
-        if let inFlight = await coordinator.inFlightTask(for: folder.path) {
+        if let thumbnail = await loadCoverThumbnail(for: folder) {
+            return [thumbnail]
+        }
+
+        return []
+    }
+
+    func loadCoverThumbnail(for folder: ImmichFolder) async -> UIImage? {
+        return await loadCoverThumbnail(for: folder.path)
+    }
+
+    private func loadCoverThumbnail(for path: String) async -> UIImage? {
+        if let inFlight = await coordinator.inFlightTask(for: path) {
             if let thumbnail = await inFlight.value {
-                return [thumbnail]
+                return thumbnail
             }
-            return []
+            return nil
         }
 
         let task = Task<UIImage?, Never> {
@@ -283,21 +299,17 @@ class FolderThumbnailProvider: ThumbnailProvider {
             let thumbnail = await loadSingleThumbnail(
                 assetService: assetService,
                 thumbnailCache: thumbnailCache,
-                folderPath: folder.path
+                folderPath: path
             )
             await coordinator.releaseSlot()
             return thumbnail
         }
 
-        await coordinator.setInFlightTask(task, for: folder.path)
+        await coordinator.setInFlightTask(task, for: path)
         let thumbnail = await task.value
-        await coordinator.clearInFlightTask(for: folder.path)
+        await coordinator.clearInFlightTask(for: path)
 
-        if let thumbnail {
-            return [thumbnail]
-        }
-
-        return []
+        return thumbnail
     }
 }
 

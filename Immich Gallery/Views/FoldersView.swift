@@ -32,16 +32,15 @@ struct FoldersView: View {
     }
     
     var body: some View {
-        SharedGridView(
-            items: visibleFolders,
-            config: .foldersStyle,
+        FolderLockupGridView(
+            folders: visibleFolders,
             thumbnailProvider: thumbnailProvider,
             isLoading: isLoading,
             errorMessage: errorMessage,
-            onItemSelected: { folder in
+            onFolderSelected: { folder in
                 selectedFolder = folder
             },
-            onItemAppear: { folder in
+            onFolderAppear: { folder in
                 loadNextFolderBatchIfNeeded(currentItem: folder)
             },
             onRetry: {
@@ -117,6 +116,132 @@ struct FoldersView: View {
         DispatchQueue.main.async {
             isAppendingFolders = false
         }
+    }
+}
+
+private struct FolderLockupGridView: View {
+    let folders: [ImmichFolder]
+    let thumbnailProvider: FolderThumbnailProvider
+    let isLoading: Bool
+    let errorMessage: String?
+    let onFolderSelected: (ImmichFolder) -> Void
+    let onFolderAppear: (ImmichFolder) -> Void
+    let onRetry: () -> Void
+
+    private let cardWidth: CGFloat = 500
+    private let cardHeight: CGFloat = 300
+
+    private let columns = [
+        GridItem(.fixed(500), spacing: 30),
+        GridItem(.fixed(500), spacing: 30),
+        GridItem(.fixed(500), spacing: 30)
+    ]
+
+    var body: some View {
+        ZStack {
+            SharedGradientBackground()
+
+            if isLoading {
+                ProgressView("Loading folders...")
+                    .foregroundColor(.white)
+                    .scaleEffect(1.5)
+            } else if let errorMessage {
+                VStack(spacing: 14) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 60))
+                        .foregroundColor(.orange)
+                    Text("Error")
+                        .font(.title)
+                        .foregroundColor(.white)
+                    Text(errorMessage)
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 80)
+                    Button("Retry", action: onRetry)
+                        .buttonStyle(.borderedProminent)
+                }
+            } else if folders.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "folder")
+                        .font(.system(size: 60))
+                        .foregroundColor(.gray)
+                    Text("No Folders")
+                        .font(.title)
+                        .foregroundColor(.white)
+                    Text("Folders with indexed assets will appear here.")
+                        .foregroundColor(.gray)
+                }
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: columns, alignment: .center, spacing: 30) {
+                        ForEach(folders) { folder in
+                            Button {
+                                onFolderSelected(folder)
+                            } label: {
+                                FolderLockupCard(
+                                    folder: folder,
+                                    thumbnailProvider: thumbnailProvider,
+                                    cardSize: CGSize(width: cardWidth, height: cardHeight)
+                                )
+                            }
+                            .frame(width: cardWidth, height: cardHeight)
+                            .buttonStyle(CardButtonStyle())
+                            .accessibilityLabel(accessibilityLabel(for: folder))
+                            .onAppear {
+                                onFolderAppear(folder)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 72)
+                    .padding(.vertical, 48)
+                }
+            }
+        }
+    }
+
+    private func accessibilityLabel(for folder: ImmichFolder) -> String {
+        let title = FolderMetadataFormatter.displayName(for: folder)
+        if let subtitle = FolderMetadataFormatter.subtitle(for: folder) {
+            return "\(title), \(subtitle)"
+        }
+        return title
+    }
+}
+
+private struct FolderLockupCard: View {
+    let folder: ImmichFolder
+    let thumbnailProvider: FolderThumbnailProvider
+    let cardSize: CGSize
+
+    var body: some View {
+        AsyncLandscapeOverlayLockupCard(
+            taskId: folder.path,
+            title: FolderMetadataFormatter.displayName(for: folder),
+            subtitle: nil,
+            leadingIconName: folder.iconName,
+            primaryMetadata: FolderMetadataFormatter.pathMetadata(for: folder),
+            secondaryMetadata: nil,
+            trailingStatusIconNames: [],
+            fallbackIconName: folder.iconName,
+            fallbackTint: folder.gridColor ?? .secondary,
+            cardSize: cardSize
+        ) {
+            await thumbnailProvider.loadCoverThumbnail(for: folder)
+        }
+    }
+}
+
+private enum FolderMetadataFormatter {
+    static func displayName(for folder: ImmichFolder) -> String {
+        folder.primaryTitle.isEmpty ? folder.path : folder.primaryTitle
+    }
+
+    static func subtitle(for folder: ImmichFolder) -> String? {
+        folder.path == displayName(for: folder) ? nil : folder.path
+    }
+
+    static func pathMetadata(for folder: ImmichFolder) -> String? {
+        folder.path == displayName(for: folder) ? nil : folder.path
     }
 }
 

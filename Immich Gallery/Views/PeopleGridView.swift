@@ -28,6 +28,7 @@ struct PeopleGridView: View {
     var body: some View {
         PeopleLockupGridView(
             people: people,
+            peopleService: peopleService,
             thumbnailProvider: thumbnailProvider,
             isLoading: isLoading,
             errorMessage: errorMessage,
@@ -120,6 +121,7 @@ struct PeopleGridView: View {
 
 private struct PeopleLockupGridView: View {
     let people: [Person]
+    let peopleService: PeopleService
     let thumbnailProvider: PeopleThumbnailProvider
     let isLoading: Bool
     let errorMessage: String?
@@ -180,6 +182,7 @@ private struct PeopleLockupGridView: View {
                             } label: {
                                 PersonLockupCard(
                                     person: person,
+                                    peopleService: peopleService,
                                     thumbnailProvider: thumbnailProvider,
                                     cardSize: CGSize(width: cardWidth, height: cardHeight)
                                 )
@@ -216,32 +219,31 @@ private struct PeopleLockupGridView: View {
 
 private struct PersonLockupCard: View {
     let person: Person
+    let peopleService: PeopleService
     let thumbnailProvider: PeopleThumbnailProvider
     let cardSize: CGSize
 
     var body: some View {
-        AsyncLandscapeOverlayLockupCard(
-            taskId: coverTaskId,
-            title: PeopleMetadataFormatter.displayName(for: person),
-            subtitle: subtitle,
-            leadingIconName: nil,
-            primaryMetadata: nil,
-            secondaryMetadata: PeopleMetadataFormatter.updatedDate(for: person),
-            trailingStatusIconNames: trailingStatusIconNames,
-            fallbackIconName: "person.crop.rectangle",
-            fallbackTint: person.gridColor ?? .secondary,
-            cardSize: cardSize
-        ) {
-            await thumbnailProvider.loadCoverThumbnail(for: person)
-        }
-    }
+        ZStack(alignment: .topLeading) {
+            AsyncLandscapeOverlayLockupCard(
+                taskId: coverTaskId,
+                title: PeopleMetadataFormatter.displayName(for: person),
+                subtitle: nil,
+                leadingIconName: nil,
+                primaryMetadata: nil,
+                secondaryMetadata: nil,
+                trailingStatusIconNames: trailingStatusIconNames,
+                fallbackIconName: "person.crop.rectangle",
+                fallbackTint: person.gridColor ?? .secondary,
+                cardSize: cardSize,
+                topContentLeadingInset: 68
+            ) {
+                await thumbnailProvider.loadCoverThumbnail(for: person)
+            }
 
-    private var subtitle: String? {
-        if let birthDate = person.birthDate, !birthDate.isEmpty {
-            return DateFormatter.formatSpecificISO8601(birthDate, includeTime: false)
+            PersonThumbnailBadge(person: person, peopleService: peopleService)
+                .padding(16)
         }
-
-        return nil
     }
 
     private var coverTaskId: String {
@@ -263,6 +265,53 @@ private struct PersonLockupCard: View {
     }
 }
 
+private struct PersonThumbnailBadge: View {
+    let person: Person
+    let peopleService: PeopleService
+
+    @State private var thumbnail: UIImage?
+    private let thumbnailCache = ThumbnailCache.shared
+
+    var body: some View {
+        ZStack {
+            if let thumbnail {
+                Image(uiImage: thumbnail)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                Image(systemName: "person.fill")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.white.opacity(0.16))
+            }
+        }
+        .frame(width: 58, height: 58)
+        .clipShape(Circle())
+        .overlay {
+            Circle()
+                .stroke(Color.white.opacity(0.72), lineWidth: 2)
+        }
+        .shadow(color: .black.opacity(0.7), radius: 4, x: 0, y: 2)
+        .task(id: person.id) {
+            await loadThumbnail()
+        }
+    }
+
+    private func loadThumbnail() async {
+        do {
+            let loadedThumbnail = try await thumbnailCache.getThumbnail(for: "person-\(person.id)-\(person.thumbnailPath)", size: "face") {
+                try await peopleService.loadPersonThumbnail(personId: person.id)
+            }
+            await MainActor.run {
+                thumbnail = loadedThumbnail
+            }
+        } catch {
+            print("Failed to load person thumbnail for \(person.id): \(error)")
+        }
+    }
+}
+
 private enum PeopleMetadataFormatter {
     static func displayName(for person: Person) -> String {
         person.name
@@ -272,13 +321,6 @@ private enum PeopleMetadataFormatter {
         person.name.isEmpty ? "Unnamed person" : person.name
     }
 
-    static func updatedDate(for person: Person) -> String? {
-        guard let updatedAt = person.updatedAt, !updatedAt.isEmpty else {
-            return nil
-        }
-
-        return "Updated \(DateFormatter.formatSpecificISO8601(updatedAt, includeTime: false))"
-    }
 }
 
 

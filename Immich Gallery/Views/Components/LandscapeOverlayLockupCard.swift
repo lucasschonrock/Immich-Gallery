@@ -16,6 +16,7 @@ struct AsyncLandscapeOverlayLockupCard<ID: Hashable>: View {
     let fallbackIconName: String
     let fallbackTint: Color
     let cardSize: CGSize
+    var topContentLeadingInset: CGFloat = 0
     let loadImage: () async -> UIImage?
 
     @State private var image: UIImage?
@@ -33,7 +34,8 @@ struct AsyncLandscapeOverlayLockupCard<ID: Hashable>: View {
             isLoadingImage: isLoadingImage,
             fallbackIconName: fallbackIconName,
             fallbackTint: fallbackTint,
-            cardSize: cardSize
+            cardSize: cardSize,
+            topContentLeadingInset: topContentLeadingInset
         )
         .task(id: taskId) {
             await loadCover()
@@ -68,6 +70,7 @@ struct LandscapeOverlayLockupCard: View {
     let fallbackIconName: String
     let fallbackTint: Color
     let cardSize: CGSize
+    var topContentLeadingInset: CGFloat = 0
 
     var body: some View {
         ZStack {
@@ -102,6 +105,7 @@ struct LandscapeOverlayLockupCard: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
+                .padding(.leading, topContentLeadingInset)
                 .shadow(color: .black.opacity(0.85), radius: 3, x: 0, y: 1)
 
                 Spacer(minLength: 0)

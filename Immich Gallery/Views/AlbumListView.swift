@@ -367,7 +367,7 @@ private struct AlbumLockupCard: View {
             subtitle: nil,
             leadingIconName: isSmartAlbum ? album.iconName : nil,
             primaryMetadata: AlbumMetadataFormatter.photoCount(album.assetCount),
-            secondaryMetadata: AlbumMetadataFormatter.dateSummary(for: album),
+            secondaryMetadata: nil,
             trailingStatusIconNames: trailingStatusIconNames,
             fallbackIconName: album.iconName,
             fallbackTint: album.gridColor ?? .secondary,
@@ -402,17 +402,6 @@ private enum AlbumMetadataFormatter {
         return count == 1 ? "\(formatted) photo" : "\(formatted) photos"
     }
 
-    static func dateSummary(for album: ImmichAlbum) -> String? {
-        if let startDate = album.startDate, let endDate = album.endDate {
-            return "\(shortDate(startDate)) - \(shortDate(endDate))"
-        }
-
-        return "Updated \(shortDate(album.lastModifiedAssetTimestamp ?? album.updatedAt))"
-    }
-
-    private static func shortDate(_ value: String) -> String {
-        DateFormatter.formatSpecificISO8601(value, includeTime: false)
-    }
 }
 
 private struct LockedPinEntryPanel: View {

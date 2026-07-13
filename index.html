@@ -263,7 +263,7 @@
                     </a>
 
                     <nav
-                        class="hidden md:flex items-center gap-8 text-sm text-gray-400"
+                        class="hidden lg:flex items-center gap-6 text-sm text-gray-400"
                     >
                         <a
                             href="#reviews"
@@ -279,6 +279,11 @@
                             href="#stats"
                             class="hover:text-white transition-colors"
                             >Stats</a
+                        >
+                        <a
+                            href="#finances"
+                            class="hover:text-white transition-colors"
+                            >Finances</a
                         >
                         <a
                             href="./releases/"
@@ -300,7 +305,7 @@
                     </a>
                 </div>
                 <nav
-                    class="md:hidden mt-3 flex items-center gap-5 overflow-x-auto pb-0.5 text-sm text-gray-400"
+                    class="lg:hidden mt-3 flex items-center gap-5 overflow-x-auto pb-0.5 text-sm text-gray-400"
                 >
                     <a
                         href="#reviews"
@@ -316,6 +321,11 @@
                         href="#stats"
                         class="shrink-0 hover:text-white transition-colors"
                         >Stats</a
+                    >
+                    <a
+                        href="#finances"
+                        class="shrink-0 hover:text-white transition-colors"
+                        >Finances</a
                     >
                     <a
                         href="./releases/"
@@ -746,6 +756,108 @@
             </div>
         </section>
 
+        <!-- Financial Transparency Section -->
+        <section id="finances" class="py-20 scroll-mt-24">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="text-center mb-10">
+                    <h3 class="text-3xl md:text-4xl font-bold">
+                        Financial Transparency
+                    </h3>
+                </div>
+
+                <article
+                    class="max-w-4xl mx-auto bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl"
+                >
+                    <div>
+                        <div
+                            class="flex flex-col md:flex-row md:items-end md:justify-between gap-5"
+                        >
+                            <div>
+                                <p
+                                    class="text-sm font-semibold uppercase tracking-[0.18em] text-gray-400 mb-3"
+                                >
+                                    Overall loss
+                                </p>
+                                <div
+                                    class="flex flex-wrap items-end gap-x-3 gap-y-1"
+                                >
+                                    <p
+                                        class="text-4xl md:text-5xl font-extrabold tracking-tight text-coral tabular-nums"
+                                    >
+                                        &minus;$188.69
+                                    </p>
+                                    <p class="text-gray-400 pb-1">CAD</p>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-400">
+                                As of July 10, 2026
+                            </p>
+                        </div>
+
+                        <dl class="mt-10">
+                            <div
+                                class="flex items-center justify-between text-sm mb-3"
+                            >
+                                <dt class="text-gray-400">Income</dt>
+                                <dd
+                                    class="font-semibold text-teal tabular-nums"
+                                >
+                                    $77.87 CAD
+                                </dd>
+                            </div>
+                            <div
+                                class="h-2 rounded-full bg-white/10 overflow-hidden"
+                                aria-hidden="true"
+                            >
+                                <div
+                                    class="h-full w-[29%] rounded-full bg-teal"
+                                ></div>
+                            </div>
+
+                            <div
+                                class="flex items-center justify-between text-sm mt-6 mb-3"
+                            >
+                                <dt class="text-gray-400">
+                                    Developer account cost
+                                </dt>
+                                <dd
+                                    class="font-semibold text-coral-light tabular-nums"
+                                >
+                                    $266.56 CAD
+                                </dd>
+                            </div>
+                            <div
+                                class="h-2 rounded-full bg-white/10 overflow-hidden"
+                                aria-hidden="true"
+                            >
+                                <div
+                                    class="h-full w-full rounded-full bg-coral"
+                                ></div>
+                            </div>
+                        </dl>
+
+                        <div
+                            class="mt-10 pt-6 border-t border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-5"
+                        >
+                            <p
+                                class="text-sm text-gray-400 leading-relaxed max-w-xl"
+                            >
+                                Income reflects Buy Me a Coffee support.
+                                Developer account costs reflect two charges of
+                                $133.28 CAD.
+                            </p>
+                            <a
+                                href="https://www.buymeacoffee.com/zzpr69dnqtr"
+                                class="shrink-0 inline-flex items-center justify-center gap-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white px-5 py-3 rounded-full font-semibold transition-all duration-300 hover:scale-105"
+                            >
+                                ☕ Make the chart less red
+                            </a>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
         <!-- Project Stats Section -->
         <section id="stats" class="py-20">
             <div class="max-w-7xl mx-auto px-4 text-center">
@@ -759,22 +871,13 @@
                         Project Stats
                     </h3>
                 </div>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
+                <div class="max-w-3xl mx-auto">
                     <div
                         class="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl"
                     >
                         <img
                             src="https://repobeats.axiom.co/api/embed/3fea253de89fc88824c16adb77a456f7e7d657b7.svg"
                             alt="Repobeats analytics"
-                            class="w-full h-auto rounded-2xl"
-                        />
-                    </div>
-                    <div
-                        class="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl"
-                    >
-                        <img
-                            src="https://api.star-history.com/svg?repos=mensadilabs/Immich-Gallery&type=Timeline&theme=dark"
-                            alt="Star History Chart"
                             class="w-full h-auto rounded-2xl"
                         />
                     </div>

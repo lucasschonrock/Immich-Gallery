@@ -39,6 +39,7 @@ struct UserDefaultsKeys {
     static let slideshowBackgroundColor = "slideshowBackgroundColor"
     static let showTagsTab = "showTagsTab"
     static let showFoldersTab = "showFoldersTab"
+    static let folderNameSortOrder = "folderNameSortOrder"
     static let use24HourClock = "use24HourClock"
     static let enableReflectionsInSlideshow = "enableReflectionsInSlideshow"
     static let enableKenBurnsEffect = "enableKenBurnsEffect"

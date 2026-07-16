@@ -196,6 +196,36 @@ private enum FolderBrowserItem: Identifiable, Hashable {
     }
 }
 
+enum FolderNameSortOrder: String {
+    case ascending
+    case descending
+
+    var shortLabel: String {
+        switch self {
+        case .ascending: "A–Z"
+        case .descending: "Z–A"
+        }
+    }
+
+    var accessibilityValue: String {
+        switch self {
+        case .ascending: "Ascending, A to Z"
+        case .descending: "Descending, Z to A"
+        }
+    }
+
+    var toggled: FolderNameSortOrder {
+        self == .ascending ? .descending : .ascending
+    }
+
+    func sorted(_ folders: [FolderHierarchyNode]) -> [FolderHierarchyNode] {
+        folders.sorted { first, second in
+            let comparison = first.name.localizedStandardCompare(second.name)
+            return self == .ascending ? comparison == .orderedAscending : comparison == .orderedDescending
+        }
+    }
+}
+
 private struct FolderHierarchyView: View {
     let root: FolderHierarchyNode?
     let thumbnailProvider: FolderThumbnailProvider
@@ -206,6 +236,7 @@ private struct FolderHierarchyView: View {
 
     @State private var navigationPath: [FolderHierarchyNode] = []
     @FocusState private var focusedItemID: String?
+    @AppStorage(UserDefaultsKeys.folderNameSortOrder) private var folderNameSortOrderValue = FolderNameSortOrder.ascending.rawValue
 
     private let cardWidth: CGFloat = 500
     private let cardHeight: CGFloat = 300
@@ -221,11 +252,15 @@ private struct FolderHierarchyView: View {
 
     private var items: [FolderBrowserItem] {
         guard let currentNode else { return [] }
-        var result = currentNode.children.map(FolderBrowserItem.folder)
+        var result = folderNameSortOrder.sorted(currentNode.children).map(FolderBrowserItem.folder)
         if !navigationPath.isEmpty || currentNode.indexedFolder != nil {
             result.insert(.allPhotos(currentNode), at: 0)
         }
         return result
+    }
+
+    private var folderNameSortOrder: FolderNameSortOrder {
+        FolderNameSortOrder(rawValue: folderNameSortOrderValue) ?? .ascending
     }
 
     var body: some View {
@@ -290,17 +325,35 @@ private struct FolderHierarchyView: View {
     private var header: some View {
         HStack(spacing: 10) {
             Image(systemName: navigationPath.isEmpty ? "externaldrive.fill" : "folder.fill")
+                .foregroundStyle(.white.opacity(0.68))
             Text(currentNode?.path ?? "")
                 .lineLimit(1)
                 .truncationMode(.middle)
+                .foregroundStyle(.white.opacity(0.68))
 
             Spacer(minLength: 30)
 
             Text(folderCountLabel)
                 .lineLimit(1)
+                .foregroundStyle(.white.opacity(0.68))
+
+            Spacer()
+                .frame(width: 28)
+
+            Button {
+                folderNameSortOrderValue = folderNameSortOrder.toggled.rawValue
+            } label: {
+                Label(folderNameSortOrder.shortLabel, systemImage: "arrow.up.arrow.down")
+                    .frame(width: 132)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .frame(width: 180, alignment: .trailing)
+            .accessibilityLabel("Sort folders by name")
+            .accessibilityValue(folderNameSortOrder.accessibilityValue)
+            .accessibilityHint("Toggles the folder name sort direction")
         }
         .font(.body.weight(.medium))
-        .foregroundStyle(.white.opacity(0.68))
         .padding(.horizontal, 10)
     }
 

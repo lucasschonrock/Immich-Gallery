@@ -61,4 +61,16 @@ struct FolderHierarchyBuilderTests {
     @Test func returnsNilForEmptyLibrary() {
         #expect(FolderHierarchyBuilder.build(from: []) == nil)
     }
+
+    @Test func sortsVisibleFoldersByNameInEitherDirection() {
+        let root = FolderHierarchyBuilder.build(from: [
+            ImmichFolder(path: "/photos/Folder 10"),
+            ImmichFolder(path: "/photos/Folder 2"),
+            ImmichFolder(path: "/photos/Archive")
+        ])
+        let children = root?.children ?? []
+
+        #expect(FolderNameSortOrder.ascending.sorted(children).map(\.name) == ["Archive", "Folder 2", "Folder 10"])
+        #expect(FolderNameSortOrder.descending.sorted(children).map(\.name) == ["Folder 10", "Folder 2", "Archive"])
+    }
 }

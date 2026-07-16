@@ -315,6 +315,10 @@ private struct FolderHierarchyView: View {
                         .accessibilityHint(accessibilityHint(for: item))
                     }
                 }
+                // The sort control sits on the far right while a one-item grid
+                // starts on the far left. Treat the grid as one focus region so
+                // the focus engine can bridge that empty horizontal space.
+                .focusSection()
             }
             .padding(.horizontal, 72)
             .padding(.top, 38)
@@ -355,6 +359,9 @@ private struct FolderHierarchyView: View {
         }
         .font(.body.weight(.medium))
         .padding(.horizontal, 10)
+        // Pair with the grid's focus section so navigation across the wide
+        // header/content gap works in both directions with only one folder.
+        .focusSection()
     }
 
     private var folderCountLabel: String {

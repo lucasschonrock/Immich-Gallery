@@ -230,7 +230,7 @@ struct ContentView: View {
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .onReceive(NotificationCenter.default.publisher(for: .refreshAllTabs)) { _ in
-            // Refresh all tabs by generating a new UUID
+            folderService.invalidateCache()
             refreshTrigger = UUID()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name(NotificationNames.openAsset))) { notification in

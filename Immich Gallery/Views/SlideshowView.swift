@@ -207,7 +207,7 @@ struct SlideshowView: View {
             } else {
                 // Main image display
                 if isLoading {
-                    ProgressView("Loading...")
+                    ProgressView("Starting slideshow...")
                         .foregroundColor(.white)
                         .scaleEffect(1.5)
                 } else if let imageData = currentImageData {

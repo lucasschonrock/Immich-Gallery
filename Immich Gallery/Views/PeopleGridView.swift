@@ -383,8 +383,7 @@ struct PersonPhotosView: View {
     }
 
     private func startSlideshow() {
-        // Stop auto-slideshow timer before starting slideshow
-        NotificationCenter.default.post(name: NSNotification.Name("stopAutoSlideshowTimer"), object: nil)
+        NotificationCenter.default.post(name: NSNotification.Name(NotificationNames.pauseInactivityMonitoring), object: nil)
         slideshowTrigger = true
     }
 }

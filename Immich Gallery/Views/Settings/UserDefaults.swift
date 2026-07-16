@@ -100,7 +100,7 @@ extension UserDefaults {
     }
     
     var photosViewMode: String {
-        get { string(forKey: UserDefaultsKeys.photosViewMode) ?? "grid" }
+        get { string(forKey: UserDefaultsKeys.photosViewMode) ?? "timeline" }
         set { set(newValue, forKey: UserDefaultsKeys.photosViewMode) }
     }
 

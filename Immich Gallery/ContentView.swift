@@ -76,7 +76,7 @@ struct ContentView: View {
     @AppStorage(UserDefaultsKeys.defaultStartupTab) private var defaultStartupTab = "photos"
     @AppStorage(UserDefaultsKeys.lastSeenVersion) private var lastSeenVersion = ""
     @AppStorage(UserDefaultsKeys.navigationStyle) private var navigationStyle = NavigationStyle.tabs.rawValue
-    @AppStorage(UserDefaultsKeys.photosViewMode) private var photosViewMode = "grid"
+    @AppStorage(UserDefaultsKeys.photosViewMode) private var photosViewMode = "timeline"
     @State private var searchTabHighlighted = false
     @State private var deepLinkAssetId: String?
     

@@ -15,6 +15,7 @@ import SwiftUI
 struct TimelineView: View {
     private enum ToolbarButton: Hashable {
         case filter
+        case resetFilters
         case sort
     }
 
@@ -206,6 +207,15 @@ struct TimelineView: View {
             .buttonStyle(.bordered)
             .focused($focusedToolbarButton, equals: .filter)
 
+            Button(action: resetFilters) {
+                Label("Reset", systemImage: "arrow.counterclockwise")
+            }
+            .buttonStyle(.bordered)
+            .focused($focusedToolbarButton, equals: .resetFilters)
+            .disabled(!hasActiveFilter)
+            .accessibilityLabel("Reset timeline filters")
+            .accessibilityHint("Clears all active photo filters")
+
             Button(action: toggleSortOrder) {
                 Label(sortOrderLabel, systemImage: "arrow.up.arrow.down")
             }
@@ -223,6 +233,13 @@ struct TimelineView: View {
 
     private func toggleSortOrder() {
         allPhotosSortOrder = allPhotosSortOrder == "asc" ? "desc" : "asc"
+        reloadTimeline()
+    }
+
+    private func resetFilters() {
+        guard hasActiveFilter else { return }
+        filters.reset()
+        filters.save()
         reloadTimeline()
     }
 

@@ -39,8 +39,7 @@ struct AssetGridView: View {
     @State private var showingSlideshow = false
     @State private var showingFilterModal = false
     @State private var showingSortModal = false
-    @State private var filterCity: String? = UserDefaults.standard.allPhotosFilterCity
-    @State private var filterYear: Int? = UserDefaults.standard.allPhotosFilterYear
+    @State private var filters = PhotoFilterSelection.saved
 
     init(
         assetService: AssetService,
@@ -246,9 +245,8 @@ struct AssetGridView: View {
         })
         .sheet(isPresented: $showingFilterModal) {
             FilterSettingsView(
-                assetProvider: assetProvider,
-                selectedCity: $filterCity,
-                selectedYear: $filterYear
+                assetService: assetService,
+                selection: $filters
             ) {
                 applyFilters()
             }
@@ -297,7 +295,7 @@ struct AssetGridView: View {
             Spacer()
 
             Button(action: { showingFilterModal = true }) {
-                let count = (filterCity != nil ? 1 : 0) + (filterYear != nil ? 1 : 0)
+                let count = filters.activeCount
                 Label {
                     Text("Filter \(count > 0 ? "(\(count))" : "")")
                 } icon: {
@@ -355,8 +353,7 @@ struct AssetGridView: View {
     }
 
     private func applyFilters() {
-        UserDefaults.standard.allPhotosFilterCity = filterCity
-        UserDefaults.standard.allPhotosFilterYear = filterYear
+        filters.save()
         showingFilterModal = false
         loadAssets()
     }
@@ -443,7 +440,7 @@ struct AssetGridView: View {
     }
     
     private func getEmptyStateTitle() -> String {
-        if isAllPhotos, (filterCity != nil || filterYear != nil) {
+        if isAllPhotos, filters.activeCount > 0 {
             return "No Results for Filters"
         } else if personId != nil {
             return "No Photos of Person"
@@ -455,7 +452,7 @@ struct AssetGridView: View {
     }
     
     private func getEmptyStateMessage() -> String {
-        if isAllPhotos, (filterCity != nil || filterYear != nil) {
+        if isAllPhotos, filters.activeCount > 0 {
             return "Try adjusting your filter settings."
         } else if personId != nil {
             return "This person has no photos"

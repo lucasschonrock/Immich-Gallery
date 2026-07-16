@@ -62,10 +62,10 @@ enum AppBackgroundStyle: String, CaseIterable {
 
 // Shared background gradient for consistent styling across the app
 struct SharedGradientBackground: View {
-    @AppStorage(UserDefaultsKeys.appBackgroundStyle) private var appBackgroundStyle = AppBackgroundStyle.ocean.rawValue
+    @AppStorage(UserDefaultsKeys.appBackgroundStyle) private var appBackgroundStyle = AppBackgroundStyle.graphite.rawValue
 
     private var selectedStyle: AppBackgroundStyle {
-        AppBackgroundStyle(rawValue: appBackgroundStyle) ?? .ocean
+        AppBackgroundStyle(rawValue: appBackgroundStyle) ?? .graphite
     }
 
     var body: some View {
@@ -125,10 +125,10 @@ struct ColorSelectionButtonStyle: ButtonStyle {
 }
 
 struct SharedOpaqueBackground: View {
-    @AppStorage(UserDefaultsKeys.appBackgroundStyle) private var appBackgroundStyle = AppBackgroundStyle.ocean.rawValue
+    @AppStorage(UserDefaultsKeys.appBackgroundStyle) private var appBackgroundStyle = AppBackgroundStyle.graphite.rawValue
 
     private var selectedStyle: AppBackgroundStyle {
-        AppBackgroundStyle(rawValue: appBackgroundStyle) ?? .ocean
+        AppBackgroundStyle(rawValue: appBackgroundStyle) ?? .graphite
     }
 
     var body: some View {

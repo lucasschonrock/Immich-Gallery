@@ -137,6 +137,59 @@ struct Immich_GalleryTests {
         #expect(years == [2026])
     }
 
+    @Test func timelineBucketsApplyYearAndDateOrderLocally() {
+        let buckets = [
+            TimelineBucket(timeBucket: "2025-12-01T00:00:00.000Z", count: 1),
+            TimelineBucket(timeBucket: "2026-01-01T00:00:00.000Z", count: 1),
+            TimelineBucket(timeBucket: "2026-07-01T00:00:00.000Z", count: 1)
+        ]
+
+        let ascending = TimelineView.filteredAndSortedBuckets(buckets, order: "asc", year: 2026)
+        let descending = TimelineView.filteredAndSortedBuckets(buckets, order: "desc", year: 2026)
+
+        #expect(ascending.map(\.timeBucket) == ["2026-01-01T00:00:00.000Z", "2026-07-01T00:00:00.000Z"])
+        #expect(descending.map(\.timeBucket) == ["2026-07-01T00:00:00.000Z", "2026-01-01T00:00:00.000Z"])
+    }
+
+    @Test func timelineMetadataFilterUsesServerSideDateAndLocationFields() {
+        let request = AssetService.timelineSearchRequest(
+            page: 1,
+            size: 120,
+            order: "desc",
+            city: "Wavre",
+            state: "Wallonia",
+            country: "Belgium",
+            cameraMake: "Apple",
+            cameraModel: "iPhone 17 Pro",
+            lensModel: "iPhone 17 Pro back triple camera",
+            year: 2026
+        )
+
+        #expect(request["page"] as? Int == 1)
+        #expect(request["visibility"] as? String == "timeline")
+        #expect(request["withExif"] as? Bool == true)
+        #expect(request["city"] as? String == "Wavre")
+        #expect(request["state"] as? String == "Wallonia")
+        #expect(request["country"] as? String == "Belgium")
+        #expect(request["make"] as? String == "Apple")
+        #expect(request["model"] as? String == "iPhone 17 Pro")
+        #expect(request["lensModel"] as? String == "iPhone 17 Pro back triple camera")
+        #expect(request["takenAfter"] as? String == "2026-01-01T00:00:00.000Z")
+        #expect(request["takenBefore"] as? String == "2026-12-31T23:59:59.999Z")
+    }
+
+    @Test func timelineMetadataFilterPreservesUnknownSuggestionsAsNull() {
+        let request = AssetService.timelineSearchRequest(
+            page: 1,
+            size: 120,
+            order: "desc",
+            city: SearchSuggestionType.nullValue,
+            year: nil
+        )
+
+        #expect(request["city"] is NSNull)
+    }
+
     private func decodeAsset(durationJSON: String) throws -> ImmichAsset {
         let json = """
         {

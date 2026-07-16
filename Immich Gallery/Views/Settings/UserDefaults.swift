@@ -125,6 +125,31 @@ extension UserDefaults {
         }
     }
 
+    var allPhotosFilterState: String? {
+        get { optionalFilterString(forKey: UserDefaultsKeys.allPhotosFilterState) }
+        set { setOptionalFilterString(newValue, forKey: UserDefaultsKeys.allPhotosFilterState) }
+    }
+
+    var allPhotosFilterCountry: String? {
+        get { optionalFilterString(forKey: UserDefaultsKeys.allPhotosFilterCountry) }
+        set { setOptionalFilterString(newValue, forKey: UserDefaultsKeys.allPhotosFilterCountry) }
+    }
+
+    var allPhotosFilterCameraMake: String? {
+        get { optionalFilterString(forKey: UserDefaultsKeys.allPhotosFilterCameraMake) }
+        set { setOptionalFilterString(newValue, forKey: UserDefaultsKeys.allPhotosFilterCameraMake) }
+    }
+
+    var allPhotosFilterCameraModel: String? {
+        get { optionalFilterString(forKey: UserDefaultsKeys.allPhotosFilterCameraModel) }
+        set { setOptionalFilterString(newValue, forKey: UserDefaultsKeys.allPhotosFilterCameraModel) }
+    }
+
+    var allPhotosFilterLensModel: String? {
+        get { optionalFilterString(forKey: UserDefaultsKeys.allPhotosFilterLensModel) }
+        set { setOptionalFilterString(newValue, forKey: UserDefaultsKeys.allPhotosFilterLensModel) }
+    }
+
     var allPhotosFilterYear: Int? {
         get { object(forKey: UserDefaultsKeys.allPhotosFilterYear) as? Int }
         set {
@@ -142,8 +167,20 @@ extension UserDefaults {
     }
 
     var appBackgroundStyle: String {
-        get { string(forKey: UserDefaultsKeys.appBackgroundStyle) ?? "ocean" }
+        get { string(forKey: UserDefaultsKeys.appBackgroundStyle) ?? "graphite" }
         set { set(newValue, forKey: UserDefaultsKeys.appBackgroundStyle) }
+    }
+
+    private func optionalFilterString(forKey key: String) -> String? {
+        string(forKey: key)
+    }
+
+    private func setOptionalFilterString(_ value: String?, forKey key: String) {
+        if let value, !value.isEmpty {
+            set(value, forKey: key)
+        } else {
+            removeObject(forKey: key)
+        }
     }
     
     var artModeLevel: String {

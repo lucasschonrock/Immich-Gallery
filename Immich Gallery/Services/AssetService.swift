@@ -388,6 +388,11 @@ class AssetService: ObservableObject {
     }
 
     func loadFullImage(asset: ImmichAsset) async throws -> UIImage? {
+        guard asset.type == .image else {
+            print("AssetService: Skipping full image load for non-image asset \(asset.id)")
+            return nil
+        }
+
         // Check if it's a RAW format before loading
         if let mimeType = asset.originalMimeType, isRawFormat(mimeType) {
             print("AssetService: Detected RAW format (\(mimeType)), using server-converted version")

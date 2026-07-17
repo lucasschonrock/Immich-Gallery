@@ -112,6 +112,10 @@ struct SearchView: View {
                                     .buttonStyle(CardButtonStyle())
                                 }
                             }
+                            // Treat the full grid width as a focus destination.
+                            // Without this, a single card in the far-left column
+                            // has no directional path from the search control.
+                            .focusSection()
                             .padding(.horizontal)
                             .padding(.bottom, 40)
                         }

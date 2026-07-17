@@ -39,6 +39,7 @@ struct UserDefaultsKeys {
     static let slideshowBackgroundColor = "slideshowBackgroundColor"
     static let showTagsTab = "showTagsTab"
     static let showFoldersTab = "showFoldersTab"
+    static let folderNameSortOrder = "folderNameSortOrder"
     static let use24HourClock = "use24HourClock"
     static let enableReflectionsInSlideshow = "enableReflectionsInSlideshow"
     static let enableKenBurnsEffect = "enableKenBurnsEffect"
@@ -50,6 +51,11 @@ struct UserDefaultsKeys {
     static let lockupThumbnailMode = "lockupThumbnailMode" // "current" | "random"
     static let allPhotosSortOrder = "allPhotosSortOrder"
     static let allPhotosFilterCity = "allPhotosFilterCity"
+    static let allPhotosFilterState = "allPhotosFilterState"
+    static let allPhotosFilterCountry = "allPhotosFilterCountry"
+    static let allPhotosFilterCameraMake = "allPhotosFilterCameraMake"
+    static let allPhotosFilterCameraModel = "allPhotosFilterCameraModel"
+    static let allPhotosFilterLensModel = "allPhotosFilterLensModel"
     static let allPhotosFilterYear = "allPhotosFilterYear"
     static let hideAllPhotosFilterAndSortButtons = "hideAllPhotosFilterAndSortButtons"
     static let appBackgroundStyle = "appBackgroundStyle"
@@ -75,5 +81,6 @@ struct AppSchemes {
 struct NotificationNames {
     static let openAsset = "OpenAsset"
     static let refreshAllTabs = "refreshAllTabs"
-    static let startAutoSlideshow = "startAutoSlideshow"
+    static let pauseInactivityMonitoring = "pauseInactivityMonitoring"
+    static let resumeInactivityMonitoring = "resumeInactivityMonitoring"
 }

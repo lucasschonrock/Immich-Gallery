@@ -51,10 +51,13 @@ extension Notification.Name {
 
 struct ContentView: View {
     // Auto slideshow state
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage(UserDefaultsKeys.autoSlideshowTimeout) private var autoSlideshowTimeout: Int = 0
     @AppStorage(UserDefaultsKeys.launchIntoSlideshow) private var launchIntoSlideshow: Bool = false
-    @State private var inactivityTimer: Timer? = nil
-    @State private var lastInteractionDate = Date()
+    @State private var inactivityTask: Task<Void, Never>?
+    @State private var isInactivityMonitoringPaused = false
+    @State private var suppressNextTabActivity = false
+    @State private var showingAutoSlideshow = false
     @StateObject private var userManager = UserManager()
     @StateObject private var networkService: NetworkService
     @StateObject private var authService: AuthenticationService
@@ -73,7 +76,7 @@ struct ContentView: View {
     @AppStorage(UserDefaultsKeys.defaultStartupTab) private var defaultStartupTab = "photos"
     @AppStorage(UserDefaultsKeys.lastSeenVersion) private var lastSeenVersion = ""
     @AppStorage(UserDefaultsKeys.navigationStyle) private var navigationStyle = NavigationStyle.tabs.rawValue
-    @AppStorage(UserDefaultsKeys.photosViewMode) private var photosViewMode = "grid"
+    @AppStorage(UserDefaultsKeys.photosViewMode) private var photosViewMode = "timeline"
     @State private var searchTabHighlighted = false
     @State private var deepLinkAssetId: String?
     
@@ -197,15 +200,19 @@ struct ContentView: View {
                     .onAppear {
                         setDefaultTab()
                         checkForAppUpdate()
-                        startInactivityTimer()
+                        recordUserActivity()
                         startLaunchSlideshowIfNeeded()
                     }
                     .onChange(of: selectedTab) { oldValue, newValue in
                         searchTabHighlighted = false
-                        resetInactivityTimer()
+                        if suppressNextTabActivity {
+                            suppressNextTabActivity = false
+                        } else {
+                            recordUserActivity()
+                        }
                     }
                     .onChange(of: autoSlideshowTimeout) { _, _ in
-                        startInactivityTimer()
+                        recordUserActivity()
                     }
                     .onChange(of: showFoldersTab) { _, enabled in
                         if !enabled && selectedTab == TabName.folders.rawValue {
@@ -223,7 +230,7 @@ struct ContentView: View {
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .onReceive(NotificationCenter.default.publisher(for: .refreshAllTabs)) { _ in
-            // Refresh all tabs by generating a new UUID
+            folderService.invalidateCache()
             refreshTrigger = UUID()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name(NotificationNames.openAsset))) { notification in
@@ -242,16 +249,41 @@ struct ContentView: View {
         }
         .contentShape(Rectangle())
         .simultaneousGesture(
-            TapGesture().onEnded { resetInactivityTimer() }
+            TapGesture().onEnded { recordUserActivity() }
         )
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("stopAutoSlideshowTimer"))) { _ in
-            print("ContentView: Stopping auto-slideshow timer")
-            inactivityTimer?.invalidate()
-            inactivityTimer = nil
+        .onReceive(NotificationCenter.default.publisher(for: UIFocusSystem.didUpdateNotification)) { notification in
+            guard
+                let context = notification.userInfo?[UIFocusSystem.focusUpdateContextUserInfoKey] as? UIFocusUpdateContext,
+                !context.focusHeading.isEmpty
+            else { return }
+
+            recordUserActivity()
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("restartAutoSlideshowTimer"))) { _ in
-            print("ContentView: Restarting auto-slideshow timer")
-            resetInactivityTimer()
+        .onReceive(NotificationCenter.default.publisher(for: UIFocusSystem.movementDidFailNotification)) { _ in
+            recordUserActivity()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name(NotificationNames.pauseInactivityMonitoring))) { _ in
+            print("ContentView: Pausing inactivity monitoring")
+            isInactivityMonitoringPaused = true
+            cancelIdleSlideshowTasks()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name(NotificationNames.resumeInactivityMonitoring))) { _ in
+            print("ContentView: Resuming inactivity monitoring")
+            isInactivityMonitoringPaused = false
+            recordUserActivity()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .active:
+                recordUserActivity()
+            case .inactive, .background:
+                cancelIdleSlideshowTasks()
+            @unknown default:
+                cancelIdleSlideshowTasks()
+            }
+        }
+        .onDisappear {
+            cancelIdleSlideshowTasks()
         }
         .fullScreenCover(isPresented: $showWhatsNew) {
             WhatsNewView(onDismiss: {
@@ -259,53 +291,85 @@ struct ContentView: View {
                 lastSeenVersion = getCurrentAppVersion()
             })
         }
-    }
-    
-    // MARK: - Inactivity Timer Logic
-    private func startInactivityTimer() {
-        inactivityTimer?.invalidate()
-        inactivityTimer = nil
-        if autoSlideshowTimeout > 0 {
-            print("ContentView: Starting inactivity timer with timeout: \(autoSlideshowTimeout) minutes")
-            inactivityTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-                let elapsed = Date().timeIntervalSince(lastInteractionDate)
-                if elapsed > Double(autoSlideshowTimeout * 60) {
-                    print("ContentView: Auto-slideshow timeout reached! Elapsed: \(elapsed) seconds")
-                    inactivityTimer?.invalidate()
-                    inactivityTimer = nil
-                    // Switch to Photos tab and start auto slideshow
-                    selectedTab = TabName.photos.rawValue
-                    // Wait 5 seconds for tab switch to complete, then start slideshow
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
-                        NotificationCenter.default.post(name: NSNotification.Name(NotificationNames.startAutoSlideshow), object: nil)
-                    }
-                }
-            }
-        } else {
-            print("ContentView: Auto-slideshow disabled (timeout = 0)")
+        .fullScreenCover(isPresented: $showingAutoSlideshow) {
+            SlideshowView()
         }
     }
     
-    /// Kick off the auto-slideshow right after launch when the user has opted in.
-    /// Reuses the same `startAutoSlideshow` path as the inactivity timer, so the
-    /// All Photos grid resolves the config playlist (or all photos) and presents it.
-    private func startLaunchSlideshowIfNeeded() {
-        guard launchIntoSlideshow else { return }
-        print("ContentView: Launch-into-slideshow enabled, starting slideshow")
-        // Make sure the All Photos grid is the active tab so it handles the notification.
-        selectedTab = TabName.photos.rawValue
-        // Give the tab switch and initial asset load time to settle before presenting.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
-            NotificationCenter.default.post(name: NSNotification.Name(NotificationNames.startAutoSlideshow), object: nil)
+    // MARK: - Inactivity Logic
+    private func recordUserActivity() {
+        guard !isInactivityMonitoringPaused else { return }
+
+        scheduleInactivityCountdown()
+    }
+
+    private func scheduleInactivityCountdown() {
+        inactivityTask?.cancel()
+        inactivityTask = nil
+
+        guard
+            autoSlideshowTimeout > 0,
+            authService.isAuthenticated,
+            scenePhase == .active,
+            !isInactivityMonitoringPaused
+        else { return }
+
+        let timeout = autoSlideshowTimeout
+        print("ContentView: Scheduling auto-slideshow after \(timeout) minutes of inactivity")
+        inactivityTask = Task { @MainActor in
+            do {
+                try await Task.sleep(for: .seconds(timeout * 60))
+            } catch {
+                return
+            }
+
+            guard !Task.isCancelled else { return }
+            inactivityTask = nil
+            handleInactivityTimeout()
         }
     }
 
-    private func resetInactivityTimer() {
-        print("ContentView: Resetting inactivity timer")
-        lastInteractionDate = Date()
-        startInactivityTimer() // Restart the timer
+    private func handleInactivityTimeout() {
+        print("ContentView: Auto-slideshow inactivity timeout reached")
+
+        if selectedTab != TabName.photos.rawValue {
+            suppressNextTabActivity = true
+            selectedTab = TabName.photos.rawValue
+        }
+
+        presentAutoSlideshow()
+    }
+
+    private func cancelIdleSlideshowTasks() {
+        inactivityTask?.cancel()
+        inactivityTask = nil
     }
     
+    /// Kick off the auto-slideshow right after launch when the user has opted in.
+    /// Uses the same root presentation as the inactivity timer, independent of the
+    /// selected Photos view mode.
+    private func startLaunchSlideshowIfNeeded() {
+        guard launchIntoSlideshow else { return }
+        print("ContentView: Launch-into-slideshow enabled, starting slideshow")
+        selectedTab = TabName.photos.rawValue
+        // Give the root view time to finish its initial presentation.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            presentAutoSlideshow()
+        }
+    }
+
+    private func presentAutoSlideshow() {
+        guard
+            authService.isAuthenticated,
+            scenePhase == .active,
+            !showingAutoSlideshow
+        else { return }
+
+        isInactivityMonitoringPaused = true
+        cancelIdleSlideshowTasks()
+        showingAutoSlideshow = true
+    }
+
     private func setDefaultTab() {
         switch defaultStartupTab {
         case "photos":

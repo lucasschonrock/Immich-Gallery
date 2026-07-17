@@ -6,6 +6,17 @@
 import Foundation
 import UIKit
 
+enum SearchSuggestionType: String, CaseIterable {
+    static let nullValue = "__immich_gallery_null_suggestion__"
+
+    case country
+    case state
+    case city
+    case cameraMake = "camera-make"
+    case cameraModel = "camera-model"
+    case cameraLensModel = "camera-lens-model"
+}
+
 /// Service responsible for asset fetching, searching, and image loading
 class AssetService: ObservableObject {
     private let networkService: NetworkService
@@ -20,6 +31,11 @@ class AssetService: ObservableObject {
             ? UserDefaults.standard.allPhotosSortOrder
             : (UserDefaults.standard.string(forKey: "assetSortOrder") ?? "desc")
         let selectedCity = isAllPhotos ? UserDefaults.standard.allPhotosFilterCity : city
+        let selectedState = isAllPhotos ? UserDefaults.standard.allPhotosFilterState : nil
+        let selectedCountry = isAllPhotos ? UserDefaults.standard.allPhotosFilterCountry : nil
+        let selectedCameraMake = isAllPhotos ? UserDefaults.standard.allPhotosFilterCameraMake : nil
+        let selectedCameraModel = isAllPhotos ? UserDefaults.standard.allPhotosFilterCameraModel : nil
+        let selectedLensModel = isAllPhotos ? UserDefaults.standard.allPhotosFilterLensModel : nil
         let selectedYear = isAllPhotos ? UserDefaults.standard.allPhotosFilterYear : nil
         var searchRequest: [String: Any] = [
             "page": page,
@@ -44,9 +60,12 @@ class AssetService: ObservableObject {
         if isFavorite {
             searchRequest["isFavorite"] = true
         }
-        if let selectedCity {
-            searchRequest["city"] = selectedCity
-        }
+        if let value = Self.metadataFilterValue(selectedCity) { searchRequest["city"] = value }
+        if let value = Self.metadataFilterValue(selectedState) { searchRequest["state"] = value }
+        if let value = Self.metadataFilterValue(selectedCountry) { searchRequest["country"] = value }
+        if let value = Self.metadataFilterValue(selectedCameraMake) { searchRequest["make"] = value }
+        if let value = Self.metadataFilterValue(selectedCameraModel) { searchRequest["model"] = value }
+        if let value = Self.metadataFilterValue(selectedLensModel) { searchRequest["lensModel"] = value }
         if let selectedYear, let yearRange = makeYearRange(year: selectedYear) {
             searchRequest["takenAfter"] = yearRange.start
             searchRequest["takenBefore"] = yearRange.end
@@ -84,6 +103,44 @@ class AssetService: ObservableObject {
         return Array(Set(cities)).sorted()
     }
 
+    func fetchSearchSuggestions(
+        type: SearchSuggestionType,
+        country: String? = nil,
+        state: String? = nil,
+        cameraMake: String? = nil,
+        cameraModel: String? = nil,
+        lensModel: String? = nil
+    ) async throws -> [String] {
+        var components = URLComponents()
+        components.path = "/api/search/suggestions"
+        var queryItems = [
+            URLQueryItem(name: "includeNull", value: "true"),
+            URLQueryItem(name: "type", value: type.rawValue),
+        ]
+        if let country = Self.queryFilterValue(country) { queryItems.append(URLQueryItem(name: "country", value: country)) }
+        if let state = Self.queryFilterValue(state) { queryItems.append(URLQueryItem(name: "state", value: state)) }
+        if let cameraMake = Self.queryFilterValue(cameraMake) { queryItems.append(URLQueryItem(name: "make", value: cameraMake)) }
+        if let cameraModel = Self.queryFilterValue(cameraModel) { queryItems.append(URLQueryItem(name: "model", value: cameraModel)) }
+        if let lensModel = Self.queryFilterValue(lensModel) { queryItems.append(URLQueryItem(name: "lensModel", value: lensModel)) }
+        components.queryItems = queryItems
+
+        let suggestions: [String?] = try await networkService.makeRequest(
+            endpoint: components.string ?? "/api/search/suggestions?includeNull=true&type=\(type.rawValue)",
+            method: .GET,
+            responseType: [String?].self
+        )
+        let values = suggestions.compactMap { value -> String? in
+            guard let value else { return SearchSuggestionType.nullValue }
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        return Array(Set(values)).sorted { left, right in
+            if left == SearchSuggestionType.nullValue { return false }
+            if right == SearchSuggestionType.nullValue { return true }
+            return left.localizedCaseInsensitiveCompare(right) == .orderedAscending
+        }
+    }
+
     func fetchAllYears() async throws -> [Int] {
         let endpoint = "/api/timeline/buckets?isTrashed=false"
 
@@ -110,8 +167,8 @@ class AssetService: ObservableObject {
     /// Fetches the list of monthly buckets (month + asset count) for the whole
     /// library in a single lightweight request. Used to build the timeline's
     /// section spine without loading any assets.
-    func fetchTimelineBuckets() async throws -> [TimelineBucket] {
-        let order = UserDefaults.standard.allPhotosSortOrder
+    func fetchTimelineBuckets(order requestedOrder: String? = nil) async throws -> [TimelineBucket] {
+        let order = requestedOrder ?? UserDefaults.standard.allPhotosSortOrder
         let endpoint = "/api/timeline/buckets?isTrashed=false&order=\(order)"
         return try await networkService.makeRequest(
             endpoint: endpoint,
@@ -123,8 +180,8 @@ class AssetService: ObservableObject {
     /// Fetches the assets for a single month bucket. The server returns a
     /// compact columnar payload which is mapped into ImmichAsset values so the
     /// existing thumbnail/fullscreen views can render them.
-    func fetchBucketAssets(timeBucket: String) async throws -> [ImmichAsset] {
-        let order = UserDefaults.standard.allPhotosSortOrder
+    func fetchBucketAssets(timeBucket: String, order requestedOrder: String? = nil) async throws -> [ImmichAsset] {
+        let order = requestedOrder ?? UserDefaults.standard.allPhotosSortOrder
         let encoded = timeBucket.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? timeBucket
         let endpoint = "/api/timeline/bucket?timeBucket=\(encoded)&isTrashed=false&order=\(order)"
         let response: TimeBucketAssetResponse = try await networkService.makeRequest(
@@ -133,6 +190,89 @@ class AssetService: ObservableObject {
             responseType: TimeBucketAssetResponse.self
         )
         return response.toAssets()
+    }
+
+    /// Filtered Timeline requests use the stable metadata search endpoint,
+    /// because the bucket API cannot filter by capture date or EXIF location.
+    func fetchFilteredTimelineAssets(
+        page: Int,
+        size: Int,
+        order: String,
+        city: String?,
+        state: String? = nil,
+        country: String? = nil,
+        cameraMake: String? = nil,
+        cameraModel: String? = nil,
+        lensModel: String? = nil,
+        year: Int?
+    ) async throws -> SearchResult {
+        let request = Self.timelineSearchRequest(
+            page: page,
+            size: size,
+            order: order,
+            city: city,
+            state: state,
+            country: country,
+            cameraMake: cameraMake,
+            cameraModel: cameraModel,
+            lensModel: lensModel,
+            year: year
+        )
+        let response: SearchResponse = try await networkService.makeRequest(
+            endpoint: "/api/search/metadata",
+            method: .POST,
+            body: request,
+            responseType: SearchResponse.self
+        )
+        return SearchResult(
+            assets: response.assets.items,
+            total: response.assets.total,
+            nextPage: response.assets.nextPage
+        )
+    }
+
+    static func timelineSearchRequest(
+        page: Int,
+        size: Int,
+        order: String,
+        city: String?,
+        state: String? = nil,
+        country: String? = nil,
+        cameraMake: String? = nil,
+        cameraModel: String? = nil,
+        lensModel: String? = nil,
+        year: Int?
+    ) -> [String: Any] {
+        var request: [String: Any] = [
+            "page": page,
+            "size": size,
+            "order": order,
+            "visibility": "timeline",
+            "withExif": true,
+        ]
+
+        if let value = metadataFilterValue(city) { request["city"] = value }
+        if let value = metadataFilterValue(state) { request["state"] = value }
+        if let value = metadataFilterValue(country) { request["country"] = value }
+        if let value = metadataFilterValue(cameraMake) { request["make"] = value }
+        if let value = metadataFilterValue(cameraModel) { request["model"] = value }
+        if let value = metadataFilterValue(lensModel) { request["lensModel"] = value }
+        if let year, let range = makeYearRange(year: year) {
+            request["takenAfter"] = range.start
+            request["takenBefore"] = range.end
+        }
+
+        return request
+    }
+
+    private static func metadataFilterValue(_ value: String?) -> Any? {
+        guard let value else { return nil }
+        return value == SearchSuggestionType.nullValue ? NSNull() : value
+    }
+
+    private static func queryFilterValue(_ value: String?) -> String? {
+        guard value != SearchSuggestionType.nullValue else { return nil }
+        return value
     }
 
     /// Fetches one full asset record, including EXIF, on demand. Timeline tiles
@@ -248,6 +388,11 @@ class AssetService: ObservableObject {
     }
 
     func loadFullImage(asset: ImmichAsset) async throws -> UIImage? {
+        guard asset.type == .image else {
+            print("AssetService: Skipping full image load for non-image asset \(asset.id)")
+            return nil
+        }
+
         // Check if it's a RAW format before loading
         if let mimeType = asset.originalMimeType, isRawFormat(mimeType) {
             print("AssetService: Detected RAW format (\(mimeType)), using server-converted version")
@@ -314,20 +459,16 @@ class AssetService: ObservableObject {
         return nil
     }
 
+    private static func makeYearRange(year: Int) -> (start: String, end: String)? {
+        guard (1...9999).contains(year) else { return nil }
+        return (
+            "\(year)-01-01T00:00:00.000Z",
+            "\(year)-12-31T23:59:59.999Z"
+        )
+    }
+
     private func makeYearRange(year: Int) -> (start: String, end: String)? {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .current
-
-        guard let startDate = calendar.date(from: DateComponents(year: year, month: 1, day: 1)),
-              let endDate = calendar.date(from: DateComponents(year: year + 1, month: 1, day: 1)) else {
-            return nil
-        }
-
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-
-        return (formatter.string(from: startDate), formatter.string(from: endDate))
+        Self.makeYearRange(year: year)
     }
 
     func loadVideoURL(asset: ImmichAsset) async throws -> URL {

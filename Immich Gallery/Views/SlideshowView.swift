@@ -207,7 +207,7 @@ struct SlideshowView: View {
             } else {
                 // Main image display
                 if isLoading {
-                    ProgressView("Loading...")
+                    ProgressView("Starting slideshow...")
                         .foregroundColor(.white)
                         .scaleEffect(1.5)
                 } else if let imageData = currentImageData {
@@ -556,8 +556,7 @@ struct SlideshowView: View {
         UIApplication.shared.isIdleTimerDisabled = false
         print("SlideshowView: Display sleep re-enabled")
 
-        // Restart auto-slideshow timer when slideshow ends
-        NotificationCenter.default.post(name: NSNotification.Name("restartAutoSlideshowTimer"), object: nil)
+        NotificationCenter.default.post(name: NSNotification.Name(NotificationNames.resumeInactivityMonitoring), object: nil)
     }
 
     private func loadInitialAssets() async {

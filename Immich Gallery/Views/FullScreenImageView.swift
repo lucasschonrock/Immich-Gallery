@@ -208,6 +208,20 @@ struct FullScreenImageView: View {
         .task(id: currentAsset.id) {
             await hydrateCurrentAssetIfNeeded()
         }
+        .onAppear {
+            // The full-screen viewer is already a modal media experience. Keep the
+            // root auto-slideshow from presenting another full-screen cover over it.
+            NotificationCenter.default.post(
+                name: NSNotification.Name(NotificationNames.pauseInactivityMonitoring),
+                object: nil
+            )
+        }
+        .onDisappear {
+            NotificationCenter.default.post(
+                name: NSNotification.Name(NotificationNames.resumeInactivityMonitoring),
+                object: nil
+            )
+        }
     }
     
     private func navigateToImage(at index: Int) {
@@ -267,6 +281,7 @@ struct FullScreenImageView: View {
     private func loadDisplayImage() {
         imageLoadTask?.cancel()
         let assetToLoad = currentAsset
+        guard assetToLoad.type == .image else { return }
 
         imageLoadTask = Task {
             do {
@@ -383,7 +398,9 @@ struct ContentAwareModifier: ViewModifier {
                 .focusable(true)
                 .focused($isFocused)
                 .onAppear {
-                    onLoadImage()
+                    if !isVideo {
+                        onLoadImage()
+                    }
                     if assets.count > 1 {
                         showingSwipeHint = true
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {

@@ -1,4 +1,34 @@
 [
+    
+    {
+      "version": "1.3",
+      "changes": [
+        {
+          "type": "bug_fix",
+          "title": "Fixed a video playback issue where longer videos crashed.",
+          "items": [
+            "Some longer videos have crashed for a while, but I think I have finally fixed it. If not there is always github issues.",
+            "few more minor backend improvemnts that should lead to better overall performance"
+          ]
+        },
+        {
+          "type": "improvement",
+          "title": "Folders view has seen a major UI overhaul.",
+          "items": [
+            "Nested folders make it easier to navigate. You can view folder by folder or all images of a subfolder at once.",
+            "You can also folders view a-z, z-a, in the same page"
+          ]
+        },
+        {
+          "type": "improvement",
+          "title": "More filters and sort options",
+          "items": [
+            "Lot more filters and sorting is supported in the timeline view."
+          ]
+        }
+      ],
+      "releaseDate": "2026-07-03T00:00:00"
+    },
   {
     "version": "1.2.8",
     "changes": [

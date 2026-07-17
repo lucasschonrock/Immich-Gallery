@@ -39,8 +39,7 @@ struct AssetGridView: View {
     @State private var showingSlideshow = false
     @State private var showingFilterModal = false
     @State private var showingSortModal = false
-    @State private var filterCity: String? = UserDefaults.standard.allPhotosFilterCity
-    @State private var filterYear: Int? = UserDefaults.standard.allPhotosFilterYear
+    @State private var filters = PhotoFilterSelection.saved
 
     init(
         assetService: AssetService,
@@ -246,9 +245,8 @@ struct AssetGridView: View {
         })
         .sheet(isPresented: $showingFilterModal) {
             FilterSettingsView(
-                assetProvider: assetProvider,
-                selectedCity: $filterCity,
-                selectedYear: $filterYear
+                assetService: assetService,
+                selection: $filters
             ) {
                 applyFilters()
             }
@@ -286,16 +284,6 @@ struct AssetGridView: View {
                 }
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name(NotificationNames.startAutoSlideshow))) { _ in
-            // Only the All Photos grid drives auto-slideshow: it plays the config
-            // playlist, or all photos when no config is set. Other grids ignore it.
-            guard AssetGridView.shouldHandleAutoSlideshow(isAllPhotos: isAllPhotos) else {
-                debugLog("AutoSlideshow: ignoring startAutoSlideshow (not the All Photos grid, isAllPhotos=\(isAllPhotos))")
-                return
-            }
-            debugLog("AutoSlideshow: All Photos grid handling startAutoSlideshow (\(assets.count) assets loaded)")
-            startSlideshow()
-        }
     }
 
     private var shouldShowAllPhotosToolbar: Bool {
@@ -307,7 +295,7 @@ struct AssetGridView: View {
             Spacer()
 
             Button(action: { showingFilterModal = true }) {
-                let count = (filterCity != nil ? 1 : 0) + (filterYear != nil ? 1 : 0)
+                let count = filters.activeCount
                 Label {
                     Text("Filter \(count > 0 ? "(\(count))" : "")")
                 } icon: {
@@ -365,8 +353,7 @@ struct AssetGridView: View {
     }
 
     private func applyFilters() {
-        UserDefaults.standard.allPhotosFilterCity = filterCity
-        UserDefaults.standard.allPhotosFilterYear = filterYear
+        filters.save()
         showingFilterModal = false
         loadAssets()
     }
@@ -453,7 +440,7 @@ struct AssetGridView: View {
     }
     
     private func getEmptyStateTitle() -> String {
-        if isAllPhotos, (filterCity != nil || filterYear != nil) {
+        if isAllPhotos, filters.activeCount > 0 {
             return "No Results for Filters"
         } else if personId != nil {
             return "No Photos of Person"
@@ -465,7 +452,7 @@ struct AssetGridView: View {
     }
     
     private func getEmptyStateMessage() -> String {
-        if isAllPhotos, (filterCity != nil || filterYear != nil) {
+        if isAllPhotos, filters.activeCount > 0 {
             return "Try adjusting your filter settings."
         } else if personId != nil {
             return "This person has no photos"
@@ -476,18 +463,9 @@ struct AssetGridView: View {
         }
     }
     
-    /// Auto-slideshow is broadcast to every mounted grid, but only the All Photos
-    /// grid should respond — a single, non-explicit responder that resolves to the
-    /// config playlist (or all photos). This prevents explicit album/person grids
-    /// from hijacking or racing the auto-slideshow presentation.
-    static func shouldHandleAutoSlideshow(isAllPhotos: Bool) -> Bool {
-        isAllPhotos
-    }
-
     private func startSlideshow() {
-        debugLog("AutoSlideshow: starting slideshow (stopping inactivity timer)")
-        // Stop auto-slideshow timer before starting slideshow
-        NotificationCenter.default.post(name: NSNotification.Name("stopAutoSlideshowTimer"), object: nil)
+        debugLog("AutoSlideshow: starting slideshow (pausing inactivity monitoring)")
+        NotificationCenter.default.post(name: NSNotification.Name(NotificationNames.pauseInactivityMonitoring), object: nil)
         showingSlideshow = true
     }
     

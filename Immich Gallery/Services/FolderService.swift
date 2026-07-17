@@ -17,6 +17,17 @@ class FolderService: ObservableObject {
     init(networkService: NetworkService) {
         self.networkService = networkService
     }
+
+    func invalidateCache() {
+        stateLock.lock()
+        cachedFolders = []
+        let taskToCancel = inFlightFetchTask
+        inFlightFetchTask = nil
+        inFlightToken = nil
+        stateLock.unlock()
+
+        taskToCancel?.cancel()
+    }
     
     func fetchUniquePaths(forceRefresh: Bool = false) async throws -> [ImmichFolder] {
         stateLock.lock()

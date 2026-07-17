@@ -74,7 +74,6 @@ struct SettingsView: View {
     @AppStorage("showTagsTab") private var showTagsTab = false
     @AppStorage("showFoldersTab") private var showFoldersTab = false
     @AppStorage("defaultStartupTab") private var defaultStartupTab = "photos"
-    @AppStorage("assetSortOrder") private var assetSortOrder = "desc"
     @AppStorage("use24HourClock") private var use24HourClock = true
     @AppStorage("enableReflectionsInSlideshow") private var enableReflectionsInSlideshow = true
     @AppStorage("enableKenBurnsEffect") private var enableKenBurnsEffect = false
@@ -83,8 +82,6 @@ struct SettingsView: View {
     @AppStorage(UserDefaultsKeys.reverseFullscreenHorizontalNavigation) private var reverseFullscreenHorizontalNavigation = false
     @AppStorage(UserDefaultsKeys.photosViewMode) private var photosViewMode = "timeline"
     @AppStorage(UserDefaultsKeys.lockupThumbnailMode) private var lockupThumbnailMode = LockupThumbnailMode.current.rawValue
-    @AppStorage("allPhotosSortOrder") private var allPhotosSortOrder = "desc"
-    @AppStorage(UserDefaultsKeys.hideAllPhotosFilterAndSortButtons) private var hideAllPhotosFilterAndSortButtons = false
     @AppStorage(UserDefaultsKeys.appBackgroundStyle) private var appBackgroundStyle = AppBackgroundStyle.graphite.rawValue
     @AppStorage("navigationStyle") private var navigationStyle = NavigationStyle.tabs.rawValue
     @AppStorage("enableTopShelf", store: UserDefaults(suiteName: AppConstants.appGroupIdentifier)) private var enableTopShelf = true
@@ -461,47 +458,6 @@ struct SettingsView: View {
                                         )
                                     )
                                 }
-                            })
-                        }
-                        
-                        // Sorting Settings Section
-                        SettingsSection(title: "Sorting") {
-                            AnyView(VStack(spacing: 12) {
-                                SettingsRow(
-                                    icon: "photo.on.rectangle",
-                                    title: "All Photos Sort Order",
-                                    subtitle: "Order photos in the All Photos tab",
-                                    content: AnyView(
-                                        Picker("All Photos Sort Order", selection: $allPhotosSortOrder) {
-                                            Text("Newest First").tag("desc")
-                                            Text("Oldest First").tag("asc")
-                                        }
-                                            .pickerStyle(.menu)
-                                            .frame(width: 300, alignment: .trailing)
-                                    )
-                                )
-                                
-                                SettingsRow(
-                                    icon: "arrow.up.arrow.down",
-                                    title: "Albums & Collections Sort Order",
-                                    subtitle: "Order photos in Albums, People, and Tags",
-                                    content: AnyView(
-                                        Picker("Collections Sort Order", selection: $assetSortOrder) {
-                                            Text("Newest First").tag("desc")
-                                            Text("Oldest First").tag("asc")
-                                        }
-                                            .pickerStyle(.menu)
-                                            .frame(width: 300, alignment: .trailing)
-                                    )
-                                )
-
-                                SettingsRow(
-                                    icon: "line.3.horizontal.decrease.circle",
-                                    title: "Hide Filter & Sort Buttons",
-                                    subtitle: "Hide these controls in the main All Photos library view",
-                                    content: AnyView(Toggle("", isOn: $hideAllPhotosFilterAndSortButtons).labelsHidden()),
-                                    isOn: hideAllPhotosFilterAndSortButtons
-                                )
                             })
                         }
                         

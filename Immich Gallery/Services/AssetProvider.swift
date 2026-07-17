@@ -207,18 +207,21 @@ class GeneralAssetProvider: AssetProvider {
 class LockedAssetProvider: AssetProvider {
     private let assetService: AssetService
     private var cachedAssets: [ImmichAsset]?
+    private var cachedSortOrder: String?
 
     init(assetService: AssetService) {
         self.assetService = assetService
     }
 
     private func loadLockedAssets() async throws -> [ImmichAsset] {
-        if let cachedAssets {
+        let sortOrder = UserDefaults.standard.assetSortOrder
+        if let cachedAssets, cachedSortOrder == sortOrder {
             return cachedAssets
         }
 
         let result = try await assetService.fetchLockedAssets(page: 1, limit: nil)
         cachedAssets = result.assets
+        cachedSortOrder = sortOrder
         return result.assets
     }
 

@@ -13,7 +13,7 @@ struct AssetGridView: View {
     @ObservedObject private var thumbnailCache = ThumbnailCache.shared
     let assetProvider: AssetProvider
     @AppStorage("allPhotosSortOrder") private var allPhotosSortOrder = "desc"
-    @AppStorage(UserDefaultsKeys.hideAllPhotosFilterAndSortButtons) private var hideAllPhotosFilterAndSortButtons = false
+    @AppStorage(UserDefaultsKeys.assetSortOrder) private var assetSortOrder = "desc"
     let albumId: String? // Optional album ID to filter assets
     let personId: String? // Optional person ID to filter assets
     let tagId: String? // Optional tag ID to filter assets
@@ -38,7 +38,6 @@ struct AssetGridView: View {
     @State private var loadMoreTask: Task<Void, Never>?
     @State private var showingSlideshow = false
     @State private var showingFilterModal = false
-    @State private var showingSortModal = false
     @State private var filters = PhotoFilterSelection.saved
 
     init(
@@ -171,6 +170,9 @@ struct AssetGridView: View {
                                 .padding()
                             }
                         }
+                        // Pair the sparse, left-aligned grid with the right-aligned
+                        // controls so focus can cross the empty horizontal gap.
+                        .focusSection()
                         .padding(.horizontal)
                         .padding(.top, 20)
                         .padding(.bottom, 40)
@@ -251,10 +253,14 @@ struct AssetGridView: View {
                 applyFilters()
             }
         }
-        .sheet(isPresented: $showingSortModal) {
-            SortSettingsView(sortOrder: $allPhotosSortOrder) {
-                showingSortModal = false
-                loadAssets()
+        .toolbar {
+            if !isAllPhotos {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    AssetSortToolbarButton(
+                        sortOrder: assetSortOrder,
+                        action: toggleAssetSortOrder
+                    )
+                }
             }
         }
         .onAppear {
@@ -287,7 +293,17 @@ struct AssetGridView: View {
     }
 
     private var shouldShowAllPhotosToolbar: Bool {
-        isAllPhotos && !hideAllPhotosFilterAndSortButtons
+        isAllPhotos
+    }
+
+    private func toggleAssetSortOrder() {
+        assetSortOrder = assetSortOrder == "asc" ? "desc" : "asc"
+        loadAssets()
+    }
+
+    private func toggleAllPhotosSortOrder() {
+        allPhotosSortOrder = allPhotosSortOrder == "asc" ? "desc" : "asc"
+        loadAssets()
     }
 
     private var allPhotosToolbar: some View {
@@ -304,16 +320,14 @@ struct AssetGridView: View {
             }
             .buttonStyle(.bordered)
 
-            Button(action: { showingSortModal = true }) {
-                let orderLabel = allPhotosSortOrder == "asc" ? "Oldest" : "Newest"
-                Label {
-                    Text("Sort: Date Taken (\(orderLabel))")
-                } icon: {
-                    Image(systemName: "arrow.up.arrow.down")
-                }
-            }
-            .buttonStyle(.bordered)
+            AllPhotosSortButton(
+                sortOrder: allPhotosSortOrder,
+                action: toggleAllPhotosSortOrder
+            )
         }
+        // A one- or two-item grid may have no geometric focus candidate below
+        // these controls unless both regions participate as focus sections.
+        .focusSection()
     }
     
     private func loadAssets() {
@@ -488,5 +502,30 @@ struct AssetGridView: View {
                 }
             }
         }
+    }
+}
+
+private struct AssetSortToolbarButton: View {
+    let sortOrder: String
+    let action: () -> Void
+
+    private var isOldestFirst: Bool {
+        sortOrder == "asc"
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Text(isOldestFirst ? "Oldest → Newest" : "Newest → Oldest")
+                .frame(width: 150)
+        }
+        .buttonStyle(.bordered)
+        .frame(width: 190)
+        .accessibilityLabel("Sort photos by date taken")
+        .accessibilityValue(isOldestFirst ? "Oldest first" : "Newest first")
+        .accessibilityHint(
+            isOldestFirst
+            ? "Switches to newest first"
+            : "Switches to oldest first"
+        )
     }
 }

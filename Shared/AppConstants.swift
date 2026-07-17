@@ -57,7 +57,6 @@ struct UserDefaultsKeys {
     static let allPhotosFilterCameraModel = "allPhotosFilterCameraModel"
     static let allPhotosFilterLensModel = "allPhotosFilterLensModel"
     static let allPhotosFilterYear = "allPhotosFilterYear"
-    static let hideAllPhotosFilterAndSortButtons = "hideAllPhotosFilterAndSortButtons"
     static let appBackgroundStyle = "appBackgroundStyle"
     static let navigationStyle = "navigationStyle"
     static let enableTopShelf = "enableTopShelf"

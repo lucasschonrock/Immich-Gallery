@@ -3,9 +3,36 @@
 
 [Download from Apple TV App Store](https://apps.apple.com/ca/app/immich-gallery/id6748482378)
 
+<a href="https://www.buymeacoffee.com/zzpr69dnqtr" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a> Help cover app store fee.
+
 # Immich Gallery for Apple TV
 
 A native Apple TV app for browsing your self-hosted Immich photo library with a TV-optimized interface.
+
+## Screenshots
+
+<table>
+  <tr>
+    <td><img src="screenshots/TopShelf.png" alt="Top Shelf"></td>
+    <td><img src="screenshots/login.png" alt="Login"></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/Timeline.png" alt="All Photos"></td>
+    <td><img src="screenshots/Filter.png" alt="Filter"></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/albums.png" alt="Albums"></td>
+    <td><img src="screenshots/FoldersTab.png" alt="FoldersTab"></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/Search.png" alt="Search"></td>
+    <td><img src="screenshots/Settings.png" alt="Settings"></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/Slideshow.png" alt="Slideshow"></td>
+    <td><img src="screenshots/Stats.png" alt="Stats"></td>
+  </tr>
+</table>
 
 ## Features
 
@@ -21,7 +48,6 @@ A native Apple TV app for browsing your self-hosted Immich photo library with a 
 - 📊 **EXIF Data**: Inspect camera details and location metadata
 - 🔒 **Privacy First**: Pure client, keeps credentials local
 
-  <a href="https://www.buymeacoffee.com/zzpr69dnqtr" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
 ## Requirements
 
@@ -48,20 +74,6 @@ A native Apple TV app for browsing your self-hosted Immich photo library with a 
 2. Open `Immich Gallery.xcodeproj` in Xcode
 3. Select Apple TV target device
 4. Build and run
-
-## Screenshots
-
-![Top Shelf](screenshots/TopShelf.png)
-
-![Login](screenshots/login.png)
-
-![All Photos](screenshots/all-photos.png)
-
-![Albums](screenshots/albums.png)
-
-![Search](screenshots/Search.png)
-
-![Settings](screenshots/Settings.png)
 
 ## Stats
 

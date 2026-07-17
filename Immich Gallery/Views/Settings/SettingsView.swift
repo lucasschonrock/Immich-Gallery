@@ -65,15 +65,21 @@ struct SettingsView: View {
     @State private var userToDelete: SavedUser?
     @State private var showingSignIn = false
     @State private var showingWhatsNew = false
+    @State private var showingVisibleTabs = false
     @AppStorage("hideImageOverlay") private var hideImageOverlay = true
     @AppStorage(UserDefaultsKeys.showCurrentTimeWidget) private var showCurrentTimeWidget = true
     @AppStorage(UserDefaultsKeys.photoDateDisplayMode) private var photoDateDisplayMode = "dateAndTime"
     @AppStorage(UserDefaultsKeys.showLocationOverlay) private var showLocationOverlay = true
     @State private var slideshowInterval: Double = UserDefaults.standard.object(forKey: "slideshowInterval") as? Double ?? 8.0
     @AppStorage("slideshowBackgroundColor") private var slideshowBackgroundColor = "white"
-    @AppStorage("showTagsTab") private var showTagsTab = false
-    @AppStorage("showFoldersTab") private var showFoldersTab = false
-    @AppStorage("defaultStartupTab") private var defaultStartupTab = "photos"
+    @AppStorage(UserDefaultsKeys.showPhotosTab) private var showPhotosTab = true
+    @AppStorage(UserDefaultsKeys.showAlbumsTab) private var showAlbumsTab = true
+    @AppStorage(UserDefaultsKeys.showPeopleTab) private var showPeopleTab = true
+    @AppStorage(UserDefaultsKeys.showTagsTab) private var showTagsTab = false
+    @AppStorage(UserDefaultsKeys.showFoldersTab) private var showFoldersTab = false
+    @AppStorage(UserDefaultsKeys.showExploreTab) private var showExploreTab = true
+    @AppStorage(UserDefaultsKeys.showSearchTab) private var showSearchTab = true
+    @AppStorage(UserDefaultsKeys.defaultStartupTab) private var defaultStartupTab = "photos"
     @AppStorage("use24HourClock") private var use24HourClock = true
     @AppStorage("enableReflectionsInSlideshow") private var enableReflectionsInSlideshow = true
     @AppStorage("enableKenBurnsEffect") private var enableKenBurnsEffect = false
@@ -95,6 +101,22 @@ struct SettingsView: View {
     @FocusState private var isMinusFocused: Bool
     @FocusState private var isPlusFocused: Bool
     @FocusState private var focusedColor: String?
+
+    private var visibleTabs: Set<TabName> {
+        var tabs = Set<TabName>()
+        if showPhotosTab { tabs.insert(.photos) }
+        if showAlbumsTab { tabs.insert(.albums) }
+        if showPeopleTab { tabs.insert(.people) }
+        if showTagsTab { tabs.insert(.tags) }
+        if showFoldersTab { tabs.insert(.folders) }
+        if showExploreTab { tabs.insert(.explore) }
+        if showSearchTab { tabs.insert(.search) }
+        return tabs
+    }
+
+    private var visibleTabsSummary: String {
+        "\(visibleTabs.count) visible"
+    }
     
     private var serverInfoSection: some View {
         Button(action: {
@@ -277,18 +299,18 @@ struct SettingsView: View {
                         SettingsSection(title: "Interface") {
                             AnyView(VStack(spacing: 12) {
                                     SettingsRow(
-                                        icon: "tag",
-                                        title: "Show Tags Tab",
-                                        subtitle: "Enable the tags tab in the main navigation",
-                                        content: AnyView(Toggle("", isOn: $showTagsTab).labelsHidden()),
-                                        isOn: showTagsTab
-                                    )
-                                    SettingsRow(
-                                        icon: "folder.fill",
-                                        title: "Show Folders Tab",
-                                        subtitle: "Enable the folders tab in the main navigation",
-                                        content: AnyView(Toggle("", isOn: $showFoldersTab).labelsHidden()),
-                                        isOn: showFoldersTab
+                                        icon: "rectangle.3.group",
+                                        title: "Tabs",
+                                        subtitle: "Choose visible tabs and the default startup tab",
+                                        content: AnyView(
+                                            Button(action: { showingVisibleTabs = true }) {
+                                                HStack(spacing: 8) {
+                                                    Text(visibleTabsSummary)
+                                                    Image(systemName: "chevron.right")
+                                                }
+                                            }
+                                            .buttonStyle(.bordered)
+                                        )
                                     )
                                     SettingsRow(
                                         icon: "calendar",
@@ -331,51 +353,6 @@ struct SettingsView: View {
                                                 .pickerStyle(.menu)
                                                 .frame(width: 300, alignment: .trailing)
                                         )
-                                    )
-
-                                    SettingsRow(
-                                        icon: "house",
-                                        title: "Default Startup Tab",
-                                        subtitle: "Choose which tab opens when the app starts",
-                                        content: AnyView(
-                                            Picker("Default Tab", selection: $defaultStartupTab) {
-                                                Text("All Photos").tag("photos")
-                                                Text("Albums").tag("albums")
-                                                Text("People").tag("people")
-                                                if showTagsTab {
-                                                    Text("Tags").tag("tags")
-                                                }
-                                                if showFoldersTab {
-                                                    Text("Folders").tag("folders")
-                                                }
-                                                Text("Explore").tag("explore")
-                                            }
-                                                .pickerStyle(.menu)
-                                                .frame(width: 300, alignment: .trailing)
-                                        )
-                                    )
-
-                                    SettingsRow(
-                                        icon: "play.rectangle.on.rectangle",
-                                        title: "Launch Into Slideshow",
-                                        subtitle: "Start the slideshow automatically when the app opens (uses your slideshow config album, if set, otherwise all photos)",
-                                        content: AnyView(
-                                            Picker("Launch Into Slideshow", selection: $launchIntoSlideshow) {
-                                                Text("On").tag(true)
-                                                Text("Off").tag(false)
-                                            }
-                                                .pickerStyle(.menu)
-                                                .frame(width: 300, alignment: .trailing)
-                                        ),
-                                        isOn: launchIntoSlideshow
-                                    )
-
-                                    SettingsRow(
-                                        icon: "clock.arrow.circlepath",
-                                        title: "Auto-Start Slideshow",
-                                        subtitle: "Play all photos after inactivity (or your slideshow config album, if set)",
-                                        content: AnyView(AutoSlideshowTimeoutPicker(timeout: $autoSlideshowTimeout)),
-                                        isOn: autoSlideshowTimeout > 0
                                     )
 
                                     SettingsRow(
@@ -464,6 +441,29 @@ struct SettingsView: View {
                         // Slideshow Settings Section
                         SettingsSection(title: "Slideshow") {
                             AnyView(VStack(spacing: 12) {
+                                SettingsRow(
+                                    icon: "play.rectangle.on.rectangle",
+                                    title: "Launch Into Slideshow",
+                                    subtitle: "Start the slideshow automatically when the app opens (uses your slideshow config album, if set, otherwise all photos)",
+                                    content: AnyView(
+                                        Picker("Launch Into Slideshow", selection: $launchIntoSlideshow) {
+                                            Text("On").tag(true)
+                                            Text("Off").tag(false)
+                                        }
+                                            .pickerStyle(.menu)
+                                            .frame(width: 300, alignment: .trailing)
+                                    ),
+                                    isOn: launchIntoSlideshow
+                                )
+
+                                SettingsRow(
+                                    icon: "clock.arrow.circlepath",
+                                    title: "Auto-Start Slideshow",
+                                    subtitle: "Play all photos after inactivity (or your slideshow config album, if set)",
+                                    content: AnyView(AutoSlideshowTimeoutPicker(timeout: $autoSlideshowTimeout)),
+                                    isOn: autoSlideshowTimeout > 0
+                                )
+
                                 SlideshowSettings(
                                     slideshowInterval: $slideshowInterval,
                                     slideshowBackgroundColor: $slideshowBackgroundColor,
@@ -665,6 +665,14 @@ struct SettingsView: View {
                     showingWhatsNew = false
                 })
             }
+            .sheet(isPresented: $showingVisibleTabs) {
+                VisibleTabsSettingsView(
+                    initialSelection: visibleTabs,
+                    initialDefaultTab: TabName.from(storedValue: defaultStartupTab) ?? .photos
+                ) { selection, defaultTab in
+                    applyVisibleTabs(selection, defaultTab: defaultTab)
+                }
+            }
             .alert("Clear Cache", isPresented: $showingClearCacheAlert) {
                 Button("Cancel", role: .cancel) { }
                 Button("Clear All", role: .destructive) {
@@ -699,18 +707,22 @@ struct SettingsView: View {
                     Text("Are you sure you want to delete this user?")
                 }
             }
-            .onChange(of: showFoldersTab) { _, newValue in
-                if !newValue && defaultStartupTab == "folders" {
-                    defaultStartupTab = "photos"
-                }
-                
-                NotificationCenter.default.post(name: NSNotification.Name(NotificationNames.refreshAllTabs), object: nil)
-            }
             .onAppear {
                 userManager.loadUsers()
                 thumbnailCache.refreshCacheStatistics()
             }
         }
+    }
+
+    private func applyVisibleTabs(_ tabs: Set<TabName>, defaultTab: TabName) {
+        defaultStartupTab = defaultTab.storedValue
+        showPhotosTab = tabs.contains(.photos)
+        showAlbumsTab = tabs.contains(.albums)
+        showPeopleTab = tabs.contains(.people)
+        showTagsTab = tabs.contains(.tags)
+        showFoldersTab = tabs.contains(.folders)
+        showExploreTab = tabs.contains(.explore)
+        showSearchTab = tabs.contains(.search)
     }
     
     

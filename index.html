@@ -470,32 +470,10 @@
                                 data-index="5"
                             />
                         </div>
-                        <div class="flex justify-center gap-2 mt-4">
-                            <div
-                                class="screenshot-dot w-2 h-2 rounded-full bg-white cursor-pointer transition-all duration-300"
-                                data-index="0"
-                            ></div>
-                            <div
-                                class="screenshot-dot w-2 h-2 rounded-full bg-gray-600 cursor-pointer transition-all duration-300"
-                                data-index="1"
-                            ></div>
-                            <div
-                                class="screenshot-dot w-2 h-2 rounded-full bg-gray-600 cursor-pointer transition-all duration-300"
-                                data-index="2"
-                            ></div>
-                            <div
-                                class="screenshot-dot w-2 h-2 rounded-full bg-gray-600 cursor-pointer transition-all duration-300"
-                                data-index="3"
-                            ></div>
-                            <div
-                                class="screenshot-dot w-2 h-2 rounded-full bg-gray-600 cursor-pointer transition-all duration-300"
-                                data-index="4"
-                            ></div>
-                            <div
-                                class="screenshot-dot w-2 h-2 rounded-full bg-gray-600 cursor-pointer transition-all duration-300"
-                                data-index="5"
-                            ></div>
-                        </div>
+                        <div
+                            class="screenshot-dots flex justify-center gap-2 mt-4"
+                            aria-label="Screenshot navigation"
+                        ></div>
                     </div>
                 </div>
             </div>
@@ -964,6 +942,22 @@
                 // Screenshot Slideshow
                 const screenshots =
                     document.querySelectorAll(".screenshot-slide");
+                const screenshotDotsContainer =
+                    document.querySelector(".screenshot-dots");
+
+                screenshots.forEach((screenshot, index) => {
+                    const dot = document.createElement("button");
+                    dot.type = "button";
+                    dot.className =
+                        "screenshot-dot w-2 h-2 rounded-full bg-gray-600 cursor-pointer transition-all duration-300";
+                    dot.dataset.index = index;
+                    dot.setAttribute(
+                        "aria-label",
+                        `Show screenshot ${index + 1}: ${screenshot.alt}`,
+                    );
+                    screenshotDotsContainer.appendChild(dot);
+                });
+
                 const screenshotDots =
                     document.querySelectorAll(".screenshot-dot");
                 let currentScreenshotIndex = 0;

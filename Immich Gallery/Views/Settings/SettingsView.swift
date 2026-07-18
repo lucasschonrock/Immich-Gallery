@@ -319,7 +319,7 @@ struct SettingsView: View {
                                         content: AnyView(
                                             Picker("Photos View", selection: $photosViewMode) {
                                                 Text("Grid").tag("grid")
-                                                Text("Timeline - Beta").tag("timeline")
+                                                Text("Timeline").tag("timeline")
                                             }
                                                 .pickerStyle(.menu)
                                                 .frame(width: 300, alignment: .trailing)

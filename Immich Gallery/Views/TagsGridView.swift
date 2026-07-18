@@ -105,16 +105,12 @@ private struct TagLockupGridView: View {
                         .buttonStyle(.borderedProminent)
                 }
             } else if tags.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "tag")
-                        .font(.system(size: 60))
-                        .foregroundColor(.gray)
-                    Text("No Tags")
-                        .font(.title)
-                        .foregroundColor(.white)
-                    Text("Your tags will appear here.")
-                        .foregroundColor(.gray)
-                }
+                ReloadableEmptyStateView(
+                    icon: "tag",
+                    title: "No Tags",
+                    message: "Your tags will appear here.",
+                    onReload: onRetry
+                )
             } else {
                 ScrollView {
                     LazyVGrid(columns: columns, alignment: .center, spacing: 30) {

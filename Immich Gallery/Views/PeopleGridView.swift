@@ -163,16 +163,12 @@ private struct PeopleLockupGridView: View {
                         .buttonStyle(.borderedProminent)
                 }
             } else if people.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "person.crop.circle")
-                        .font(.system(size: 60))
-                        .foregroundColor(.gray)
-                    Text("No People")
-                        .font(.title)
-                        .foregroundColor(.white)
-                    Text("People recognized by Immich will appear here.")
-                        .foregroundColor(.gray)
-                }
+                ReloadableEmptyStateView(
+                    icon: "person.crop.circle",
+                    title: "No People",
+                    message: "People recognized by Immich will appear here.",
+                    onReload: onRetry
+                )
             } else {
                 ScrollView {
                     LazyVGrid(columns: columns, alignment: .center, spacing: 30) {

@@ -305,16 +305,12 @@ private struct AlbumLockupGridView: View {
                         .buttonStyle(.borderedProminent)
                 }
             } else if albums.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "folder")
-                        .font(.system(size: 60))
-                        .foregroundColor(.gray)
-                    Text("No Albums")
-                        .font(.title)
-                        .foregroundColor(.white)
-                    Text("Create albums in Immich to see them here.")
-                        .foregroundColor(.gray)
-                }
+                ReloadableEmptyStateView(
+                    icon: "folder",
+                    title: "No Albums",
+                    message: "Create albums in Immich to see them here.",
+                    onReload: onRetry
+                )
             } else {
                 ScrollView {
                     LazyVGrid(columns: columns, alignment: .center, spacing: 30) {

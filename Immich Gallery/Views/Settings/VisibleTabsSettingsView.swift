@@ -71,6 +71,7 @@ struct VisibleTabsSettingsView: View {
                             .accessibilityValue(selection.contains(tab) ? "Visible" : "Hidden")
                         }
                     }
+                    .padding(.horizontal, 48)
                     .padding(.vertical, 24)
                 }
                 .frame(maxHeight: 460)

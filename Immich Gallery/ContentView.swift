@@ -79,6 +79,8 @@ struct ContentView: View {
     @AppStorage(UserDefaultsKeys.photosViewMode) private var photosViewMode = "timeline"
     @State private var searchTabHighlighted = false
     @State private var deepLinkAssetId: String?
+    @State private var deepLinkedAsset: ImmichAsset?
+    @State private var deepLinkedAssetIndex = 0
     
     init() {
         let userManager = UserManager()
@@ -240,10 +242,18 @@ struct ContentView: View {
                 // Switch to Photos tab and set deep link asset ID
                 selectedTab = TabName.photos.rawValue
                 deepLinkAssetId = assetId
-                
-                // Clear the deep link after a moment to avoid stale state
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    deepLinkAssetId = nil
+
+                Task {
+                    do {
+                        let asset = try await assetService.fetchAssetDetails(assetId: assetId)
+                        await MainActor.run {
+                            deepLinkedAssetIndex = 0
+                            deepLinkedAsset = asset
+                            deepLinkAssetId = nil
+                        }
+                    } catch {
+                        print("ContentView: Failed to open deep-linked asset \(assetId): \(error)")
+                    }
                 }
             }
         }
@@ -293,6 +303,16 @@ struct ContentView: View {
         }
         .fullScreenCover(isPresented: $showingAutoSlideshow) {
             SlideshowView()
+        }
+        .fullScreenCover(item: $deepLinkedAsset) { asset in
+            FullScreenImageView(
+                asset: asset,
+                assets: [asset],
+                currentIndex: 0,
+                assetService: assetService,
+                authenticationService: authService,
+                currentAssetIndex: $deepLinkedAssetIndex
+            )
         }
     }
     

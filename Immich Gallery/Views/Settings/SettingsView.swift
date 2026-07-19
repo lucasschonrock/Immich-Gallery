@@ -8,6 +8,7 @@
 
 
 import SwiftUI
+import TVServices
 
 // MARK: - Reusable Components
 
@@ -423,7 +424,7 @@ struct SettingsView: View {
                                 SettingsRow(
                                     icon: "tv",
                                     title: "Top Shelf Extension",
-                                    subtitle: "Choose display style or disable Top Shelf entirely (Top shelf does not show portrait images)",
+                                    subtitle: "Choose display style or disable Top Shelf entirely. Compact mode shows a mix of portrait and landscape photos.",
                                     content: AnyView(
                                         Picker("Top Shelf", selection: Binding(
                                             get: { enableTopShelf ? topShelfStyle : "off" },
@@ -458,6 +459,9 @@ struct SettingsView: View {
                                             }
                                                 .pickerStyle(.menu)
                                                 .frame(width: 500, alignment: .trailing)
+                                                .onChange(of: topShelfImageSelection) { _, _ in
+                                                    TVTopShelfContentProvider.topShelfContentDidChange()
+                                                }
                                         )
                                     )
                                 }

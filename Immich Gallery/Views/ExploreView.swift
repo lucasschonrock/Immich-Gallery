@@ -22,7 +22,6 @@ struct ExploreView: View {
     @State private var currentAssetIndex: Int = 0
     @State private var showingStats = false
     @State private var selectedExploreItem: ExploreAsset?
-    @State private var belowFold = false
     @State private var showcaseHeight: CGFloat = 0
     @State private var showcaseHighlightedItem: ExploreAsset?
     @State private var focusedItemID: String?
@@ -47,7 +46,6 @@ struct ExploreView: View {
             BackgroundImageView(
                 selectedItem: focusedExploreItem ?? exploreItems.first,
                 assetService: assetService,
-                belowFold: belowFold,
                 exploreItems: exploreItems,
                 navigationDirection: navigationDirection
             )
@@ -140,12 +138,6 @@ struct ExploreView: View {
                         }
                         
                         //                        .frame(height: calculateShowcaseHeight())
-                        .onScrollVisibilityChange { visible in
-                            withAnimation {
-                                belowFold = !visible
-                            }
-                        }
-                        
                         // First Row (Above the fold)
                         ExploreFirstRow(
                             exploreItems: randomizedFirstRowItems,
@@ -499,7 +491,6 @@ private enum ExploreMetadataFormatter {
 struct BackgroundImageView: View {
     let selectedItem: ExploreAsset?
     let assetService: AssetService
-    let belowFold: Bool
     let exploreItems: [ExploreAsset] // Need all items for mosaic
     let navigationDirection: NavigationDirection
     @State private var backgroundImage: UIImage?
@@ -572,20 +563,6 @@ struct BackgroundImageView: View {
                     }
                     .opacity(opacity)
                     .animation(.easeIn(duration: 0.3), value: opacity)
-                }
-                .overlay {
-                    Rectangle()
-                        .fill(.regularMaterial)
-                        .mask {
-                            LinearGradient(
-                                stops: [
-                                    .init(color: .black, location: 0.25),
-                                    .init(color: .black.opacity(belowFold ? 1 : 0.3), location: 0.375),
-                                    .init(color: .black.opacity(belowFold ? 1 : 0), location: 0.5)
-                                ],
-                                startPoint: .bottom, endPoint: .top
-                            )
-                        }
                 }
                 .ignoresSafeArea()
             } else {

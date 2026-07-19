@@ -47,6 +47,7 @@ struct AlbumListView: View {
             thumbnailProvider: thumbnailProvider,
             isLoading: isLoading,
             errorMessage: errorMessage,
+            currentUserEmail: userManager.currentUser?.email,
             onAlbumSelected: { album in
                 handleAlbumSelection(album)
             },
@@ -269,6 +270,7 @@ private struct AlbumLockupGridView: View {
     let thumbnailProvider: AlbumThumbnailProvider
     let isLoading: Bool
     let errorMessage: String?
+    let currentUserEmail: String?
     let onAlbumSelected: (ImmichAlbum) -> Void
     let onRetry: () -> Void
 
@@ -325,6 +327,7 @@ private struct AlbumLockupGridView: View {
                                 AlbumLockupCard(
                                     album: album,
                                     thumbnailProvider: thumbnailProvider,
+                                    currentUserEmail: currentUserEmail,
                                     cardSize: CGSize(width: cardWidth, height: cardHeight)
                                 )
                             }
@@ -344,7 +347,14 @@ private struct AlbumLockupGridView: View {
         var parts = [album.albumName, AlbumMetadataFormatter.photoCount(album.assetCount)]
 
         if album.shared {
-            parts.append("Shared")
+            switch album.sharingDirection(currentUserEmail: currentUserEmail) {
+            case .outgoing:
+                parts.append("Shared by you")
+            case .incoming:
+                parts.append("Shared with you")
+            case .unknown:
+                parts.append("Shared")
+            }
         }
 
         return parts.joined(separator: ", ")
@@ -354,6 +364,7 @@ private struct AlbumLockupGridView: View {
 private struct AlbumLockupCard: View {
     let album: ImmichAlbum
     let thumbnailProvider: AlbumThumbnailProvider
+    let currentUserEmail: String?
     let cardSize: CGSize
     @AppStorage(UserDefaultsKeys.lockupThumbnailMode) private var lockupThumbnailMode = LockupThumbnailMode.current.rawValue
 
@@ -386,7 +397,14 @@ private struct AlbumLockupCard: View {
         var icons: [String] = []
 
         if album.shared {
-            icons.append("person.2.fill")
+            switch album.sharingDirection(currentUserEmail: currentUserEmail) {
+            case .outgoing:
+                icons.append("arrow.up.right.circle.fill")
+            case .incoming:
+                icons.append("arrow.down.left.circle.fill")
+            case .unknown:
+                icons.append("person.2.fill")
+            }
         }
 
         if album.hasSharedLink {
@@ -403,6 +421,27 @@ private enum AlbumMetadataFormatter {
         return count == 1 ? "\(formatted) photo" : "\(formatted) photos"
     }
 
+}
+
+private enum AlbumSharingDirection {
+    case outgoing
+    case incoming
+    case unknown
+}
+
+private extension ImmichAlbum {
+    func sharingDirection(currentUserEmail: String?) -> AlbumSharingDirection {
+        guard let ownerEmail = owner?.email.trimmingCharacters(in: .whitespacesAndNewlines),
+              let currentUserEmail = currentUserEmail?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !ownerEmail.isEmpty,
+              !currentUserEmail.isEmpty else {
+            return .unknown
+        }
+
+        return ownerEmail.caseInsensitiveCompare(currentUserEmail) == .orderedSame
+            ? .outgoing
+            : .incoming
+    }
 }
 
 private struct LockedPinEntryPanel: View {

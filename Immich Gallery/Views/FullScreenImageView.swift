@@ -28,6 +28,9 @@ struct FullScreenImageView: View {
     @State private var showingExifInfo = false
     @State private var hydratedAssets: [String: ImmichAsset] = [:]
     @State private var failedHydrationAssetIds: Set<String> = []
+    @State private var stackAssets: [ImmichAsset] = []
+    @State private var loadedStackId: String?
+    @State private var showingStackPicker = false
     
     init(asset: ImmichAsset, assets: [ImmichAsset], currentIndex: Int, assetService: AssetService, authenticationService: AuthenticationService, currentAssetIndex: Binding<Int>) {
         print("FullScreenImageView: Initializing with currentIndex: \(currentIndex)")
@@ -179,11 +182,35 @@ struct FullScreenImageView: View {
                 }
                 .transition(.opacity)
             }
+
+
+            if stackAssets.count > 1, !showingStackPicker {
+                VStack {
+                    HStack {
+                        Label(
+                            "\(stackAssets.count) in stack  ↓",
+                            systemImage: "square.stack.3d.up.fill"
+                        )
+                        .font(.caption.bold())
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                        .background(Color.black.opacity(0.65), in: Capsule())
+                        Spacer()
+                    }
+                    Spacer()
+                }
+                .padding(.top, 40)
+                .padding(.trailing, 60)
+            }
+
         }
         .id(refreshToggle)
         .onExitCommand {
             print("FullScreenImageView: Exit command triggered")
-            if showingVideoPlayer {
+            if showingStackPicker {
+                showingStackPicker = false
+            } else if showingVideoPlayer {
                 showingVideoPlayer = false
             } else {
                 print("FullScreenImageView: Dismissing fullscreen view")
@@ -197,6 +224,8 @@ struct FullScreenImageView: View {
             isFocused: $isFocused,
             showingSwipeHint: $showingSwipeHint,
             showingExifInfo: $showingExifInfo,
+            showingStackPicker: $showingStackPicker,
+            canShowStackPicker: stackAssets.count > 1,
             onNavigate: navigateToImage,
             onDismiss: { dismiss() },
             onLoadImage: loadDisplayImage,
@@ -205,8 +234,20 @@ struct FullScreenImageView: View {
                 showingVideoPlayer = true
             }
         ))
+        .overlay {
+            if showingStackPicker {
+                StackPickerOverlay(
+                    assets: stackAssets,
+                    selectedAssetId: currentAsset.id,
+                    assetService: assetService,
+                    onSelect: selectStackAsset
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
         .task(id: currentAsset.id) {
             await hydrateCurrentAssetIfNeeded()
+            await loadStackIfNeeded(for: currentAsset)
         }
         .onAppear {
             // The full-screen viewer is already a modal media experience. Keep the
@@ -226,25 +267,57 @@ struct FullScreenImageView: View {
     
     private func navigateToImage(at index: Int) {
         print("FullScreenImageView: Attempting to navigate to image at index \(index) (total assets: \(assets.count))")
-        guard index >= 0 && index < assets.count else {
+        guard assets.indices.contains(index) else {
             print("FullScreenImageView: Navigation failed - index \(index) out of bounds")
             return
         }
         print("FullScreenImageView: Navigating to asset ID: \(assets[index].id)")
-        currentAssetIndex = index // This now updates the binding
+        currentAssetIndex = index
         print("FullScreenImageView: Updated currentAssetIndex binding to \(index)")
-        let nextAsset = assets[index]
-        currentAsset = hydratedAssets[nextAsset.id] ?? nextAsset
-        refreshToggle.toggle() // Force UI update
-        
-        // Reset overlay states when navigating
+        stackAssets = []
+        loadedStackId = nil
+        display(asset: hydratedAssets[assets[index].id] ?? assets[index])
+    }
+
+    private func loadStackIfNeeded(for asset: ImmichAsset) async {
+        guard let stack = asset.stack, stack.assetCount > 1, loadedStackId != stack.id else { return }
+
+        do {
+            let response = try await assetService.fetchStack(stackId: stack.id)
+            guard !response.assets.isEmpty else { return }
+            await MainActor.run {
+                loadedStackId = response.id
+                stackAssets = response.assets
+                for member in response.assets {
+                    // Immich intentionally returns stack: null for assets nested
+                    // in a stack response. Preserve the stack-aware primary so
+                    // navigating away and back can open the picker again.
+                    hydratedAssets[member.id] = member.id == response.primaryAssetId
+                        ? asset
+                        : member
+                }
+            }
+        } catch {
+            print("FullScreenImageView: Failed to load stack \(stack.id): \(error)")
+        }
+    }
+
+    private func selectStackAsset(_ asset: ImmichAsset) {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            showingStackPicker = false
+        }
+        display(asset: hydratedAssets[asset.id] ?? asset)
+    }
+
+    private func display(asset: ImmichAsset) {
+        currentAsset = asset
+        refreshToggle.toggle()
         showingExifInfo = false
-        if currentAsset.type == .video {
-            showingVideoPlayer = false
-        } else {
-            image = nil
-            isLoading = true
-            isLoadingPreviewImage = false
+        showingVideoPlayer = false
+        image = nil
+        isLoading = asset.type == .image
+        isLoadingPreviewImage = false
+        if asset.type == .image {
             loadDisplayImage()
         }
     }
@@ -260,7 +333,11 @@ struct FullScreenImageView: View {
             return
         }
 
-        guard currentAsset.exifInfo == nil, !failedHydrationAssetIds.contains(assetId) else { return }
+        // Search-backed grids (including albums) can include EXIF while omitting
+        // the stack relation. Fetch the full asset whenever either relation is
+        // missing; GET /assets/{id} includes both and is cached after this call.
+        let needsFullAsset = currentAsset.exifInfo == nil || currentAsset.stack == nil
+        guard needsFullAsset, !failedHydrationAssetIds.contains(assetId) else { return }
 
         do {
             let fullAsset = try await assetService.fetchAssetDetails(assetId: assetId)
@@ -272,7 +349,7 @@ struct FullScreenImageView: View {
             }
         } catch {
             await MainActor.run {
-                failedHydrationAssetIds.insert(assetId)
+                _ = failedHydrationAssetIds.insert(assetId)
             }
             print("FullScreenImageView: Failed to load asset details for \(assetId): \(error)")
         }
@@ -357,6 +434,8 @@ struct ContentAwareModifier: ViewModifier {
     @FocusState.Binding var isFocused: Bool
     @Binding var showingSwipeHint: Bool
     @Binding var showingExifInfo: Bool
+    @Binding var showingStackPicker: Bool
+    let canShowStackPicker: Bool
     let onNavigate: (Int) -> Void
     let onDismiss: () -> Void
     let onLoadImage: () -> Void
@@ -395,7 +474,7 @@ struct ContentAwareModifier: ViewModifier {
         } else {
             // For images: full navigation support
             content
-                .focusable(true)
+                .focusable(!showingStackPicker)
                 .focused($isFocused)
                 .onAppear {
                     if !isVideo {
@@ -421,7 +500,14 @@ struct ContentAwareModifier: ViewModifier {
                 .onChange(of: isFocused) { oldValue, newValue in
                     print("FullScreenImageView focus: \(newValue)")
                 }
+                .onChange(of: showingStackPicker) { _, isShowing in
+                    // Explicitly hand focus to the stack buttons. Merely making
+                    // this view non-focusable does not always resign its existing
+                    // focus, which leaves its move handler consuming the remote.
+                    isFocused = !isShowing
+                }
                 .onMoveCommand { direction in
+                    guard !showingStackPicker else { return }
                     switch direction {
                     case .left:
                         print("FullScreenImageView: Left navigation triggered (current: \(currentAssetIndex), total: \(assets.count))")
@@ -451,6 +537,10 @@ struct ContentAwareModifier: ViewModifier {
                         if showingExifInfo {
                             withAnimation(.easeInOut(duration: 0.3)) {
                                 showingExifInfo = false
+                            }
+                        } else if canShowStackPicker {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showingStackPicker = true
                             }
                         }
                     @unknown default:

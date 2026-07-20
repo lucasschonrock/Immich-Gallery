@@ -169,7 +169,7 @@ class AssetService: ObservableObject {
     /// section spine without loading any assets.
     func fetchTimelineBuckets(order requestedOrder: String? = nil) async throws -> [TimelineBucket] {
         let order = requestedOrder ?? UserDefaults.standard.allPhotosSortOrder
-        let endpoint = "/api/timeline/buckets?isTrashed=false&order=\(order)"
+        let endpoint = "/api/timeline/buckets?isTrashed=false&order=\(order)&withStacked=true"
         return try await networkService.makeRequest(
             endpoint: endpoint,
             method: .GET,
@@ -183,7 +183,7 @@ class AssetService: ObservableObject {
     func fetchBucketAssets(timeBucket: String, order requestedOrder: String? = nil) async throws -> [ImmichAsset] {
         let order = requestedOrder ?? UserDefaults.standard.allPhotosSortOrder
         let encoded = timeBucket.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? timeBucket
-        let endpoint = "/api/timeline/bucket?timeBucket=\(encoded)&isTrashed=false&order=\(order)"
+        let endpoint = "/api/timeline/bucket?timeBucket=\(encoded)&isTrashed=false&order=\(order)&withStacked=true"
         let response: TimeBucketAssetResponse = try await networkService.makeRequest(
             endpoint: endpoint,
             method: .GET,
@@ -286,6 +286,14 @@ class AssetService: ObservableObject {
         )
     }
 
+    func fetchStack(stackId: String) async throws -> StackResponse {
+        try await networkService.makeRequest(
+            endpoint: "/api/stacks/\(stackId)",
+            method: .GET,
+            responseType: StackResponse.self
+        )
+    }
+
     func fetchLockedAssets(page: Int = 1, limit: Int? = nil) async throws -> SearchResult {
         let buckets = try await fetchLockedTimelineBuckets()
         let total = buckets.reduce(0) { $0 + $1.count }
@@ -312,7 +320,7 @@ class AssetService: ObservableObject {
 
     private func fetchLockedTimelineBuckets() async throws -> [TimelineBucket] {
         let order = UserDefaults.standard.allPhotosSortOrder
-        let endpoint = "/api/timeline/buckets?visibility=locked&order=\(order)"
+        let endpoint = "/api/timeline/buckets?visibility=locked&order=\(order)&withStacked=true"
         return try await networkService.makeRequest(
             endpoint: endpoint,
             method: .GET,
@@ -334,7 +342,7 @@ class AssetService: ObservableObject {
     private func fetchLockedBucketAssets(timeBucket: String) async throws -> [ImmichAsset] {
         let order = UserDefaults.standard.allPhotosSortOrder
         let encoded = timeBucket.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? timeBucket
-        let endpoint = "/api/timeline/bucket?timeBucket=\(encoded)&visibility=locked&order=\(order)"
+        let endpoint = "/api/timeline/bucket?timeBucket=\(encoded)&visibility=locked&order=\(order)&withStacked=true"
         let response: TimeBucketAssetResponse = try await networkService.makeRequest(
             endpoint: endpoint,
             method: .GET,

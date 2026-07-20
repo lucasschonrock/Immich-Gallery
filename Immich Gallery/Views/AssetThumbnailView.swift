@@ -18,13 +18,15 @@ struct AssetThumbnailView: View {
     var shouldLoadThumbnail = true
     var allowsThumbhashPlaceholder = true
     var showsDateOverlay = true
+    var showsStackIndicator = true
+    var thumbnailSize: CGFloat = 320
     
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
         
              RoundedRectangle(cornerRadius: 12)
                  .fill(Color.gray.opacity(0.3))
-                 .frame(width: 320, height: 320)
+                 .frame(width: thumbnailSize, height: thumbnailSize)
 
              // Instant placeholder decoded from the asset's thumbhash. Shows
              // immediately (no network) and sits behind the real thumbnail,
@@ -33,7 +35,7 @@ struct AssetThumbnailView: View {
                  Image(uiImage: placeholder)
                      .resizable()
                      .aspectRatio(contentMode: .fill)
-                     .frame(width: 320, height: 320)
+                     .frame(width: thumbnailSize, height: thumbnailSize)
                      .clipped()
                      .cornerRadius(12)
              }
@@ -42,7 +44,7 @@ struct AssetThumbnailView: View {
                  Image(uiImage: image)
                      .resizable()
                      .aspectRatio(contentMode: .fill)
-                     .frame(width: 320, height: 320)
+                     .frame(width: thumbnailSize, height: thumbnailSize)
                      .clipped()
                      .cornerRadius(12)
                      .transition(.opacity)
@@ -50,7 +52,7 @@ struct AssetThumbnailView: View {
                  Image(systemName: "icloud")
                      .font(.system(size: 32))
                      .foregroundColor(.white.opacity(0.35))
-                     .frame(width: 320, height: 320, alignment: .center)
+                     .frame(width: thumbnailSize, height: thumbnailSize, alignment: .center)
              }
             
             // Video indicator
@@ -70,6 +72,25 @@ struct AssetThumbnailView: View {
                     Spacer()
                 }
             
+            }
+
+
+            // Stack indicator. The primary asset represents the hidden members
+            // in grids, so keep the count visible without obscuring the photo.
+            if showsStackIndicator, let stack = asset.stack, stack.assetCount > 1 {
+                VStack {
+                    HStack {
+                        Label("\(stack.assetCount)", systemImage: "square.stack.3d.up.fill")
+                            .font(.caption.bold())
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 6)
+                            .background(Color.black.opacity(0.65), in: Capsule())
+                            .padding(10)
+                        Spacer()
+                    }
+                    Spacer()
+                }
             }
             
             // Favorite heart indicator at bottom left
@@ -100,7 +121,7 @@ struct AssetThumbnailView: View {
             }
             
         }
-        .frame(width: 320, height: 320)
+        .frame(width: thumbnailSize, height: thumbnailSize)
         .shadow(color: .black.opacity(isFocused ? 0.5 : 0), radius: 15, y: 10)
         .onAppear {
             if allowsThumbhashPlaceholder && placeholder == nil {

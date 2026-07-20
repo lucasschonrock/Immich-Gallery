@@ -37,12 +37,13 @@ struct ImmichAsset: Codable, Identifiable, Equatable {
     let visibility: String
     let duplicateId: String?
     let exifInfo: ExifInfo?
+    let stack: Stack?
     
     enum CodingKeys: String, CodingKey {
         case id, deviceAssetId, deviceId, ownerId, libraryId, type, originalPath, originalFileName
         case originalMimeType, resized, thumbhash, fileModifiedAt, fileCreatedAt, localDateTime, updatedAt
         case isFavorite, isArchived, isOffline, isTrashed, checksum, duration, hasMetadata, livePhotoVideoId
-        case people, visibility, duplicateId, exifInfo
+        case people, visibility, duplicateId, exifInfo, stack
     }
 
     init(
@@ -72,7 +73,8 @@ struct ImmichAsset: Codable, Identifiable, Equatable {
         people: [Person],
         visibility: String,
         duplicateId: String?,
-        exifInfo: ExifInfo?
+        exifInfo: ExifInfo?,
+        stack: Stack? = nil
     ) {
         self.id = id
         self.deviceAssetId = deviceAssetId
@@ -101,6 +103,7 @@ struct ImmichAsset: Codable, Identifiable, Equatable {
         self.visibility = visibility
         self.duplicateId = duplicateId
         self.exifInfo = exifInfo
+        self.stack = stack
     }
 
     init(from decoder: Decoder) throws {
@@ -138,6 +141,7 @@ struct ImmichAsset: Codable, Identifiable, Equatable {
         visibility = try container.decodeIfPresent(String.self, forKey: .visibility) ?? "timeline"
         duplicateId = try container.decodeIfPresent(String.self, forKey: .duplicateId)
         exifInfo = try container.decodeIfPresent(ExifInfo.self, forKey: .exifInfo)
+        stack = try container.decodeIfPresent(Stack.self, forKey: .stack)
     }
     
     // Equatable conformance - compare by id since it should be unique
@@ -223,6 +227,12 @@ struct Stack: Codable {
     let id: String
     let primaryAssetId: String
     let assetCount: Int
+}
+
+struct StackResponse: Codable {
+    let id: String
+    let primaryAssetId: String
+    let assets: [ImmichAsset]
 }
 
 struct Owner: Codable {

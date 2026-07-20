@@ -37,6 +37,7 @@ struct TimeBucketAssetResponse: Codable {
     let ownerId: [String]?
     let livePhotoVideoId: [String?]?
     let visibility: [String]?
+    let stack: [[String]?]?
 
     /// Map the columnar arrays into ImmichAsset values, one per index.
     /// EXIF/people are left empty — the grid only needs id, type, thumbhash,
@@ -58,6 +59,11 @@ struct TimeBucketAssetResponse: Codable {
         func flag(_ array: [Bool]?, _ i: Int) -> Bool {
             guard let array = array, i < array.count else { return false }
             return array[i]
+        }
+        func stackInfo(_ i: Int) -> Stack? {
+            guard let stack, i < stack.count, let tuple = stack[i], tuple.count == 2,
+                  let count = Int(tuple[1]) else { return nil }
+            return Stack(id: tuple[0], primaryAssetId: id[i], assetCount: count)
         }
 
         for i in 0..<n {
@@ -92,7 +98,8 @@ struct TimeBucketAssetResponse: Codable {
                 people: [],
                 visibility: str(visibility, i),
                 duplicateId: nil,
-                exifInfo: nil
+                exifInfo: nil,
+                stack: stackInfo(i)
             ))
         }
         return result

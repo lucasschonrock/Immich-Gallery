@@ -57,6 +57,58 @@ struct Immich_GalleryTests {
         #expect(nullDuration.duration == nil)
     }
 
+    @Test func assetResponseDecodesStackSummary() async throws {
+        let json = """
+        {
+          "id": "asset-1",
+          "ownerId": "user-1",
+          "type": "IMAGE",
+          "originalPath": "/library/photo.jpg",
+          "originalFileName": "photo.jpg",
+          "fileModifiedAt": "2026-07-02T10:00:00.000Z",
+          "fileCreatedAt": "2026-07-02T10:00:00.000Z",
+          "localDateTime": "2026-07-02T10:00:00.000Z",
+          "updatedAt": "2026-07-02T10:00:00.000Z",
+          "isFavorite": false,
+          "isArchived": false,
+          "isOffline": false,
+          "isTrashed": false,
+          "checksum": "abc",
+          "hasMetadata": true,
+          "visibility": "timeline",
+          "stack": {
+            "id": "stack-1",
+            "primaryAssetId": "asset-1",
+            "assetCount": 3
+          }
+        }
+        """.data(using: .utf8)!
+
+        let asset = try JSONDecoder().decode(ImmichAsset.self, from: json)
+
+        #expect(asset.stack?.id == "stack-1")
+        #expect(asset.stack?.primaryAssetId == "asset-1")
+        #expect(asset.stack?.assetCount == 3)
+    }
+
+    @Test func timelineResponseMapsStackTupleToAssetSummary() throws {
+        let json = """
+        {
+          "id": ["asset-1", "asset-2"],
+          "isImage": [true, true],
+          "stack": [["stack-1", "3"], null]
+        }
+        """.data(using: .utf8)!
+
+        let response = try JSONDecoder().decode(TimeBucketAssetResponse.self, from: json)
+        let assets = response.toAssets()
+
+        #expect(assets[0].stack?.id == "stack-1")
+        #expect(assets[0].stack?.primaryAssetId == "asset-1")
+        #expect(assets[0].stack?.assetCount == 3)
+        #expect(assets[1].stack == nil)
+    }
+
     @Test func albumResponseDecodesV3PayloadWithoutOwnerOrAssets() async throws {
         let json = """
         {

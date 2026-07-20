@@ -23,6 +23,7 @@ struct AssetGridView: View {
     let isLocked: Bool // Whether this is showing locked assets
     let onAssetsLoaded: (([ImmichAsset]) -> Void)? // Callback for when assets are loaded
     let deepLinkAssetId: String? // Asset ID to highlight from deep link
+    let allowsSlideshow: Bool
     @State private var assets: [ImmichAsset] = []
     @State private var isLoading = false
     @State private var isLoadingMore = false
@@ -53,7 +54,8 @@ struct AssetGridView: View {
         isFavorite: Bool,
         isLocked: Bool = false,
         onAssetsLoaded: (([ImmichAsset]) -> Void)?,
-        deepLinkAssetId: String?
+        deepLinkAssetId: String?,
+        allowsSlideshow: Bool = true
     ) {
         self._assetService = ObservedObject(wrappedValue: assetService)
         self._authService = ObservedObject(wrappedValue: authService)
@@ -67,6 +69,7 @@ struct AssetGridView: View {
         self.isLocked = isLocked
         self.onAssetsLoaded = onAssetsLoaded
         self.deepLinkAssetId = deepLinkAssetId
+        self.allowsSlideshow = allowsSlideshow
     }
     
     private let columns = [
@@ -241,7 +244,9 @@ struct AssetGridView: View {
             }
         }
         .onPlayPauseCommand(perform: {
-            startSlideshow()
+            if allowsSlideshow {
+                startSlideshow()
+            }
         })
         .sheet(isPresented: $showingFilterModal) {
             FilterSettingsView(

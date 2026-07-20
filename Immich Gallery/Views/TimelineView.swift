@@ -17,6 +17,7 @@ struct TimelineView: View {
         case filter
         case resetFilters
         case sort
+        case calendar
     }
 
     private enum ScrollAnchor: Hashable {
@@ -45,6 +46,7 @@ struct TimelineView: View {
     @State private var loadGeneration = UUID()
     @State private var filteredNextPage: Int?
     @State private var isLoadingFilteredPage = false
+    @State private var showingCalendar = false
 
     /// Grow the frontier by roughly a screenful of assets at a time so each
     /// extension pushes the load-more sentinel off screen (and thus lets its
@@ -172,6 +174,13 @@ struct TimelineView: View {
                 )
             }
         }
+        .fullScreenCover(isPresented: $showingCalendar, onDismiss: restoreCalendarButtonFocus) {
+            CalendarMonthGridView(
+                assetService: assetService,
+                authService: authService,
+                order: allPhotosSortOrder
+            )
+        }
         .sheet(isPresented: $showingFilterModal) {
             FilterSettingsView(
                 assetService: assetService,
@@ -224,6 +233,14 @@ struct TimelineView: View {
             .accessibilityLabel("Sort timeline by date taken")
             .accessibilityValue(sortOrderLabel)
             .accessibilityHint("Toggles the date sort direction")
+
+            Button(action: { showingCalendar = true }) {
+                Label("Months", systemImage: "calendar")
+            }
+            .buttonStyle(.bordered)
+            .focused($focusedToolbarButton, equals: .calendar)
+            .accessibilityLabel("Browse by month")
+            .accessibilityHint("Shows one card for every month containing photos")
         }
     }
 
@@ -241,6 +258,13 @@ struct TimelineView: View {
         filters.reset()
         filters.save()
         reloadTimeline()
+    }
+
+    private func restoreCalendarButtonFocus() {
+        Task { @MainActor in
+            await Task.yield()
+            focusedToolbarButton = .calendar
+        }
     }
 
     // MARK: - Month section

@@ -5,6 +5,11 @@
 
 import SwiftUI
 
+private struct AsyncLandscapeImageTaskID<ID: Hashable>: Hashable {
+    let imageId: ID
+    let shouldLoad: Bool
+}
+
 struct AsyncLandscapeOverlayLockupCard<ID: Hashable>: View {
     let taskId: ID
     let title: String
@@ -17,6 +22,7 @@ struct AsyncLandscapeOverlayLockupCard<ID: Hashable>: View {
     let fallbackTint: Color
     let cardSize: CGSize
     var topContentLeadingInset: CGFloat = 0
+    var shouldLoadImage = true
     let loadImage: () async -> UIImage?
 
     @State private var image: UIImage?
@@ -37,7 +43,8 @@ struct AsyncLandscapeOverlayLockupCard<ID: Hashable>: View {
             cardSize: cardSize,
             topContentLeadingInset: topContentLeadingInset
         )
-        .task(id: taskId) {
+        .task(id: AsyncLandscapeImageTaskID(imageId: taskId, shouldLoad: shouldLoadImage)) {
+            guard shouldLoadImage else { return }
             await loadCover()
         }
     }

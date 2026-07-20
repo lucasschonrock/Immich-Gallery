@@ -49,6 +49,62 @@ protocol AssetProvider {
     func fetchAllYears() async throws -> [Int]
 }
 
+/// Adapts one compact timeline month bucket to the paginated AssetProvider
+/// interface used by AssetGridView.
+final class TimelineMonthAssetProvider: AssetProvider {
+    private let assetService: AssetService
+    private let timeBucket: String
+    private let order: String
+    private let cache: TimelineMonthAssetCache
+
+    init(
+        assetService: AssetService,
+        timeBucket: String,
+        order: String,
+        cache: TimelineMonthAssetCache
+    ) {
+        self.assetService = assetService
+        self.timeBucket = timeBucket
+        self.order = order
+        self.cache = cache
+    }
+
+    private func loadAssets() async throws -> [ImmichAsset] {
+        try await cache.assets(
+            timeBucket: timeBucket,
+            order: order,
+            assetService: assetService
+        )
+    }
+
+    func fetchAssets(page: Int, limit: Int) async throws -> SearchResult {
+        let assets = try await loadAssets()
+        let pageSize = max(limit, 1)
+        let startIndex = max((page - 1) * pageSize, 0)
+        let endIndex = min(startIndex + pageSize, assets.count)
+        let pageAssets = startIndex < endIndex ? Array(assets[startIndex..<endIndex]) : []
+        let nextPage = endIndex < assets.count ? String(page + 1) : nil
+
+        return SearchResult(assets: pageAssets, total: assets.count, nextPage: nextPage)
+    }
+
+    func fetchRandomAssets(limit: Int) async throws -> SearchResult {
+        let assets = try await loadAssets()
+        let result = Array(assets.shuffled().prefix(max(limit, 0)))
+        return SearchResult(assets: result, total: assets.count, nextPage: nil)
+    }
+
+    func fetchAllCities() async throws -> [String] {
+        let assets = try await loadAssets()
+        return Array(Set(assets.compactMap(\.exifInfo?.city).filter { !$0.isEmpty })).sorted()
+    }
+
+    func fetchAllYears() async throws -> [Int] {
+        let assets = try await loadAssets()
+        return Array(Set(assets.compactMap { Int($0.localDateTime.prefix(4)) })).sorted(by: >)
+    }
+}
+
 class AlbumAssetProvider: AssetProvider {
     private let assetService: AssetService
     private let albumId: String

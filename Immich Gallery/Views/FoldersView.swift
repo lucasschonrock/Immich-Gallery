@@ -401,17 +401,12 @@ private struct FolderHierarchyView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 22) {
-            Image(systemName: "folder.badge.questionmark")
-                .font(.system(size: 68, weight: .medium))
-                .foregroundStyle(.white.opacity(0.72))
-            Text("No folders yet")
-                .font(.title2.weight(.bold))
-            Text("Folders with indexed assets will appear here.")
-                .font(.body)
-                .foregroundStyle(.white.opacity(0.68))
-        }
-        .foregroundStyle(.white)
+        ReloadableEmptyStateView(
+            icon: "folder.badge.questionmark",
+            title: "No folders yet",
+            message: "Folders with indexed assets will appear here.",
+            onReload: onRetry
+        )
     }
 
     private func select(_ item: FolderBrowserItem) {

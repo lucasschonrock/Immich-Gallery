@@ -114,6 +114,11 @@ extension UserDefaults {
         set { set(newValue, forKey: UserDefaultsKeys.allPhotosSortOrder) }
     }
 
+    var assetSortOrder: String {
+        get { string(forKey: UserDefaultsKeys.assetSortOrder) ?? "desc" }
+        set { set(newValue, forKey: UserDefaultsKeys.assetSortOrder) }
+    }
+
     var allPhotosFilterCity: String? {
         get { string(forKey: UserDefaultsKeys.allPhotosFilterCity) }
         set {
@@ -159,11 +164,6 @@ extension UserDefaults {
                 removeObject(forKey: UserDefaultsKeys.allPhotosFilterYear)
             }
         }
-    }
-
-    var hideAllPhotosFilterAndSortButtons: Bool {
-        get { bool(forKey: UserDefaultsKeys.hideAllPhotosFilterAndSortButtons) }
-        set { set(newValue, forKey: UserDefaultsKeys.hideAllPhotosFilterAndSortButtons) }
     }
 
     var appBackgroundStyle: String {

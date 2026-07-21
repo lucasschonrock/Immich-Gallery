@@ -8,7 +8,7 @@
 
 import SwiftUI
 
-enum TabName: Int, CaseIterable {
+enum TabName: Int, CaseIterable, Hashable {
     case photos = 0
     case albums = 1
     case people = 2
@@ -43,6 +43,23 @@ enum TabName: Int, CaseIterable {
         case .settings: return "gear"
         }
     }
+
+    var storedValue: String {
+        switch self {
+        case .photos: return "photos"
+        case .albums: return "albums"
+        case .people: return "people"
+        case .tags: return "tags"
+        case .folders: return "folders"
+        case .explore: return "explore"
+        case .search: return "search"
+        case .settings: return "settings"
+        }
+    }
+
+    static func from(storedValue: String) -> TabName? {
+        allCases.first { $0.storedValue == storedValue }
+    }
 }
 
 extension Notification.Name {
@@ -71,8 +88,13 @@ struct ContentView: View {
     @State private var selectedTab = 0
     @State private var refreshTrigger = UUID()
     @State private var showWhatsNew = false
+    @AppStorage(UserDefaultsKeys.showPhotosTab) private var showPhotosTab = true
+    @AppStorage(UserDefaultsKeys.showAlbumsTab) private var showAlbumsTab = true
+    @AppStorage(UserDefaultsKeys.showPeopleTab) private var showPeopleTab = true
     @AppStorage(UserDefaultsKeys.showTagsTab) private var showTagsTab = false
     @AppStorage(UserDefaultsKeys.showFoldersTab) private var showFoldersTab = false
+    @AppStorage(UserDefaultsKeys.showExploreTab) private var showExploreTab = true
+    @AppStorage(UserDefaultsKeys.showSearchTab) private var showSearchTab = true
     @AppStorage(UserDefaultsKeys.defaultStartupTab) private var defaultStartupTab = "photos"
     @AppStorage(UserDefaultsKeys.lastSeenVersion) private var lastSeenVersion = ""
     @AppStorage(UserDefaultsKeys.navigationStyle) private var navigationStyle = NavigationStyle.tabs.rawValue
@@ -112,57 +134,63 @@ struct ContentView: View {
                 } else {
                     // Main app interface
                     TabView(selection: $selectedTab) {
-                        Group {
-                            if photosViewMode == "timeline" {
-                                TimelineView(
-                                    assetService: assetService,
-                                    authService: authService
-                                )
-                            } else {
-                                AssetGridView(
-                                    assetService: assetService,
-                                    authService: authService,
-                                    assetProvider: AssetProviderFactory.createProvider(
-                                        isAllPhotos: true,
-                                        assetService: assetService
-                                    ),
-                                    albumId: nil, personId: nil, tagId: nil, city: nil, isAllPhotos: true, isFavorite: false,
-                                    onAssetsLoaded: nil,
-                                    deepLinkAssetId: deepLinkAssetId
-                                )
-                            }
-                        }
-                        .errorBoundary(context: "Photos Tab")
-                        .tabItem {
-                            Image(systemName: TabName.photos.iconName)
-                            Text(TabName.photos.title)
-                        }
-                        .tag(TabName.photos.rawValue)
-                        
-                        AlbumListView(albumService: albumService, authService: authService, assetService: assetService, userManager: userManager)
-                            .errorBoundary(context: "Albums Tab")
-                            .tabItem {
-                                Image(systemName: TabName.albums.iconName)
-                                Text(TabName.albums.title)
-                            }
-                            .tag(TabName.albums.rawValue)
-                        
-                        PeopleGridView(
-                            peopleService: peopleService,
-                            authService: authService,
-                            assetService: assetService,
-                            onNearbyBirthdayCountChange: { nearbyBirthdayCount = $0 }
-                            )
-                            .errorBoundary(context: "People Tab")
-                            .tabItem {
-                                if nearbyBirthdayCount > 0 {
-                                    Image(systemName: "party.popper")
+                        if showPhotosTab {
+                            Group {
+                                if photosViewMode == "timeline" {
+                                    TimelineView(
+                                        assetService: assetService,
+                                        authService: authService
+                                    )
                                 } else {
-                                    Image(systemName: TabName.people.iconName)
+                                    AssetGridView(
+                                        assetService: assetService,
+                                        authService: authService,
+                                        assetProvider: AssetProviderFactory.createProvider(
+                                            isAllPhotos: true,
+                                            assetService: assetService
+                                        ),
+                                        albumId: nil, personId: nil, tagId: nil, city: nil, isAllPhotos: true, isFavorite: false,
+                                        onAssetsLoaded: nil,
+                                        deepLinkAssetId: deepLinkAssetId
+                                    )
                                 }
-                                Text(TabName.people.title)
                             }
-                            .tag(TabName.people.rawValue)
+                            .errorBoundary(context: "Photos Tab")
+                            .tabItem {
+                                Image(systemName: TabName.photos.iconName)
+                                Text(TabName.photos.title)
+                            }
+                            .tag(TabName.photos.rawValue)
+                        }
+
+                        if showAlbumsTab {
+                            AlbumListView(albumService: albumService, authService: authService, assetService: assetService, userManager: userManager)
+                                .errorBoundary(context: "Albums Tab")
+                                .tabItem {
+                                    Image(systemName: TabName.albums.iconName)
+                                    Text(TabName.albums.title)
+                                }
+                                .tag(TabName.albums.rawValue)
+                        }
+
+                        if showPeopleTab {
+                            PeopleGridView(
+                                peopleService: peopleService,
+                                authService: authService,
+                                assetService: assetService,
+                                onNearbyBirthdayCountChange: { nearbyBirthdayCount = $0 }
+                            )
+                                .errorBoundary(context: "People Tab")
+                                .tabItem {
+                                    if nearbyBirthdayCount > 0 {
+                                        Image(systemName: "party.popper")
+                                    } else {
+                                        Image(systemName: TabName.people.iconName)
+                                    }
+                                    Text(TabName.people.title)
+                                }
+                                .tag(TabName.people.rawValue)
+                        }
                         
                         if showTagsTab {
                             TagsGridView(tagService: tagService, authService: authService, assetService: assetService)
@@ -184,21 +212,25 @@ struct ContentView: View {
                                 .tag(TabName.folders.rawValue)
                         }
                         
-                        ExploreView(exploreService: exploreService, assetService: assetService, authService: authService, userManager: userManager)
-                            .errorBoundary(context: "Explore Tab")
-                            .tabItem {
-                                Image(systemName: TabName.explore.iconName)
-                                Text(TabName.explore.title)
-                            }
-                            .tag(TabName.explore.rawValue)
-                        
-                        SearchView(searchService: searchService, assetService: assetService, authService: authService)
-                            .errorBoundary(context: "Search Tab")
-                            .tabItem {
-                                Image(systemName: TabName.search.iconName)
-                                Text(TabName.search.title)
-                            }
-                            .tag(TabName.search.rawValue)
+                        if showExploreTab {
+                            ExploreView(exploreService: exploreService, assetService: assetService, authService: authService, userManager: userManager)
+                                .errorBoundary(context: "Explore Tab")
+                                .tabItem {
+                                    Image(systemName: TabName.explore.iconName)
+                                    Text(TabName.explore.title)
+                                }
+                                .tag(TabName.explore.rawValue)
+                        }
+
+                        if showSearchTab {
+                            SearchView(searchService: searchService, assetService: assetService, authService: authService)
+                                .errorBoundary(context: "Search Tab")
+                                .tabItem {
+                                    Image(systemName: TabName.search.iconName)
+                                    Text(TabName.search.title)
+                                }
+                                .tag(TabName.search.rawValue)
+                        }
                         
                         SettingsView(authService: authService, userManager: userManager)
                             .errorBoundary(context: "Settings Tab")
@@ -225,13 +257,6 @@ struct ContentView: View {
                     }
                     .onChange(of: autoSlideshowTimeout) { _, _ in
                         recordUserActivity()
-                    }
-                    .onChange(of: showFoldersTab) { _, enabled in
-                        if !enabled && selectedTab == TabName.folders.rawValue {
-                            selectedTab = TabName.photos.rawValue
-                        } else if enabled && defaultStartupTab == "folders" {
-                            selectedTab = TabName.folders.rawValue
-                        }
                     }
                     .id(refreshTrigger) // Force refresh when user switches
                     // .accentColor(.blue)
@@ -362,7 +387,7 @@ struct ContentView: View {
     private func handleInactivityTimeout() {
         print("ContentView: Auto-slideshow inactivity timeout reached")
 
-        if selectedTab != TabName.photos.rawValue {
+        if showPhotosTab && selectedTab != TabName.photos.rawValue {
             suppressNextTabActivity = true
             selectedTab = TabName.photos.rawValue
         }
@@ -381,7 +406,9 @@ struct ContentView: View {
     private func startLaunchSlideshowIfNeeded() {
         guard launchIntoSlideshow else { return }
         print("ContentView: Launch-into-slideshow enabled, starting slideshow")
-        selectedTab = TabName.photos.rawValue
+        if showPhotosTab {
+            selectedTab = TabName.photos.rawValue
+        }
         // Give the root view time to finish its initial presentation.
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
             presentAutoSlideshow()
@@ -401,33 +428,28 @@ struct ContentView: View {
     }
 
     private func setDefaultTab() {
-        switch defaultStartupTab {
-        case "photos":
-            selectedTab = TabName.photos.rawValue
-        case "albums":
-            selectedTab = TabName.albums.rawValue
-        case "people":
-            selectedTab = TabName.people.rawValue
-        case "tags":
-            if showTagsTab {
-                selectedTab = TabName.tags.rawValue
-            } else {
-                selectedTab = TabName.photos.rawValue // Default to photos if tags tab is disabled
-            }
-        case "folders":
-            if showFoldersTab {
-                selectedTab = TabName.folders.rawValue
-            } else {
-                selectedTab = TabName.photos.rawValue
-            }
-        case "explore":
-            selectedTab = TabName.explore.rawValue
-        case "search":
-            selectedTab = TabName.search.rawValue
-        case "settings":
-            selectedTab = TabName.settings.rawValue
-        default:
-            selectedTab = TabName.photos.rawValue
+        let requestedTab = TabName.from(storedValue: defaultStartupTab)
+        let fallbackTab = configurableTabs.first(where: isTabVisible) ?? .settings
+        selectedTab = requestedTab.flatMap {
+            $0 != .settings && isTabVisible($0) ? $0.rawValue : nil
+        }
+            ?? fallbackTab.rawValue
+    }
+
+    private var configurableTabs: [TabName] {
+        [.photos, .albums, .people, .tags, .folders, .explore, .search]
+    }
+
+    private func isTabVisible(_ tab: TabName) -> Bool {
+        switch tab {
+        case .photos: return showPhotosTab
+        case .albums: return showAlbumsTab
+        case .people: return showPeopleTab
+        case .tags: return showTagsTab
+        case .folders: return showFoldersTab
+        case .explore: return showExploreTab
+        case .search: return showSearchTab
+        case .settings: return true
         }
     }
     

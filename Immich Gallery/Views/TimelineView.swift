@@ -225,14 +225,12 @@ struct TimelineView: View {
             .accessibilityLabel("Reset timeline filters")
             .accessibilityHint("Clears all active photo filters")
 
-            Button(action: toggleSortOrder) {
-                Label(sortOrderLabel, systemImage: "arrow.up.arrow.down")
-            }
-            .buttonStyle(.bordered)
+            AllPhotosSortButton(
+                sortOrder: allPhotosSortOrder,
+                action: toggleSortOrder,
+                accessibilityLabel: "Sort timeline by date taken"
+            )
             .focused($focusedToolbarButton, equals: .sort)
-            .accessibilityLabel("Sort timeline by date taken")
-            .accessibilityValue(sortOrderLabel)
-            .accessibilityHint("Toggles the date sort direction")
 
             Button(action: { showingCalendar = true }) {
                 Label("Months", systemImage: "calendar")
@@ -242,10 +240,6 @@ struct TimelineView: View {
             .accessibilityLabel("Browse by month")
             .accessibilityHint("Shows one card for every month containing photos")
         }
-    }
-
-    private var sortOrderLabel: String {
-        allPhotosSortOrder == "asc" ? "Oldest" : "Newest"
     }
 
     private func toggleSortOrder() {

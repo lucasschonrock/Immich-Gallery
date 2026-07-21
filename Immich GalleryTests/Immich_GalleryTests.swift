@@ -180,6 +180,18 @@ struct Immich_GalleryTests {
         #expect(response.assets.nextPage == "2")
     }
 
+    @Test func collectionAssetSortOrderDefaultsToNewestFirst() throws {
+        let suiteName = "CollectionAssetSortOrderTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        defaults.removePersistentDomain(forName: suiteName)
+        #expect(defaults.assetSortOrder == "desc")
+
+        defaults.assetSortOrder = "asc"
+        #expect(defaults.assetSortOrder == "asc")
+    }
+
     @Test func albumAssetProviderUsesBackendMetadataPaginationForRequestedPages() async throws {
         let assetService = PaginatedAlbumAssetService()
         let provider = AlbumAssetProvider(assetService: assetService, albumId: "album-1")

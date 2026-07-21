@@ -75,16 +75,12 @@ struct ExploreView: View {
                     .buttonStyle(.borderedProminent)
                 }
             } else if exploreItems.isEmpty {
-                VStack {
-                    Image(systemName: "photo")
-                        .font(.system(size: 60))
-                        .foregroundColor(.gray)
-                    Text("No Places Found")
-                        .font(.title)
-                        .foregroundColor(.white)
-                    Text("Photos with location data will appear here")
-                        .foregroundColor(.gray)
-                }
+                ReloadableEmptyStateView(
+                    icon: "photo",
+                    title: "No Places Found",
+                    message: "Photos with location data will appear here",
+                    onReload: loadExploreData
+                )
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {

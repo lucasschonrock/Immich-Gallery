@@ -11,6 +11,7 @@ struct PeopleGridView: View {
     @ObservedObject var peopleService: PeopleService
     @ObservedObject var authService: AuthenticationService
     @ObservedObject var assetService: AssetService
+    var onNearbyBirthdayCountChange: (Int) -> Void = { _ in }
     @State private var people: [Person] = []
     @State private var isLoading = false
     @State private var isLoadingMore = false
@@ -23,6 +24,10 @@ struct PeopleGridView: View {
 
     private var thumbnailProvider: PeopleThumbnailProvider {
         PeopleThumbnailProvider(assetService: assetService)
+    }
+
+    private var nearbyBirthdays: [Person] {
+        people.filter { BirthdayProximity.details(for: $0) != nil }
     }
 
     var body: some View {
@@ -47,6 +52,9 @@ struct PeopleGridView: View {
             if people.isEmpty {
                 loadPeople()
             }
+        }
+        .onChange(of: nearbyBirthdays.count) { _, count in
+            onNearbyBirthdayCountChange(count)
         }
     }
 
@@ -213,6 +221,10 @@ private struct PeopleLockupGridView: View {
             parts.append("Hidden")
         }
 
+        if let birthday = BirthdayProximity.details(for: person) {
+            parts.append(birthday.label)
+        }
+
         return parts.joined(separator: ", ")
     }
 }
@@ -244,6 +256,12 @@ private struct PersonLockupCard: View {
 
             PersonThumbnailBadge(person: person, peopleService: peopleService)
                 .padding(16)
+
+            if let birthday = BirthdayProximity.details(for: person) {
+                BirthdayCardBadge(birthday: birthday)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                    .padding(16)
+            }
         }
     }
 
@@ -263,6 +281,21 @@ private struct PersonLockupCard: View {
         }
 
         return icons
+    }
+}
+
+private struct BirthdayCardBadge: View {
+    let birthday: BirthdayProximity.Details
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Image(systemName: "party.popper.fill")
+                .foregroundStyle(.cyan)
+            Text(birthday.shortLabel)
+        }
+        .font(.caption.weight(.bold))
+        .foregroundStyle(.white)
+        .shadow(color: .black.opacity(0.9), radius: 3, x: 0, y: 1)
     }
 }
 
@@ -320,6 +353,62 @@ private enum PeopleMetadataFormatter {
 
     static func accessibilityName(for person: Person) -> String {
         person.name.isEmpty ? "Unnamed person" : person.name
+    }
+
+}
+
+enum BirthdayProximity {
+    struct Details: Equatable {
+        let dayOffset: Int
+
+        var label: String {
+            switch dayOffset {
+            case 0: return "Birthday today"
+            case 1: return "Birthday tomorrow"
+            case 2: return "Birthday in 2 days"
+            case -1: return "Birthday yesterday"
+            default: return "Birthday 2 days ago"
+            }
+        }
+
+        var shortLabel: String {
+            switch dayOffset {
+            case 0: return "Today"
+            case 1: return "Tomorrow"
+            case 2: return "In 2 days"
+            case -1: return "Yesterday"
+            default: return "2 days ago"
+            }
+        }
+    }
+
+    static func details(
+        for person: Person,
+        on date: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Details? {
+        guard let birthDate = person.birthDate else { return nil }
+        let components = birthDate.prefix(10).split(separator: "-")
+        guard components.count == 3,
+              let month = Int(components[1]),
+              let day = Int(components[2]) else { return nil }
+
+        let today = calendar.startOfDay(for: date)
+        let currentYear = calendar.component(.year, from: today)
+        let offsets = (-1...1).compactMap { yearOffset -> Int? in
+            guard let birthday = calendar.date(from: DateComponents(
+                calendar: calendar,
+                year: currentYear + yearOffset,
+                month: month,
+                day: day
+            )) else { return nil }
+            return calendar.dateComponents([.day], from: today, to: birthday).day
+        }
+
+        guard let nearest = offsets.min(by: { abs($0) < abs($1) }), abs(nearest) <= 2 else {
+            return nil
+        }
+        return Details(dayOffset: nearest)
     }
 
 }

@@ -78,6 +78,7 @@ struct ContentView: View {
     @AppStorage(UserDefaultsKeys.navigationStyle) private var navigationStyle = NavigationStyle.tabs.rawValue
     @AppStorage(UserDefaultsKeys.photosViewMode) private var photosViewMode = "timeline"
     @State private var searchTabHighlighted = false
+    @State private var nearbyBirthdayCount = 0
     @State private var deepLinkAssetId: String?
     @State private var deepLinkedAsset: ImmichAsset?
     @State private var deepLinkedAssetIndex = 0
@@ -100,7 +101,7 @@ struct ContentView: View {
     private var currentNavigationStyle: NavigationStyle {
         NavigationStyle(rawValue: navigationStyle) ?? .tabs
     }
-    
+
     var body: some View {
         NavigationView {
             ZStack {
@@ -146,10 +147,19 @@ struct ContentView: View {
                             }
                             .tag(TabName.albums.rawValue)
                         
-                        PeopleGridView(peopleService: peopleService, authService: authService, assetService: assetService)
+                        PeopleGridView(
+                            peopleService: peopleService,
+                            authService: authService,
+                            assetService: assetService,
+                            onNearbyBirthdayCountChange: { nearbyBirthdayCount = $0 }
+                            )
                             .errorBoundary(context: "People Tab")
                             .tabItem {
-                                Image(systemName: TabName.people.iconName)
+                                if nearbyBirthdayCount > 0 {
+                                    Image(systemName: "party.popper")
+                                } else {
+                                    Image(systemName: TabName.people.iconName)
+                                }
                                 Text(TabName.people.title)
                             }
                             .tag(TabName.people.rawValue)

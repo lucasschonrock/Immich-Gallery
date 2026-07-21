@@ -11,6 +11,23 @@ import Foundation
 
 struct Immich_GalleryTests {
 
+    @Test func birthdayProximityIncludesTwoDaysAcrossYearBoundary() throws {
+        let calendar = birthdayTestCalendar
+        let today = try #require(calendar.date(from: DateComponents(year: 2026, month: 12, day: 31)))
+
+        #expect(BirthdayProximity.details(for: makePerson(id: "today", birthDate: "1990-12-31"), on: today, calendar: calendar)?.dayOffset == 0)
+        #expect(BirthdayProximity.details(for: makePerson(id: "tomorrow", birthDate: "1990-01-01"), on: today, calendar: calendar)?.dayOffset == 1)
+        #expect(BirthdayProximity.details(for: makePerson(id: "two-days", birthDate: "1990-01-02"), on: today, calendar: calendar)?.dayOffset == 2)
+        #expect(BirthdayProximity.details(for: makePerson(id: "outside", birthDate: "1990-01-03"), on: today, calendar: calendar) == nil)
+    }
+
+    @Test func invalidBirthdayIsIgnored() throws {
+        let calendar = birthdayTestCalendar
+        let today = try #require(calendar.date(from: DateComponents(year: 2026, month: 7, day: 20)))
+
+        #expect(BirthdayProximity.details(for: makePerson(id: "invalid", birthDate: "not-a-date"), on: today, calendar: calendar) == nil)
+    }
+
     @Test func assetResponseDecodesV3PayloadWithMissingDeviceFieldsAndPeople() async throws {
         let json = """
         {
@@ -276,6 +293,25 @@ struct Immich_GalleryTests {
         """.data(using: .utf8)!
 
         return try JSONDecoder().decode(ImmichAsset.self, from: json)
+    }
+
+    private var birthdayTestCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        return calendar
+    }
+
+    private func makePerson(id: String, birthDate: String?) -> Person {
+        Person(
+            id: id,
+            name: id,
+            birthDate: birthDate,
+            thumbnailPath: "thumbnail.jpg",
+            isHidden: false,
+            isFavorite: false,
+            updatedAt: nil,
+            color: nil
+        )
     }
 
 }

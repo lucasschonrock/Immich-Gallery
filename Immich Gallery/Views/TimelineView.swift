@@ -240,6 +240,9 @@ struct TimelineView: View {
             .accessibilityLabel("Browse by month")
             .accessibilityHint("Shows one card for every month containing photos")
         }
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
+        .layoutPriority(1)
     }
 
     private func toggleSortOrder() {

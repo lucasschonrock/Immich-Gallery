@@ -38,7 +38,8 @@ class ContentProvider: TVTopShelfContentProvider {
     }
     
     private func createTopShelfContent() async throws -> TVTopShelfContent {
-        let assets = try await fetchPhotos()
+        let imageSelection = sharedDefaults.string(forKey: UserDefaultsKeys.topShelfImageSelection) ?? "recent"
+        let assets = try await fetchPhotos(imageSelection: imageSelection)
         print("TopShelf: Fetched \(assets.count) assets")
         
         // Check user preference for TopShelf style
@@ -46,9 +47,14 @@ class ContentProvider: TVTopShelfContentProvider {
         print("TopShelf: Using style: \(topShelfStyle)")
         
         if topShelfStyle == "sectioned" {
-            return try await createSectionedContent(assets: assets)
+            let sectionTitle = imageSelection == "random" ? nil : "Recent Photos"
+            return try await createSectionedContent(
+                assets: Array(assets.prefix(10)),
+                title: sectionTitle
+            )
         } else {
-            return try await createCarouselContent(assets: assets)
+            let landscapeAssets = assets.filter(\.isLandscape)
+            return try await createCarouselContent(assets: Array(landscapeAssets.prefix(10)))
         }
     }
     
@@ -87,7 +93,7 @@ class ContentProvider: TVTopShelfContentProvider {
         return content
     }
     
-    private func createSectionedContent(assets: [SimpleAsset]) async throws -> TVTopShelfContent {
+    private func createSectionedContent(assets: [SimpleAsset], title: String?) async throws -> TVTopShelfContent {
         print("TopShelf: Starting to create TopShelf sectioned content")
         
         let sectionItems = await withTaskGroup(of: (Int, TVTopShelfSectionedItem?).self) { group in
@@ -118,7 +124,7 @@ class ContentProvider: TVTopShelfContentProvider {
         }
         
         let section = TVTopShelfItemCollection(items: sectionItems)
-        section.title = "Recent Photos"
+        section.title = title
         
         let content = TVTopShelfSectionedContent(sections: [section])
         print("TopShelf: Created sectioned content with \(sectionItems.count) items")
@@ -159,9 +165,9 @@ class ContentProvider: TVTopShelfContentProvider {
         }
         
         let item = TVTopShelfSectionedItem(identifier: asset.id)
-        item.title = asset.originalFileName
         item.displayAction = TVTopShelfAction(url: url)
-        print("TopShelf: Created basic sectioned item with title: \(asset.originalFileName)")
+        item.imageShape = asset.topShelfImageShape
+        print("TopShelf: Created basic sectioned item for asset: \(asset.id)")
         
         // Download and process image without long-term caching
         if let imageURL = await downloadImageWithoutCaching(for: asset) {
@@ -214,12 +220,11 @@ class ContentProvider: TVTopShelfContentProvider {
         return sharedDefaults.bool(forKey: UserDefaultsKeys.enableTopShelf)
     }
     
-    private func fetchPhotos() async throws -> [SimpleAsset] {
+    private func fetchPhotos(imageSelection: String) async throws -> [SimpleAsset] {
         print("TopShelf: Starting to fetch \(TOTAL_ITEMS_COUNT) photos")
         
         let (serverURL, accessToken, authType) = getCurrentUserCredentials()
         let isTopShelfEnabledFromDefaults = isTopShelfEnabled
-        let imageSelection = sharedDefaults.string(forKey: UserDefaultsKeys.topShelfImageSelection) ?? "recent"
         
         print("TopShelf: enabled=\(isTopShelfEnabledFromDefaults), imageSelection=\(imageSelection)")
         
@@ -295,12 +300,7 @@ class ContentProvider: TVTopShelfContentProvider {
         print("TopShelf: Decoding response...")
         let searchResponse = try JSONDecoder().decode(SimpleSearchResponse.self, from: data)
         let allImageAssets = searchResponse.assets.items.filter { $0.type == "IMAGE" }
-      
-        let landscapeAssets = allImageAssets.filter { $0.isLandscape }
-       
-        let finalAssets = Array(landscapeAssets.prefix(10))
-        
-        return finalAssets
+        return allImageAssets
     }
     
     private func fetchRandomPhotos(serverURL: String, accessToken: String, authType: SavedUser.AuthType) async throws -> [SimpleAsset] {
@@ -351,13 +351,7 @@ class ContentProvider: TVTopShelfContentProvider {
         let randomAssets = try JSONDecoder().decode([SimpleAsset].self, from: data)
         let allImageAssets = randomAssets.filter { $0.type == "IMAGE" }
         print("TopShelf: Found \(allImageAssets.count) total random image assets")
-        
-        let landscapeAssets = allImageAssets.filter { $0.isLandscape }
-        print("TopShelf: Found \(landscapeAssets.count) landscape image assets after filtering out portraits")
-        
-        let finalAssets = Array(landscapeAssets.prefix(10))
-        print("TopShelf: Returning \(finalAssets.count) landscape image assets for Top Shelf")
-        return finalAssets
+        return allImageAssets
     }
     
 
@@ -519,6 +513,19 @@ struct SimpleAsset: Codable, Identifiable {
             return true
         }
         return width >= height
+    }
+
+    var topShelfImageShape: TVTopShelfSectionedItem.ImageShape {
+        guard let exif = exifInfo,
+              let width = exif.exifImageWidth,
+              let height = exif.exifImageHeight else {
+            return .hdtv
+        }
+
+        if width == height {
+            return .square
+        }
+        return width > height ? .hdtv : .poster
     }
 }
 

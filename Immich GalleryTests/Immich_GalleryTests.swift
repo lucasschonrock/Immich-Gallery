@@ -11,6 +11,23 @@ import Foundation
 
 struct Immich_GalleryTests {
 
+    @Test func birthdayProximityIncludesTwoDaysAcrossYearBoundary() throws {
+        let calendar = birthdayTestCalendar
+        let today = try #require(calendar.date(from: DateComponents(year: 2026, month: 12, day: 31)))
+
+        #expect(BirthdayProximity.details(for: makePerson(id: "today", birthDate: "1990-12-31"), on: today, calendar: calendar)?.dayOffset == 0)
+        #expect(BirthdayProximity.details(for: makePerson(id: "tomorrow", birthDate: "1990-01-01"), on: today, calendar: calendar)?.dayOffset == 1)
+        #expect(BirthdayProximity.details(for: makePerson(id: "two-days", birthDate: "1990-01-02"), on: today, calendar: calendar)?.dayOffset == 2)
+        #expect(BirthdayProximity.details(for: makePerson(id: "outside", birthDate: "1990-01-03"), on: today, calendar: calendar) == nil)
+    }
+
+    @Test func invalidBirthdayIsIgnored() throws {
+        let calendar = birthdayTestCalendar
+        let today = try #require(calendar.date(from: DateComponents(year: 2026, month: 7, day: 20)))
+
+        #expect(BirthdayProximity.details(for: makePerson(id: "invalid", birthDate: "not-a-date"), on: today, calendar: calendar) == nil)
+    }
+
     @Test func assetResponseDecodesV3PayloadWithMissingDeviceFieldsAndPeople() async throws {
         let json = """
         {
@@ -55,6 +72,58 @@ struct Immich_GalleryTests {
 
         #expect(stringDuration.duration == "00:00:12.000")
         #expect(nullDuration.duration == nil)
+    }
+
+    @Test func assetResponseDecodesStackSummary() async throws {
+        let json = """
+        {
+          "id": "asset-1",
+          "ownerId": "user-1",
+          "type": "IMAGE",
+          "originalPath": "/library/photo.jpg",
+          "originalFileName": "photo.jpg",
+          "fileModifiedAt": "2026-07-02T10:00:00.000Z",
+          "fileCreatedAt": "2026-07-02T10:00:00.000Z",
+          "localDateTime": "2026-07-02T10:00:00.000Z",
+          "updatedAt": "2026-07-02T10:00:00.000Z",
+          "isFavorite": false,
+          "isArchived": false,
+          "isOffline": false,
+          "isTrashed": false,
+          "checksum": "abc",
+          "hasMetadata": true,
+          "visibility": "timeline",
+          "stack": {
+            "id": "stack-1",
+            "primaryAssetId": "asset-1",
+            "assetCount": 3
+          }
+        }
+        """.data(using: .utf8)!
+
+        let asset = try JSONDecoder().decode(ImmichAsset.self, from: json)
+
+        #expect(asset.stack?.id == "stack-1")
+        #expect(asset.stack?.primaryAssetId == "asset-1")
+        #expect(asset.stack?.assetCount == 3)
+    }
+
+    @Test func timelineResponseMapsStackTupleToAssetSummary() throws {
+        let json = """
+        {
+          "id": ["asset-1", "asset-2"],
+          "isImage": [true, true],
+          "stack": [["stack-1", "3"], null]
+        }
+        """.data(using: .utf8)!
+
+        let response = try JSONDecoder().decode(TimeBucketAssetResponse.self, from: json)
+        let assets = response.toAssets()
+
+        #expect(assets[0].stack?.id == "stack-1")
+        #expect(assets[0].stack?.primaryAssetId == "asset-1")
+        #expect(assets[0].stack?.assetCount == 3)
+        #expect(assets[1].stack == nil)
     }
 
     @Test func albumResponseDecodesV3PayloadWithoutOwnerOrAssets() async throws {
@@ -109,6 +178,18 @@ struct Immich_GalleryTests {
 
         #expect(response.assets.total == 25)
         #expect(response.assets.nextPage == "2")
+    }
+
+    @Test func collectionAssetSortOrderDefaultsToNewestFirst() throws {
+        let suiteName = "CollectionAssetSortOrderTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        defaults.removePersistentDomain(forName: suiteName)
+        #expect(defaults.assetSortOrder == "desc")
+
+        defaults.assetSortOrder = "asc"
+        #expect(defaults.assetSortOrder == "asc")
     }
 
     @Test func albumAssetProviderUsesBackendMetadataPaginationForRequestedPages() async throws {
@@ -224,6 +305,25 @@ struct Immich_GalleryTests {
         """.data(using: .utf8)!
 
         return try JSONDecoder().decode(ImmichAsset.self, from: json)
+    }
+
+    private var birthdayTestCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        return calendar
+    }
+
+    private func makePerson(id: String, birthDate: String?) -> Person {
+        Person(
+            id: id,
+            name: id,
+            birthDate: birthDate,
+            thumbnailPath: "thumbnail.jpg",
+            isHidden: false,
+            isFavorite: false,
+            updatedAt: nil,
+            color: nil
+        )
     }
 
 }

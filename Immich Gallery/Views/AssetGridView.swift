@@ -13,7 +13,7 @@ struct AssetGridView: View {
     @ObservedObject private var thumbnailCache = ThumbnailCache.shared
     let assetProvider: AssetProvider
     @AppStorage("allPhotosSortOrder") private var allPhotosSortOrder = "desc"
-    @AppStorage(UserDefaultsKeys.hideAllPhotosFilterAndSortButtons) private var hideAllPhotosFilterAndSortButtons = false
+    @AppStorage(UserDefaultsKeys.assetSortOrder) private var assetSortOrder = "desc"
     let albumId: String? // Optional album ID to filter assets
     let personId: String? // Optional person ID to filter assets
     let tagId: String? // Optional tag ID to filter assets
@@ -23,6 +23,7 @@ struct AssetGridView: View {
     let isLocked: Bool // Whether this is showing locked assets
     let onAssetsLoaded: (([ImmichAsset]) -> Void)? // Callback for when assets are loaded
     let deepLinkAssetId: String? // Asset ID to highlight from deep link
+    let allowsSlideshow: Bool
     @State private var assets: [ImmichAsset] = []
     @State private var isLoading = false
     @State private var isLoadingMore = false
@@ -38,7 +39,6 @@ struct AssetGridView: View {
     @State private var loadMoreTask: Task<Void, Never>?
     @State private var showingSlideshow = false
     @State private var showingFilterModal = false
-    @State private var showingSortModal = false
     @State private var filters = PhotoFilterSelection.saved
 
     init(
@@ -53,7 +53,8 @@ struct AssetGridView: View {
         isFavorite: Bool,
         isLocked: Bool = false,
         onAssetsLoaded: (([ImmichAsset]) -> Void)?,
-        deepLinkAssetId: String?
+        deepLinkAssetId: String?,
+        allowsSlideshow: Bool = true
     ) {
         self._assetService = ObservedObject(wrappedValue: assetService)
         self._authService = ObservedObject(wrappedValue: authService)
@@ -67,6 +68,7 @@ struct AssetGridView: View {
         self.isLocked = isLocked
         self.onAssetsLoaded = onAssetsLoaded
         self.deepLinkAssetId = deepLinkAssetId
+        self.allowsSlideshow = allowsSlideshow
     }
     
     private let columns = [
@@ -171,6 +173,9 @@ struct AssetGridView: View {
                                 .padding()
                             }
                         }
+                        // Pair the sparse, left-aligned grid with the right-aligned
+                        // controls so focus can cross the empty horizontal gap.
+                        .focusSection()
                         .padding(.horizontal)
                         .padding(.top, 20)
                         .padding(.bottom, 40)
@@ -241,7 +246,9 @@ struct AssetGridView: View {
             }
         }
         .onPlayPauseCommand(perform: {
-            startSlideshow()
+            if allowsSlideshow {
+                startSlideshow()
+            }
         })
         .sheet(isPresented: $showingFilterModal) {
             FilterSettingsView(
@@ -251,10 +258,14 @@ struct AssetGridView: View {
                 applyFilters()
             }
         }
-        .sheet(isPresented: $showingSortModal) {
-            SortSettingsView(sortOrder: $allPhotosSortOrder) {
-                showingSortModal = false
-                loadAssets()
+        .toolbar {
+            if !isAllPhotos {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    AssetSortToolbarButton(
+                        sortOrder: assetSortOrder,
+                        action: toggleAssetSortOrder
+                    )
+                }
             }
         }
         .onAppear {
@@ -287,7 +298,17 @@ struct AssetGridView: View {
     }
 
     private var shouldShowAllPhotosToolbar: Bool {
-        isAllPhotos && !hideAllPhotosFilterAndSortButtons
+        isAllPhotos
+    }
+
+    private func toggleAssetSortOrder() {
+        assetSortOrder = assetSortOrder == "asc" ? "desc" : "asc"
+        loadAssets()
+    }
+
+    private func toggleAllPhotosSortOrder() {
+        allPhotosSortOrder = allPhotosSortOrder == "asc" ? "desc" : "asc"
+        loadAssets()
     }
 
     private var allPhotosToolbar: some View {
@@ -304,16 +325,14 @@ struct AssetGridView: View {
             }
             .buttonStyle(.bordered)
 
-            Button(action: { showingSortModal = true }) {
-                let orderLabel = allPhotosSortOrder == "asc" ? "Oldest" : "Newest"
-                Label {
-                    Text("Sort: Date Taken (\(orderLabel))")
-                } icon: {
-                    Image(systemName: "arrow.up.arrow.down")
-                }
-            }
-            .buttonStyle(.bordered)
+            AllPhotosSortButton(
+                sortOrder: allPhotosSortOrder,
+                action: toggleAllPhotosSortOrder
+            )
         }
+        // A one- or two-item grid may have no geometric focus candidate below
+        // these controls unless both regions participate as focus sections.
+        .focusSection()
     }
     
     private func loadAssets() {
@@ -488,5 +507,30 @@ struct AssetGridView: View {
                 }
             }
         }
+    }
+}
+
+private struct AssetSortToolbarButton: View {
+    let sortOrder: String
+    let action: () -> Void
+
+    private var isOldestFirst: Bool {
+        sortOrder == "asc"
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Text(isOldestFirst ? "Oldest → Newest" : "Newest → Oldest")
+                .frame(width: 150)
+        }
+        .buttonStyle(.bordered)
+        .frame(width: 190)
+        .accessibilityLabel("Sort photos by date taken")
+        .accessibilityValue(isOldestFirst ? "Oldest first" : "Newest first")
+        .accessibilityHint(
+            isOldestFirst
+            ? "Switches to newest first"
+            : "Switches to oldest first"
+        )
     }
 }

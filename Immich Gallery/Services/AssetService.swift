@@ -167,9 +167,13 @@ class AssetService: ObservableObject {
     /// Fetches the list of monthly buckets (month + asset count) for the whole
     /// library in a single lightweight request. Used to build the timeline's
     /// section spine without loading any assets.
-    func fetchTimelineBuckets(order requestedOrder: String? = nil) async throws -> [TimelineBucket] {
+    func fetchTimelineBuckets(
+        order requestedOrder: String? = nil,
+        isFavorite: Bool = false
+    ) async throws -> [TimelineBucket] {
         let order = requestedOrder ?? UserDefaults.standard.allPhotosSortOrder
-        let endpoint = "/api/timeline/buckets?isTrashed=false&order=\(order)&withStacked=true"
+        let favoriteFilter = isFavorite ? "&isFavorite=true" : ""
+        let endpoint = "/api/timeline/buckets?isTrashed=false&order=\(order)&withStacked=true\(favoriteFilter)"
         return try await networkService.makeRequest(
             endpoint: endpoint,
             method: .GET,
@@ -180,10 +184,15 @@ class AssetService: ObservableObject {
     /// Fetches the assets for a single month bucket. The server returns a
     /// compact columnar payload which is mapped into ImmichAsset values so the
     /// existing thumbnail/fullscreen views can render them.
-    func fetchBucketAssets(timeBucket: String, order requestedOrder: String? = nil) async throws -> [ImmichAsset] {
+    func fetchBucketAssets(
+        timeBucket: String,
+        order requestedOrder: String? = nil,
+        isFavorite: Bool = false
+    ) async throws -> [ImmichAsset] {
         let order = requestedOrder ?? UserDefaults.standard.allPhotosSortOrder
         let encoded = timeBucket.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? timeBucket
-        let endpoint = "/api/timeline/bucket?timeBucket=\(encoded)&isTrashed=false&order=\(order)&withStacked=true"
+        let favoriteFilter = isFavorite ? "&isFavorite=true" : ""
+        let endpoint = "/api/timeline/bucket?timeBucket=\(encoded)&isTrashed=false&order=\(order)&withStacked=true\(favoriteFilter)"
         let response: TimeBucketAssetResponse = try await networkService.makeRequest(
             endpoint: endpoint,
             method: .GET,
@@ -204,7 +213,8 @@ class AssetService: ObservableObject {
         cameraMake: String? = nil,
         cameraModel: String? = nil,
         lensModel: String? = nil,
-        year: Int?
+        year: Int?,
+        isFavorite: Bool = false
     ) async throws -> SearchResult {
         let request = Self.timelineSearchRequest(
             page: page,
@@ -216,7 +226,8 @@ class AssetService: ObservableObject {
             cameraMake: cameraMake,
             cameraModel: cameraModel,
             lensModel: lensModel,
-            year: year
+            year: year,
+            isFavorite: isFavorite
         )
         let response: SearchResponse = try await networkService.makeRequest(
             endpoint: "/api/search/metadata",
@@ -241,7 +252,8 @@ class AssetService: ObservableObject {
         cameraMake: String? = nil,
         cameraModel: String? = nil,
         lensModel: String? = nil,
-        year: Int?
+        year: Int?,
+        isFavorite: Bool = false
     ) -> [String: Any] {
         var request: [String: Any] = [
             "page": page,
@@ -257,6 +269,7 @@ class AssetService: ObservableObject {
         if let value = metadataFilterValue(cameraMake) { request["make"] = value }
         if let value = metadataFilterValue(cameraModel) { request["model"] = value }
         if let value = metadataFilterValue(lensModel) { request["lensModel"] = value }
+        if isFavorite { request["isFavorite"] = true }
         if let year, let range = makeYearRange(year: year) {
             request["takenAfter"] = range.start
             request["takenBefore"] = range.end

@@ -20,6 +20,7 @@ struct AssetThumbnailView: View {
     var showsDateOverlay = true
     var showsStackIndicator = true
     var thumbnailSize: CGFloat = 320
+    var thumbnailLoadDelayNanoseconds: UInt64 = 150_000_000
     
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -155,7 +156,9 @@ struct AssetThumbnailView: View {
             // Debounce: a tile that scroll/focus blows past is cancelled in
             // onDisappear before this fires, so we never load tiles the user
             // is racing past.
-            try? await Task.sleep(nanoseconds: 150_000_000) // 150ms settle
+            if thumbnailLoadDelayNanoseconds > 0 {
+                try? await Task.sleep(nanoseconds: thumbnailLoadDelayNanoseconds)
+            }
             if Task.isCancelled { return }
 
             // Hard concurrency cap: even if SwiftUI's nested lazy grids

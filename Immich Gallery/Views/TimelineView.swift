@@ -39,7 +39,6 @@ struct TimelineView: View {
     @State private var frontier = 0
     @State private var isLoading = false
     @State private var isScrolling = false
-    @State private var visibleAssetIds: Set<String> = []
     @State private var errorMessage: String?
     @State private var showingFilterModal = false
     @State private var filters = PhotoFilterSelection.saved
@@ -53,7 +52,6 @@ struct TimelineView: View {
     /// onAppear fire again on the next scroll).
     private let growByAssetCount = 120
     private let filteredPageSize = 120
-    private let thumbnailLoadBuffer = 5
 
     @State private var selectedAsset: ImmichAsset?
     @State private var showingFullScreen = false
@@ -86,26 +84,6 @@ struct TimelineView: View {
     // fullscreen viewer so left/right paging works across loaded months.
     private var loadedAssetsInOrder: [ImmichAsset] {
         buckets.flatMap { bucketAssets[$0.timeBucket] ?? [] }
-    }
-
-    private var thumbnailLoadAssetIds: Set<String> {
-        let assets = loadedAssetsInOrder
-        guard !assets.isEmpty else { return [] }
-
-        var idsToLoad = Set<String>()
-        let anchorIds = visibleAssetIds.union(focusedAssetId.map { [$0] } ?? [])
-
-        for anchorId in anchorIds {
-            guard let index = assets.firstIndex(where: { $0.id == anchorId }) else { continue }
-            let lowerBound = max(assets.startIndex, index - thumbnailLoadBuffer)
-            let upperBound = min(assets.index(before: assets.endIndex), index + thumbnailLoadBuffer)
-
-            for assetIndex in lowerBound...upperBound {
-                idsToLoad.insert(assets[assetIndex].id)
-            }
-        }
-
-        return idsToLoad
     }
 
     var body: some View {
@@ -156,7 +134,7 @@ struct TimelineView: View {
                     }
                     Spacer()
                 } else {
-                    timelineContent(loadableThumbnailIds: thumbnailLoadAssetIds)
+                    timelineContent
                 }
             }
             .padding(.top, 20)
@@ -266,7 +244,7 @@ struct TimelineView: View {
 
     // MARK: - Month section
 
-    private func timelineContent(loadableThumbnailIds: Set<String>) -> some View {
+    private var timelineContent: some View {
         let renderedBuckets = visibleBuckets
 
         return ScrollViewReader { proxy in
@@ -286,13 +264,13 @@ struct TimelineView: View {
                 LazyVGrid(columns: columns, spacing: gridSpacing) {
                     if let firstBucket = renderedBuckets.first {
                         Section {
-                            sectionContent(for: firstBucket, loadableThumbnailIds: loadableThumbnailIds)
+                            sectionContent(for: firstBucket)
                         }
                     }
 
                     ForEach(renderedBuckets.dropFirst()) { bucket in
                         Section {
-                            sectionContent(for: bucket, loadableThumbnailIds: loadableThumbnailIds)
+                            sectionContent(for: bucket)
                         } header: {
                             sectionHeader(for: bucket)
                         }
@@ -331,8 +309,11 @@ struct TimelineView: View {
                         .padding(.bottom, 40)
                 }
             }
-            .onScrollPhaseChange { _, newPhase in
-                isScrolling = newPhase.isScrolling
+            .onScrollPhaseChange { _, newPhase, context in
+                isScrolling = ThumbnailScrollLoadingPolicy.shouldPauseLoading(
+                    during: newPhase,
+                    velocity: context.velocity
+                )
             }
         }
     }
@@ -369,15 +350,15 @@ struct TimelineView: View {
     /// just shows its header briefly until its assets arrive. This keeps the
     /// number of declared/focusable views bounded to what's actually loaded.
     @ViewBuilder
-    private func sectionContent(for bucket: TimelineBucket, loadableThumbnailIds: Set<String>) -> some View {
+    private func sectionContent(for bucket: TimelineBucket) -> some View {
         if let assets = bucketAssets[bucket.timeBucket] {
             ForEach(assets) { asset in
-                assetTile(asset, shouldLoadThumbnail: loadableThumbnailIds.contains(asset.id))
+                assetTile(asset)
             }
         }
     }
 
-    private func assetTile(_ asset: ImmichAsset, shouldLoadThumbnail: Bool) -> some View {
+    private func assetTile(_ asset: ImmichAsset) -> some View {
         Button(action: {
             selectedAsset = asset
             if let index = loadedAssetsInOrder.firstIndex(of: asset) {
@@ -389,22 +370,16 @@ struct TimelineView: View {
                 asset: asset,
                 assetService: assetService,
                 isFocused: focusedAssetId == asset.id,
-                shouldLoadThumbnail: !isScrolling && shouldLoadThumbnail,
+                shouldLoadThumbnail: !isScrolling,
                 allowsThumbhashPlaceholder: false,
-                showsDateOverlay: false
+                showsDateOverlay: false,
+                thumbnailLoadDelayNanoseconds: 0
             )
         }
         .frame(width: tileWidth, height: tileHeight)
         .id(asset.id)
         .focused($focusedAssetId, equals: asset.id)
         .animation(.easeInOut(duration: 0.2), value: focusedAssetId)
-        .onScrollVisibilityChange { isVisible in
-            if isVisible {
-                visibleAssetIds.insert(asset.id)
-            } else {
-                visibleAssetIds.remove(asset.id)
-            }
-        }
         .buttonStyle(CardButtonStyle())
     }
 
@@ -423,7 +398,6 @@ struct TimelineView: View {
         bucketAssets = [:]
         loadingBuckets = []
         frontier = 0
-        visibleAssetIds = []
         focusedAssetId = nil
         filteredNextPage = nil
         isLoadingFilteredPage = false

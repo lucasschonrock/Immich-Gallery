@@ -29,6 +29,7 @@ struct ExploreView: View {
     @State private var previousFocusedItemID: String?
     @State private var randomizedFirstRowItems: [ExploreAsset] = []
     @State private var isBackgroundBlurred = false
+    @State private var isScrolling = false
     
     // Computed property to get the focused explore item
     private var focusedExploreItem: ExploreAsset? {
@@ -44,13 +45,39 @@ struct ExploreView: View {
     var body: some View {
         ZStack {
             // Background with gradient mask
-            BackgroundImageView(
-                selectedItem: focusedExploreItem ?? exploreItems.first,
-                assetService: assetService,
-                navigationDirection: navigationDirection
-            )
-            .blur(radius: isBackgroundBlurred ? 28 : 0, opaque: true)
-            .animation(.easeInOut(duration: 0.35), value: isBackgroundBlurred)
+            GeometryReader { geometry in
+                BackgroundImageView(
+                    selectedItem: focusedExploreItem ?? exploreItems.first,
+                    assetService: assetService,
+                    navigationDirection: navigationDirection
+                )
+                .frame(width: geometry.size.width, height: geometry.size.height)
+                .clipped()
+                .overlay {
+                    Rectangle()
+                        .fill(.regularMaterial)
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .mask {
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .black, location: 0.25),
+                                    .init(
+                                        color: .black.opacity(isBackgroundBlurred ? 1 : 0.3),
+                                        location: 0.375
+                                    ),
+                                    .init(
+                                        color: .black.opacity(isBackgroundBlurred ? 1 : 0),
+                                        location: 0.5
+                                    ),
+                                ],
+                                startPoint: .bottom,
+                                endPoint: .top
+                            )
+                        }
+                        .allowsHitTesting(false)
+                }
+            }
+            .ignoresSafeArea()
             .onAppear {
                 print("🎯 BackgroundImageView: Initial item - \((focusedExploreItem ?? exploreItems.first)?.primaryTitle ?? "nil")")
             }
@@ -134,27 +161,31 @@ struct ExploreView: View {
                         .containerRelativeFrame(.vertical, alignment: .topLeading) {
                             length, _ in length * 0.6
                         }
+                        .onScrollVisibilityChange { isVisible in
+                            withAnimation(.easeInOut(duration: 0.35)) {
+                                isBackgroundBlurred = !isVisible
+                            }
+                        }
                         
                         //                        .frame(height: calculateShowcaseHeight())
                         // First Row (Above the fold)
                         ExploreFirstRow(
                             exploreItems: randomizedFirstRowItems,
                             assetService: assetService,
+                            shouldLoadImage: !isScrolling,
                             focusedItemID: $focusedItemID,
                             onItemSelected: { item in
                                 selectedExploreItem = item
                             }
                         )
                         .padding(.horizontal)
-                        .onScrollVisibilityChange(threshold: 0.18) { isVisible in
-                            isBackgroundBlurred = !isVisible
-                        }
                         
                         // Remaining Grid Items (Below the fold)
                         if exploreItems.count > ExploreGridMetrics.columnCount {
                             ExploreRemainingGrid(
                                 exploreItems: exploreItems,
                                 assetService: assetService,
+                                shouldLoadImage: !isScrolling,
                                 focusedItemID: $focusedItemID,
                                 onItemSelected: { item in
                                     selectedExploreItem = item
@@ -163,6 +194,12 @@ struct ExploreView: View {
                             .padding(.vertical)
                         }
                     }
+                }
+                .onScrollPhaseChange { _, newPhase, context in
+                    isScrolling = ThumbnailScrollLoadingPolicy.shouldPauseLoading(
+                        during: newPhase,
+                        velocity: context.velocity
+                    )
                 }
                 //                .scrollTargetBehavior(
                 //                    FoldSnappingScrollTargetBehavior(
@@ -281,6 +318,7 @@ struct ExploreView: View {
 struct ExploreFirstRow: View {
     let exploreItems: [ExploreAsset]
     let assetService: AssetService
+    let shouldLoadImage: Bool
     @Binding var focusedItemID: String?
     let onItemSelected: (ExploreAsset) -> Void
     
@@ -293,6 +331,7 @@ struct ExploreFirstRow: View {
                 FirstRowItem(
                     item: item,
                     assetService: assetService,
+                    shouldLoadImage: shouldLoadImage,
                     onItemSelected: onItemSelected
                 )
                 .focused($localFocusedItem, equals: item.id)
@@ -320,6 +359,7 @@ struct ExploreFirstRow: View {
 struct FirstRowItem: View {
     let item: ExploreAsset
     let assetService: AssetService
+    let shouldLoadImage: Bool
     let onItemSelected: (ExploreAsset) -> Void
 
     private let cardSize = CGSize(width: 380, height: 260)
@@ -328,7 +368,12 @@ struct FirstRowItem: View {
         Button(action: {
             onItemSelected(item)
         }) {
-            ExploreLockupCard(item: item, assetService: assetService, cardSize: cardSize)
+            ExploreLockupCard(
+                item: item,
+                assetService: assetService,
+                cardSize: cardSize,
+                shouldLoadImage: shouldLoadImage
+            )
         }
         .frame(width: cardSize.width, height: cardSize.height)
         .padding(.top, 100)
@@ -343,6 +388,7 @@ struct FirstRowItem: View {
 struct ExploreRemainingGrid: View {
     let exploreItems: [ExploreAsset]
     let assetService: AssetService
+    let shouldLoadImage: Bool
     @Binding var focusedItemID: String?
     let onItemSelected: (ExploreAsset) -> Void
     
@@ -356,6 +402,7 @@ struct ExploreRemainingGrid: View {
                     FocusableGridItem(
                         item: item,
                         assetService: assetService,
+                        shouldLoadImage: shouldLoadImage,
                         isCurrentlyFocused: focusedItemID == item.id,
                         onFocusChange: { isFocused in
                             print("🎯 RemainingGrid: Focus change for \(item.primaryTitle) - isFocused: \(isFocused)")
@@ -420,6 +467,7 @@ struct ExploreCustomGrid: View {
 struct FocusableGridItem: View {
     let item: ExploreAsset
     let assetService: AssetService
+    var shouldLoadImage = true
     let isCurrentlyFocused: Bool
     let onFocusChange: (Bool) -> Void
     let onItemSelected: (ExploreAsset) -> Void
@@ -431,7 +479,12 @@ struct FocusableGridItem: View {
         Button(action: {
             onItemSelected(item)
         }) {
-            ExploreLockupCard(item: item, assetService: assetService, cardSize: cardSize)
+            ExploreLockupCard(
+                item: item,
+                assetService: assetService,
+                cardSize: cardSize,
+                shouldLoadImage: shouldLoadImage
+            )
         }
         .frame(width: cardSize.width, height: cardSize.height)
         .padding(10)
@@ -450,6 +503,7 @@ private struct ExploreLockupCard: View {
     let item: ExploreAsset
     let assetService: AssetService
     let cardSize: CGSize
+    let shouldLoadImage: Bool
 
     var body: some View {
         AsyncLandscapeOverlayLockupCard(
@@ -462,10 +516,11 @@ private struct ExploreLockupCard: View {
             trailingStatusIconNames: trailingStatusIconNames,
             fallbackIconName: item.iconName,
             fallbackTint: item.gridColor ?? .secondary,
-            cardSize: cardSize
+            cardSize: cardSize,
+            shouldLoadImage: shouldLoadImage
         ) {
             do {
-                return try await assetService.loadImage(assetId: item.asset.id, size: "preview")
+                return try await assetService.loadImage(assetId: item.asset.id, size: "thumbnail")
             } catch {
                 print("Failed to load thumbnail for explore item: \(error)")
                 return nil

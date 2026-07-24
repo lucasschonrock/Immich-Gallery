@@ -235,6 +235,7 @@ private struct FolderHierarchyView: View {
     let onRetry: () -> Void
 
     @State private var navigationPath: [FolderHierarchyNode] = []
+    @State private var isScrolling = false
     @FocusState private var focusedItemID: String?
     @AppStorage(UserDefaultsKeys.folderNameSortOrder) private var folderNameSortOrderValue = FolderNameSortOrder.ascending.rawValue
 
@@ -305,7 +306,8 @@ private struct FolderHierarchyView: View {
                             FolderBrowserCard(
                                 item: item,
                                 thumbnailProvider: thumbnailProvider,
-                                cardSize: CGSize(width: cardWidth, height: cardHeight)
+                                cardSize: CGSize(width: cardWidth, height: cardHeight),
+                                shouldLoadImage: !isScrolling
                             )
                         }
                         .frame(width: cardWidth, height: cardHeight)
@@ -323,6 +325,12 @@ private struct FolderHierarchyView: View {
             .padding(.horizontal, 72)
             .padding(.top, 38)
             .padding(.bottom, 58)
+        }
+        .onScrollPhaseChange { _, newPhase, context in
+            isScrolling = ThumbnailScrollLoadingPolicy.shouldPauseLoading(
+                during: newPhase,
+                velocity: context.velocity
+            )
         }
     }
 
@@ -459,6 +467,7 @@ private struct FolderBrowserCard: View {
     let item: FolderBrowserItem
     let thumbnailProvider: FolderThumbnailProvider
     let cardSize: CGSize
+    let shouldLoadImage: Bool
     @AppStorage(UserDefaultsKeys.lockupThumbnailMode) private var lockupThumbnailMode = LockupThumbnailMode.current.rawValue
 
     private var node: FolderHierarchyNode {
@@ -483,7 +492,8 @@ private struct FolderBrowserCard: View {
             trailingStatusIconNames: !isAllPhotos && !node.children.isEmpty ? ["chevron.right"] : [],
             fallbackIconName: isAllPhotos ? "photo.stack.fill" : "folder.fill",
             fallbackTint: isAllPhotos ? .purple.opacity(0.75) : .blue.opacity(0.7),
-            cardSize: cardSize
+            cardSize: cardSize,
+            shouldLoadImage: shouldLoadImage
         ) {
             await thumbnailProvider.loadCoverThumbnail(for: node.thumbnailFolder)
         }

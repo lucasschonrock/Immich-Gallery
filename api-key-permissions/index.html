@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>API Key Permissions | Immich Gallery for Apple TV</title>
+        <meta
+            name="description"
+            content="The exact scoped Immich API key permissions required by Immich Gallery for Apple TV."
+        />
+        <link
+            rel="canonical"
+            href="https://mensadilabs.github.io/Immich-Gallery/api-key-permissions/"
+        />
+        <meta name="theme-color" content="#000000" />
+        <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Immich Gallery" />
+        <meta
+            property="og:title"
+            content="API Key Permissions | Immich Gallery"
+        />
+        <meta
+            property="og:description"
+            content="Use the smallest scoped Immich API key that provides complete Immich Gallery functionality."
+        />
+        <meta
+            property="og:url"
+            content="https://mensadilabs.github.io/Immich-Gallery/api-key-permissions/"
+        />
+        <meta
+            property="og:image"
+            content="https://mensadilabs.github.io/Immich-Gallery/screenshots/TopShelf.png"
+        />
+
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        colors: {
+                            teal: { light: "#7DE6DD", DEFAULT: "#18C2C9" },
+                            coral: { light: "#FF9A5A", DEFAULT: "#FF6A5E" },
+                        },
+                    },
+                },
+            };
+        </script>
+        <style>
+            body {
+                font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+            }
+
+            h1,
+            h2 {
+                font-family: Georgia, "Times New Roman", serif;
+            }
+
+            .page-grid {
+                background-image:
+                    linear-gradient(
+                        rgba(24, 194, 201, 0.045) 1px,
+                        transparent 1px
+                    ),
+                    linear-gradient(
+                        90deg,
+                        rgba(24, 194, 201, 0.045) 1px,
+                        transparent 1px
+                    );
+                background-size: 48px 48px;
+                mask-image: linear-gradient(
+                    to bottom,
+                    black,
+                    transparent 72%
+                );
+            }
+        </style>
+    </head>
+
+    <body class="bg-black text-white min-h-screen selection:bg-teal/30">
+        <div
+            class="page-grid fixed inset-0 pointer-events-none"
+            aria-hidden="true"
+        ></div>
+
+        <header
+            class="relative z-10 border-b border-white/10 bg-black/80 backdrop-blur-xl"
+        >
+            <div
+                class="max-w-6xl mx-auto px-5 py-5 flex items-center justify-between gap-6"
+            >
+                <a
+                    href="../"
+                    class="text-sm font-bold uppercase tracking-[0.18em] hover:text-teal transition-colors"
+                >
+                    Immich Gallery
+                </a>
+                <a
+                    href="https://github.com/mensadilabs/Immich-Gallery"
+                    class="text-sm text-gray-400 hover:text-white transition-colors"
+                >
+                    View source
+                </a>
+            </div>
+        </header>
+
+        <main class="relative z-10">
+            <section class="max-w-6xl mx-auto px-5 pt-20 pb-14">
+                <p
+                    class="text-sm font-bold uppercase tracking-[0.22em] text-teal mb-5"
+                >
+                    API key setup
+                </p>
+                <h1
+                    class="text-5xl md:text-7xl font-bold tracking-tight leading-[1.02] max-w-4xl"
+                >
+                    Use the smallest key that works.
+                </h1>
+                <p
+                    class="text-lg md:text-xl text-gray-300 leading-relaxed max-w-3xl mt-7"
+                >
+                    Immich Gallery needs eleven read-oriented permissions for
+                    complete browsing, search, slideshow, video, and account
+                    functionality. It does not need administrative or library
+                    mutation access.
+                </p>
+                <p class="text-sm text-gray-500 mt-5">
+                    Last verified against demo.immich.app on July 24, 2026.
+                </p>
+            </section>
+
+            <section class="max-w-6xl mx-auto px-5 pb-20">
+                <div class="grid lg:grid-cols-[1fr_0.7fr] gap-6 items-start">
+                    <article
+                        class="bg-white/[0.06] border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+                    >
+                        <div
+                            class="px-6 md:px-8 py-6 border-b border-white/10 flex flex-wrap items-center justify-between gap-4"
+                        >
+                            <div>
+                                <p
+                                    class="text-xs font-bold uppercase tracking-[0.18em] text-gray-500"
+                                >
+                                    Required scopes
+                                </p>
+                                <h2 class="text-2xl font-bold mt-1">
+                                    Complete permission set
+                                </h2>
+                            </div>
+                            <button
+                                id="copy-permissions"
+                                type="button"
+                                class="rounded-full border border-teal/30 bg-teal/10 px-4 py-2 text-sm font-semibold text-teal-light hover:bg-teal/20 transition-colors"
+                            >
+                                Copy permission list
+                            </button>
+                        </div>
+
+                        <dl class="divide-y divide-white/10">
+                            <div
+                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
+                            >
+                                <dt><code>album.read</code></dt>
+                                <dd class="text-gray-400">
+                                    Browse personal and shared albums.
+                                </dd>
+                            </div>
+                            <div
+                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
+                            >
+                                <dt><code>asset.download</code></dt>
+                                <dd class="text-gray-400">
+                                    Load full-resolution originals in the
+                                    fullscreen viewer and slideshow.
+                                </dd>
+                            </div>
+                            <div
+                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
+                            >
+                                <dt><code>asset.read</code></dt>
+                                <dd class="text-gray-400">
+                                    Browse the Timeline, search, filter, load
+                                    metadata, and retrieve random assets.
+                                </dd>
+                            </div>
+                            <div
+                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
+                            >
+                                <dt><code>asset.statistics</code></dt>
+                                <dd class="text-gray-400">
+                                    Display library statistics.
+                                </dd>
+                            </div>
+                            <div
+                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
+                            >
+                                <dt><code>asset.view</code></dt>
+                                <dd class="text-gray-400">
+                                    Load thumbnails, previews, and video
+                                    playback.
+                                </dd>
+                            </div>
+                            <div
+                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
+                            >
+                                <dt><code>folder.read</code></dt>
+                                <dd class="text-gray-400">
+                                    Browse external library folders.
+                                </dd>
+                            </div>
+                            <div
+                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
+                            >
+                                <dt><code>person.read</code></dt>
+                                <dd class="text-gray-400">
+                                    Browse people and person thumbnails.
+                                </dd>
+                            </div>
+                            <div
+                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
+                            >
+                                <dt><code>stack.read</code></dt>
+                                <dd class="text-gray-400">
+                                    Open stacked photos.
+                                </dd>
+                            </div>
+                            <div
+                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
+                            >
+                                <dt><code>tag.read</code></dt>
+                                <dd class="text-gray-400">Browse tags.</dd>
+                            </div>
+                            <div
+                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
+                            >
+                                <dt><code>user.read</code></dt>
+                                <dd class="text-gray-400">
+                                    Validate the key and load the current user.
+                                </dd>
+                            </div>
+                            <div
+                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
+                            >
+                                <dt>
+                                    <code>userProfileImage.read</code>
+                                </dt>
+                                <dd class="text-gray-400">
+                                    Display account profile images.
+                                </dd>
+                            </div>
+                        </dl>
+                    </article>
+
+                    <aside class="space-y-6">
+                        <section
+                            class="bg-teal/10 border border-teal/25 rounded-3xl p-7"
+                        >
+                            <p
+                                class="text-xs font-bold uppercase tracking-[0.18em] text-teal-light"
+                            >
+                                Setup
+                            </p>
+                            <ol
+                                class="mt-5 space-y-4 text-gray-200 list-decimal pl-5"
+                            >
+                                <li>Open Immich account settings.</li>
+                                <li>Create a new API key.</li>
+                                <li>Select the eleven permissions listed.</li>
+                                <li>
+                                    Copy the key into Immich Gallery on Apple
+                                    TV.
+                                </li>
+                            </ol>
+                        </section>
+
+                        <section
+                            class="bg-white/[0.06] border border-white/10 rounded-3xl p-7"
+                        >
+                            <p
+                                class="text-xs font-bold uppercase tracking-[0.18em] text-coral-light"
+                            >
+                                Not required
+                            </p>
+                            <p class="text-gray-300 leading-relaxed mt-4">
+                                Do not grant create, update, delete, upload, or
+                                administrative permissions. The app is a
+                                read-only gallery client.
+                            </p>
+                        </section>
+
+                        <section
+                            class="bg-white/[0.06] border border-white/10 rounded-3xl p-7"
+                        >
+                            <p
+                                class="text-xs font-bold uppercase tracking-[0.18em] text-gray-400"
+                            >
+                                Important details
+                            </p>
+                            <ul class="mt-4 space-y-4 text-gray-300">
+                                <li>
+                                    <code>timeline.read</code> is not required.
+                                    Immich currently protects Timeline browsing
+                                    with <code>asset.read</code>.
+                                </li>
+                                <li>
+                                    <code>map.read</code> and
+                                    <code>map.search</code> are not required for
+                                    the app's location search.
+                                </li>
+                                <li>
+                                    Locked Folder unlocking requires a
+                                    password-backed session and cannot be
+                                    enabled by an API-key permission.
+                                </li>
+                            </ul>
+                        </section>
+
+                        <a
+                            href="https://api.immich.app/authentication"
+                            class="block rounded-3xl border border-white/10 px-7 py-5 text-sm font-semibold text-gray-300 hover:text-white hover:border-white/25 transition-colors"
+                        >
+                            Read Immich's API authentication documentation
+                        </a>
+                    </aside>
+                </div>
+            </section>
+        </main>
+
+        <footer class="relative z-10 border-t border-white/10">
+            <div
+                class="max-w-6xl mx-auto px-5 py-8 flex flex-wrap items-center justify-between gap-4 text-sm text-gray-500"
+            >
+                <p>Immich Gallery for Apple TV</p>
+                <a href="../" class="hover:text-white transition-colors">
+                    Return to homepage
+                </a>
+            </div>
+        </footer>
+
+        <script>
+            const copyButton = document.getElementById("copy-permissions");
+            copyButton.addEventListener("click", async () => {
+                const permissions = Array.from(
+                    document.querySelectorAll("dt code"),
+                    (permission) => permission.textContent,
+                );
+
+                try {
+                    await navigator.clipboard.writeText(
+                        permissions.join("\n"),
+                    );
+                    copyButton.textContent = "Copied";
+                    window.setTimeout(() => {
+                        copyButton.textContent = "Copy permission list";
+                    }, 1800);
+                } catch {
+                    copyButton.textContent = "Copy unavailable";
+                }
+            });
+        </script>
+    </body>
+</html>

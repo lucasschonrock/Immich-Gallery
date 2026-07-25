@@ -53,7 +53,7 @@ Immich Gallery is a native Apple TV app for browsing, searching, and enjoying yo
 - **Explore**: Discover statistics, locations, and highlights from your library
 - **Top Shelf**: Choose featured or random photos for the Apple TV Top Shelf
 - **Multiple Accounts**: Store multiple Immich accounts and switch between servers
-- **Flexible Authentication**: Sign in with a password or Immich API key, including API-key access for accounts that normally use SSO
+- **Flexible Authentication**: Sign in with a password or Immich API key
 - **EXIF Data**: Inspect camera details and location metadata
 
 ## Private by Design

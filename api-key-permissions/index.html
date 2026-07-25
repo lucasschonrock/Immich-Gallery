@@ -3,10 +3,10 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>API Key Permissions | Immich Gallery for Apple TV</title>
+        <title>API Key Permissions | Immich Gallery</title>
         <meta
             name="description"
-            content="The exact scoped Immich API key permissions required by Immich Gallery for Apple TV."
+            content="Scoped Immich API key permissions required by Immich Gallery for Apple TV."
         />
         <link
             rel="canonical"
@@ -23,7 +23,7 @@
         />
         <meta
             property="og:description"
-            content="Use the smallest scoped Immich API key that provides complete Immich Gallery functionality."
+            content="Scoped Immich API key permissions required by Immich Gallery for Apple TV."
         />
         <meta
             property="og:url"
@@ -32,6 +32,27 @@
         <meta
             property="og:image"
             content="https://mensadilabs.github.io/Immich-Gallery/screenshots/TopShelf.png"
+        />
+        <meta
+            property="og:image:alt"
+            content="Immich Gallery running on Apple TV"
+        />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta
+            name="twitter:title"
+            content="API Key Permissions | Immich Gallery"
+        />
+        <meta
+            name="twitter:description"
+            content="Scoped Immich API key permissions required by Immich Gallery for Apple TV."
+        />
+        <meta
+            name="twitter:image"
+            content="https://mensadilabs.github.io/Immich-Gallery/screenshots/TopShelf.png"
+        />
+        <meta
+            name="twitter:image:alt"
+            content="Immich Gallery running on Apple TV"
         />
 
         <script src="https://cdn.tailwindcss.com"></script>
@@ -42,6 +63,7 @@
                         colors: {
                             teal: { light: "#7DE6DD", DEFAULT: "#18C2C9" },
                             coral: { light: "#FF9A5A", DEFAULT: "#FF6A5E" },
+                            sun: "#FFD15C",
                         },
                     },
                 },
@@ -49,315 +71,236 @@
         </script>
         <style>
             body {
-                font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    Oxygen, Ubuntu, Cantarell, sans-serif;
             }
 
-            h1,
-            h2 {
-                font-family: Georgia, "Times New Roman", serif;
+            :focus-visible {
+                outline: 3px solid #7de6dd;
+                outline-offset: 4px;
             }
 
-            .page-grid {
-                background-image:
-                    linear-gradient(
-                        rgba(24, 194, 201, 0.045) 1px,
-                        transparent 1px
-                    ),
-                    linear-gradient(
-                        90deg,
-                        rgba(24, 194, 201, 0.045) 1px,
-                        transparent 1px
-                    );
-                background-size: 48px 48px;
-                mask-image: linear-gradient(
-                    to bottom,
-                    black,
-                    transparent 72%
-                );
+            dt code {
+                display: inline-block;
+                max-width: 100%;
+                padding: 0.3rem 0.55rem;
+                border: 1px solid rgba(125, 230, 221, 0.24);
+                border-radius: 0.45rem;
+                background: rgba(24, 194, 201, 0.1);
+                color: #7de6dd;
+                font-family:
+                    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+                    monospace;
+                font-size: 0.875rem;
+                line-height: 1.25;
+                overflow-wrap: anywhere;
+            }
+
+            .permission-note code {
+                padding: 0.08rem 0.28rem;
+                border: 1px solid rgba(125, 230, 221, 0.2);
+                border-radius: 0.3rem;
+                background: rgba(24, 194, 201, 0.08);
+                color: #7de6dd;
+                font-family:
+                    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+                    monospace;
+                font-size: 0.85em;
+                vertical-align: 0.04em;
+            }
+
+            @media (min-width: 768px) {
+                .permission-list > div {
+                    grid-template-columns: 13.5rem minmax(0, 1fr);
+                }
             }
         </style>
     </head>
 
-    <body class="bg-black text-white min-h-screen selection:bg-teal/30">
-        <div
-            class="page-grid fixed inset-0 pointer-events-none"
-            aria-hidden="true"
-        ></div>
-
-        <header
-            class="relative z-10 border-b border-white/10 bg-black/80 backdrop-blur-xl"
+    <body class="bg-black text-white overflow-x-hidden selection:bg-teal/30">
+        <a
+            href="#main-content"
+            class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-full focus:bg-white focus:px-5 focus:py-3 focus:font-semibold focus:text-black"
         >
-            <div
-                class="max-w-6xl mx-auto px-5 py-5 flex items-center justify-between gap-6"
-            >
-                <a
-                    href="../"
-                    class="text-sm font-bold uppercase tracking-[0.18em] hover:text-teal transition-colors"
+            Skip to main content
+        </a>
+        <header
+            class="bg-black/80 backdrop-blur-xl border-b border-white/5 sticky top-0 z-50"
+        >
+            <div class="max-w-7xl mx-auto px-4 py-3.5">
+                <div class="flex items-center justify-between gap-4">
+                    <a href="../" class="flex items-center gap-3 shrink-0">
+                        <img
+                            src="../favicon.svg"
+                            alt=""
+                            class="w-10 h-7 object-contain"
+                        />
+                        <span class="text-lg font-bold tracking-tight">
+                            Immich Gallery
+                        </span>
+                    </a>
+
+                    <nav
+                        aria-label="Primary navigation"
+                        class="hidden md:flex items-center gap-8 text-sm text-gray-400"
+                    >
+                        <a
+                            href="../"
+                            class="hover:text-white transition-colors"
+                        >
+                            Home
+                        </a>
+                        <a
+                            href="../releases/"
+                            class="hover:text-white transition-colors"
+                        >
+                            Releases
+                        </a>
+                    </nav>
+
+                    <a
+                        href="https://apps.apple.com/ca/app/immich-gallery/id6748482378"
+                        class="shrink-0 inline-flex items-center gap-2 bg-teal text-black font-semibold text-sm px-5 py-2.5 rounded-full transition-transform duration-300 hover:scale-105"
+                    >
+                        Get the app
+                    </a>
+                </div>
+                <nav
+                    aria-label="Mobile navigation"
+                    class="md:hidden mt-3 flex items-center gap-5 overflow-x-auto pb-0.5 text-sm text-gray-400"
                 >
-                    Immich Gallery
-                </a>
-                <a
-                    href="https://github.com/mensadilabs/Immich-Gallery"
-                    class="text-sm text-gray-400 hover:text-white transition-colors"
-                >
-                    View source
-                </a>
+                    <a
+                        href="../"
+                        class="shrink-0 hover:text-white transition-colors"
+                    >
+                        Home
+                    </a>
+                    <a
+                        href="../releases/"
+                        class="shrink-0 hover:text-white transition-colors"
+                    >
+                        Releases
+                    </a>
+                </nav>
             </div>
         </header>
 
-        <main class="relative z-10">
-            <section class="max-w-6xl mx-auto px-5 pt-20 pb-14">
-                <p
-                    class="text-sm font-bold uppercase tracking-[0.22em] text-teal mb-5"
-                >
-                    API key setup
-                </p>
-                <h1
-                    class="text-5xl md:text-7xl font-bold tracking-tight leading-[1.02] max-w-4xl"
-                >
-                    Use the smallest key that works.
-                </h1>
-                <p
-                    class="text-lg md:text-xl text-gray-300 leading-relaxed max-w-3xl mt-7"
-                >
-                    Immich Gallery needs eleven read-oriented permissions for
-                    complete browsing, search, slideshow, video, and account
-                    functionality. It does not need administrative or library
-                    mutation access.
-                </p>
-                <p class="text-sm text-gray-500 mt-5">
-                    Last verified against demo.immich.app on July 24, 2026.
-                </p>
-            </section>
-
-            <section class="max-w-6xl mx-auto px-5 pb-20">
-                <div class="grid lg:grid-cols-[1fr_0.7fr] gap-6 items-start">
-                    <article
-                        class="bg-white/[0.06] border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
-                    >
-                        <div
-                            class="px-6 md:px-8 py-6 border-b border-white/10 flex flex-wrap items-center justify-between gap-4"
+        <main id="main-content">
+            <section class="pt-12 md:pt-16 pb-24">
+                <div class="max-w-5xl mx-auto px-4">
+                    <div class="mb-10">
+                        <h1
+                            class="text-3xl md:text-4xl font-bold tracking-tight"
                         >
-                            <div>
-                                <p
-                                    class="text-xs font-bold uppercase tracking-[0.18em] text-gray-500"
-                                >
-                                    Required scopes
-                                </p>
-                                <h2 class="text-2xl font-bold mt-1">
-                                    Complete permission set
+                            API key permissions
+                        </h1>
+                        <p
+                            class="mt-3 text-gray-400 text-lg max-w-3xl leading-relaxed"
+                        >
+                            Select these permissions when creating an Immich
+                            API key for Immich Gallery.
+                        </p>
+                        <p
+                            class="permission-note mt-3 text-sm text-gray-400 max-w-3xl leading-relaxed"
+                        >
+                            Partial permission sets are untested. You may choose
+                            to omit permissions for features you do not use,
+                            such as <code>tag.read</code> when you do not use
+                            tags.
+                        </p>
+                        <p class="mt-3 text-sm text-gray-500">
+                            Last updated July 24, 2026
+                        </p>
+                    </div>
+
+                    <div class="grid lg:grid-cols-[1fr_0.55fr] gap-6 items-start">
+                        <section
+                            class="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl overflow-hidden"
+                        >
+                            <div class="px-6 md:px-8 py-6 border-b border-white/10">
+                                <h2 class="text-2xl font-semibold tracking-tight">
+                                    Required permissions
                                 </h2>
                             </div>
-                            <button
-                                id="copy-permissions"
-                                type="button"
-                                class="rounded-full border border-teal/30 bg-teal/10 px-4 py-2 text-sm font-semibold text-teal-light hover:bg-teal/20 transition-colors"
-                            >
-                                Copy permission list
-                            </button>
-                        </div>
+                            <dl class="permission-list divide-y divide-white/10">
+                                <div class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5">
+                                    <dt><code>album.read</code></dt>
+                                    <dd class="text-gray-400">Browse personal and shared albums, read the optional slideshow configuration album, and check selected album details.</dd>
+                                </div>
+                                <div class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5">
+                                    <dt><code>asset.download</code></dt>
+                                    <dd class="text-gray-400">Load full-resolution originals in the viewer and slideshow.</dd>
+                                </div>
+                                <div class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5">
+                                    <dt><code>asset.read</code></dt>
+                                    <dd class="text-gray-400">Browse, search, filter, load asset metadata, and select images for slideshows.</dd>
+                                </div>
+                                <div class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5">
+                                    <dt><code>asset.statistics</code></dt>
+                                    <dd class="text-gray-400">Display library statistics.</dd>
+                                </div>
+                                <div class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5">
+                                    <dt><code>asset.view</code></dt>
+                                    <dd class="text-gray-400">Load thumbnails, previews, video playback, and server-converted RAW previews in slideshows.</dd>
+                                </div>
+                                <div class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5">
+                                    <dt><code>folder.read</code></dt>
+                                    <dd class="text-gray-400">Browse external library folders.</dd>
+                                </div>
+                                <div class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5">
+                                    <dt><code>person.read</code></dt>
+                                    <dd class="text-gray-400">Browse people and person thumbnails.</dd>
+                                </div>
+                                <div class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5">
+                                    <dt><code>stack.read</code></dt>
+                                    <dd class="text-gray-400">Open stacked photos. Required for Timeline.</dd>
+                                </div>
+                                <div class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5">
+                                    <dt><code>tag.read</code></dt>
+                                    <dd class="text-gray-400">Browse tags.</dd>
+                                </div>
+                                <div class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5">
+                                    <dt><code>user.read</code></dt>
+                                    <dd class="text-gray-400">Validate the key and load the current user.</dd>
+                                </div>
+                                <div class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5">
+                                    <dt><code>userProfileImage.read</code></dt>
+                                    <dd class="text-gray-400">Display account profile images.</dd>
+                                </div>
+                            </dl>
+                        </section>
 
-                        <dl class="divide-y divide-white/10">
-                            <div
-                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
-                            >
-                                <dt><code>album.read</code></dt>
-                                <dd class="text-gray-400">
-                                    Browse personal and shared albums.
-                                </dd>
-                            </div>
-                            <div
-                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
-                            >
-                                <dt><code>asset.download</code></dt>
-                                <dd class="text-gray-400">
-                                    Load full-resolution originals in the
-                                    fullscreen viewer and slideshow.
-                                </dd>
-                            </div>
-                            <div
-                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
-                            >
-                                <dt><code>asset.read</code></dt>
-                                <dd class="text-gray-400">
-                                    Browse the Timeline, search, filter, load
-                                    metadata, and retrieve random assets.
-                                </dd>
-                            </div>
-                            <div
-                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
-                            >
-                                <dt><code>asset.statistics</code></dt>
-                                <dd class="text-gray-400">
-                                    Display library statistics.
-                                </dd>
-                            </div>
-                            <div
-                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
-                            >
-                                <dt><code>asset.view</code></dt>
-                                <dd class="text-gray-400">
-                                    Load thumbnails, previews, and video
-                                    playback.
-                                </dd>
-                            </div>
-                            <div
-                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
-                            >
-                                <dt><code>folder.read</code></dt>
-                                <dd class="text-gray-400">
-                                    Browse external library folders.
-                                </dd>
-                            </div>
-                            <div
-                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
-                            >
-                                <dt><code>person.read</code></dt>
-                                <dd class="text-gray-400">
-                                    Browse people and person thumbnails.
-                                </dd>
-                            </div>
-                            <div
-                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
-                            >
-                                <dt><code>stack.read</code></dt>
-                                <dd class="text-gray-400">
-                                    Open stacked photos.
-                                </dd>
-                            </div>
-                            <div
-                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
-                            >
-                                <dt><code>tag.read</code></dt>
-                                <dd class="text-gray-400">Browse tags.</dd>
-                            </div>
-                            <div
-                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
-                            >
-                                <dt><code>user.read</code></dt>
-                                <dd class="text-gray-400">
-                                    Validate the key and load the current user.
-                                </dd>
-                            </div>
-                            <div
-                                class="grid md:grid-cols-[190px_1fr] gap-2 px-6 md:px-8 py-5"
-                            >
-                                <dt>
-                                    <code>userProfileImage.read</code>
-                                </dt>
-                                <dd class="text-gray-400">
-                                    Display account profile images.
-                                </dd>
-                            </div>
-                        </dl>
-                    </article>
-
-                    <aside class="space-y-6">
-                        <section
-                            class="bg-teal/10 border border-teal/25 rounded-3xl p-7"
+                        <aside
+                            class="rounded-3xl border border-white/10 bg-white/5 p-6 md:p-8"
                         >
-                            <p
-                                class="text-xs font-bold uppercase tracking-[0.18em] text-teal-light"
-                            >
+                            <h2 class="text-2xl font-semibold tracking-tight">
                                 Setup
-                            </p>
+                            </h2>
                             <ol
-                                class="mt-5 space-y-4 text-gray-200 list-decimal pl-5"
+                                class="mt-5 space-y-3 pl-5 text-gray-400 leading-relaxed list-decimal"
                             >
                                 <li>Open Immich account settings.</li>
-                                <li>Create a new API key.</li>
-                                <li>Select the eleven permissions listed.</li>
-                                <li>
-                                    Copy the key into Immich Gallery on Apple
-                                    TV.
-                                </li>
+                                <li>Create an API key with these permissions.</li>
+                                <li>Enter the key in Immich Gallery.</li>
                             </ol>
-                        </section>
-
-                        <section
-                            class="bg-white/[0.06] border border-white/10 rounded-3xl p-7"
-                        >
-                            <p
-                                class="text-xs font-bold uppercase tracking-[0.18em] text-coral-light"
-                            >
-                                Not required
-                            </p>
-                            <p class="text-gray-300 leading-relaxed mt-4">
-                                Do not grant create, update, delete, upload, or
-                                administrative permissions. The app is a
-                                read-only gallery client.
-                            </p>
-                        </section>
-
-                        <section
-                            class="bg-white/[0.06] border border-white/10 rounded-3xl p-7"
-                        >
-                            <p
-                                class="text-xs font-bold uppercase tracking-[0.18em] text-gray-400"
-                            >
-                                Important details
-                            </p>
-                            <ul class="mt-4 space-y-4 text-gray-300">
-                                <li>
-                                    <code>timeline.read</code> is not required.
-                                    Immich currently protects Timeline browsing
-                                    with <code>asset.read</code>.
-                                </li>
-                                <li>
-                                    <code>map.read</code> and
-                                    <code>map.search</code> are not required for
-                                    the app's location search.
-                                </li>
-                                <li>
-                                    Locked Folder unlocking requires a
-                                    password-backed session and cannot be
-                                    enabled by an API-key permission.
-                                </li>
-                            </ul>
-                        </section>
-
-                        <a
-                            href="https://api.immich.app/authentication"
-                            class="block rounded-3xl border border-white/10 px-7 py-5 text-sm font-semibold text-gray-300 hover:text-white hover:border-white/25 transition-colors"
-                        >
-                            Read Immich's API authentication documentation
-                        </a>
-                    </aside>
+                        </aside>
+                    </div>
                 </div>
             </section>
         </main>
 
-        <footer class="relative z-10 border-t border-white/10">
+        <footer class="border-t border-white/5">
             <div
-                class="max-w-6xl mx-auto px-5 py-8 flex flex-wrap items-center justify-between gap-4 text-sm text-gray-500"
+                class="max-w-7xl mx-auto px-4 py-8 text-sm text-gray-400 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
             >
-                <p>Immich Gallery for Apple TV</p>
-                <a href="../" class="hover:text-white transition-colors">
-                    Return to homepage
+                <a
+                    href="https://github.com/mensadilabs/Immich-Gallery"
+                    class="hover:text-white transition-colors"
+                >
+                    View repository
                 </a>
             </div>
         </footer>
-
-        <script>
-            const copyButton = document.getElementById("copy-permissions");
-            copyButton.addEventListener("click", async () => {
-                const permissions = Array.from(
-                    document.querySelectorAll("dt code"),
-                    (permission) => permission.textContent,
-                );
-
-                try {
-                    await navigator.clipboard.writeText(
-                        permissions.join("\n"),
-                    );
-                    copyButton.textContent = "Copied";
-                    window.setTimeout(() => {
-                        copyButton.textContent = "Copy permission list";
-                    }, 1800);
-                } catch {
-                    copyButton.textContent = "Copy unavailable";
-                }
-            });
-        </script>
     </body>
 </html>

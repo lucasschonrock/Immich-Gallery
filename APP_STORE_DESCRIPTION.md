@@ -14,7 +14,7 @@ Beautiful full-screen slideshow mode with customizable playback options makes it
 - Search and filter your library using Immich's search capabilities.
 - Enjoy beautiful full-screen slideshow mode with customizable playback options, timing, transitions, and optional overlays.
 - Connect to multiple Immich servers or accounts.
-- Sign in with a password or an Immich API key. API keys provide access for accounts that normally use SSO.
+- Sign in with a password or an Immich API key.
 - Bring favorite memories to the Apple TV Top Shelf for quick access.
 
 ## Private by Design

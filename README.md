@@ -7,7 +7,11 @@
 
 # Immich Gallery for Apple TV
 
-A native Apple TV app for browsing your self-hosted Immich photo library with a TV-optimized interface.
+Bring your Immich photo library to the biggest screen in your home.
+
+Immich Gallery is a native Apple TV app for browsing, searching, and enjoying your self-hosted photo library from the comfort of your couch.
+
+**Beautiful full-screen slideshow mode with customizable playback options** makes it easy to relive family memories, share vacation photos, or turn your television into an ambient display during gatherings.
 
 ## Screenshots
 
@@ -19,6 +23,10 @@ A native Apple TV app for browsing your self-hosted Immich photo library with a 
   <tr>
     <td><img src="screenshots/Timeline.png" alt="All Photos"></td>
     <td><img src="screenshots/Filter.png" alt="Filter"></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/Calendar.png" alt="All Photos"></td>
+    <td><img src="screenshots/Explore.png" alt="Filter"></td>
   </tr>
   <tr>
     <td><img src="screenshots/albums.png" alt="Albums"></td>
@@ -36,17 +44,23 @@ A native Apple TV app for browsing your self-hosted Immich photo library with a 
 
 ## Features
 
-- 🖼️ **Photo Grid View**: Browse your library in a fast, infinite-scrolling grid
-- 👥 **People Recognition**: Jump straight to people Immich detects in your photos
-- 📁 **Album Support**: Navigate personal and shared Immich albums
-- 🏷️ **Tag Support with animated thumbnails**: Optional tag tab with looping previews
-- 🗂️ **Folders Tab** : View external libray folders.
-- 🔍 **Explore Tab**: Discover stats, locations, and highlights from your library
-- 📺 **Top Shelf Customization**: Pick featured or random photos for the Apple TV top shelf
-- 🎬 **Slideshow Mode**: Full-screen slideshow with optional clock overlay
-- 👤 **Multi-User Support**: Store multiple accounts and switch instantly
-- 📊 **EXIF Data**: Inspect camera details and location metadata
-- 🔒 **Privacy First**: Pure client, keeps credentials local
+- **Slideshow Mode**: Beautiful full-screen slideshow mode with customizable playback options, timing, transitions, and optional overlays
+- **Photo Grid View**: Browse your entire library in a fast, infinite-scrolling grid
+- **People Recognition**: Jump straight to people Immich detects in your photos
+- **Albums**: Browse personal and shared Immich albums
+- **Tags and External Folders**: Browse tags with animated thumbnails and view external library folders
+- **Search and Filters**: Find photos using Immich content search, locations, dates, and metadata
+- **Explore**: Discover statistics, locations, and highlights from your library
+- **Top Shelf**: Choose featured or random photos for the Apple TV Top Shelf
+- **Multiple Accounts**: Store multiple Immich accounts and switch between servers
+- **Flexible Authentication**: Sign in with a password or Immich API key
+- **EXIF Data**: Inspect camera details and location metadata
+
+## Private by Design
+
+Your photos stay on your own Immich server. Immich Gallery connects directly to your existing Immich instance and does not upload, store, or process your photo library on third-party servers. The app includes zero telemetry.
+
+Immich Gallery is an independent client for Immich and is not affiliated with or endorsed by the Immich project.
 
 
 ## Requirements
@@ -67,6 +81,10 @@ A native Apple TV app for browsing your self-hosted Immich photo library with a 
 > - Stuck on "Data couldn't read because its missing"? Update Immich and retry: https://github.com/mensadilabs/Immich-Gallery/issues/67
 > - OAuth / OIDC sign-in needs server-side changes (tracked in https://github.com/mensadilabs/Immich-Gallery/issues/77). Use an Immich API key instead.
 > - FaceID / PIN locking is currently out of scope. https://github.com/mensadilabs/Immich-Gallery/issues/64
+
+## API Key Permissions
+
+See the [Immich Gallery API key permissions guide](https://mensadilabs.github.io/Immich-Gallery/api-key-permissions/) for the exact scoped permissions required for complete app functionality.
 
 ### Building from Source
 

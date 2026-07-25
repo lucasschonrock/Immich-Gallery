@@ -3,10 +3,12 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Immich Gallery for Apple TV</title>
+        <title>
+            Immich Gallery for Apple TV | Full-Screen Slideshows
+        </title>
         <meta
             name="description"
-            content="A fast, native Apple TV app for browsing your self-hosted Immich photo library — people, albums, tags, and immersive slideshows. Built for speed."
+            content="Browse your Immich library on Apple TV and enjoy beautiful full-screen slideshow mode with customizable playback options."
         />
         <link
             rel="canonical"
@@ -18,10 +20,13 @@
         <!-- Open Graph (Facebook, Discord, iMessage, etc.) -->
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Immich Gallery" />
-        <meta property="og:title" content="Immich Gallery for Apple TV" />
+        <meta
+            property="og:title"
+            content="Immich Gallery for Apple TV | Full-Screen Slideshows"
+        />
         <meta
             property="og:description"
-            content="A fast, native Apple TV app for browsing your self-hosted Immich photo library. Built for speed."
+            content="Browse your Immich library on Apple TV and enjoy beautiful full-screen slideshow mode with customizable playback options."
         />
         <meta
             property="og:url"
@@ -38,14 +43,21 @@
 
         <!-- Twitter / X -->
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Immich Gallery for Apple TV" />
+        <meta
+            name="twitter:title"
+            content="Immich Gallery for Apple TV | Full-Screen Slideshows"
+        />
         <meta
             name="twitter:description"
-            content="A fast, native Apple TV app for browsing your self-hosted Immich photo library. Built for speed."
+            content="Browse your Immich library on Apple TV and enjoy beautiful full-screen slideshow mode with customizable playback options."
         />
         <meta
             name="twitter:image"
             content="https://mensadilabs.github.io/Immich-Gallery/screenshots/TopShelf.png"
+        />
+        <meta
+            name="twitter:image:alt"
+            content="Immich Gallery running on Apple TV"
         />
 
         <!-- Structured data for richer search results -->
@@ -56,7 +68,7 @@
                 "name": "Immich Gallery",
                 "operatingSystem": "tvOS",
                 "applicationCategory": "MultimediaApplication",
-                "description": "A fast, native Apple TV app for browsing your self-hosted Immich photo library.",
+                "description": "Browse your Immich library on Apple TV and enjoy beautiful full-screen slideshow mode with customizable playback options.",
                 "url": "https://mensadilabs.github.io/Immich-Gallery/",
                 "downloadUrl": "https://apps.apple.com/ca/app/immich-gallery/id6748482378",
                 "offers": {
@@ -90,10 +102,21 @@
             html {
                 scroll-behavior: smooth;
             }
+
+            :focus-visible {
+                outline: 3px solid #7de6dd;
+                outline-offset: 4px;
+            }
         </style>
     </head>
 
     <body class="bg-black text-white overflow-x-hidden selection:bg-teal/30">
+        <a
+            href="#main-content"
+            class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-full focus:bg-white focus:px-5 focus:py-3 focus:font-semibold focus:text-black"
+        >
+            Skip to main content
+        </a>
         <!-- Header Section -->
         <header
             class="bg-black/80 backdrop-blur-xl border-b border-white/5 sticky top-0 z-50"
@@ -105,6 +128,7 @@
                             class="w-10 h-7"
                             viewBox="0 0 640 440"
                             xmlns="http://www.w3.org/2000/svg"
+                            aria-hidden="true"
                             role="img"
                             aria-label="Immich Gallery logo"
                         >
@@ -263,6 +287,7 @@
                     </a>
 
                     <nav
+                        aria-label="Primary navigation"
                         class="hidden lg:flex items-center gap-6 text-sm text-gray-400"
                     >
                         <a
@@ -305,6 +330,7 @@
                     </a>
                 </div>
                 <nav
+                    aria-label="Mobile navigation"
                     class="lg:hidden mt-3 flex items-center gap-5 overflow-x-auto pb-0.5 text-sm text-gray-400"
                 >
                     <a
@@ -341,19 +367,21 @@
             </div>
         </header>
 
+        <main id="main-content">
         <!-- Hero Section -->
         <section id="top" class="relative pt-10 md:pt-12 pb-24 md:pb-32">
             <div class="max-w-7xl mx-auto px-4 text-center">
-                <h2
+                <h1
                     class="text-5xl md:text-7xl font-extrabold mb-6 tracking-tight leading-[1.05]"
                 >
                     Your Photos,<br class="hidden sm:block" />
                     <span class="text-teal">Beautiful on Apple TV</span>
-                </h2>
+                </h1>
                 <p
-                    class="text-lg md:text-xl text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed"
+                    class="text-lg md:text-xl text-gray-300 mb-10 max-w-3xl mx-auto leading-relaxed"
                 >
-                    Built for speed.
+                    Bring your Immich photo library to the biggest screen in
+                    your home.
                 </p>
 
                 <div class="flex flex-wrap justify-center gap-4 mb-20">
@@ -362,6 +390,7 @@
                         class="inline-flex items-center gap-3 bg-teal text-black px-7 py-4 rounded-full font-semibold text-lg transition-all duration-300 transform hover:scale-105"
                     >
                         <svg
+                            aria-hidden="true"
                             width="20"
                             height="20"
                             viewBox="0 0 24 24"
@@ -378,6 +407,7 @@
                         class="inline-flex items-center gap-3 bg-white/5 backdrop-blur-xl border border-white/10 hover:bg-white/10 text-white px-7 py-4 rounded-full font-semibold text-lg transition-all duration-300 transform hover:scale-105"
                     >
                         <svg
+                            aria-hidden="true"
                             width="20"
                             height="20"
                             viewBox="0 0 24 24"
@@ -393,7 +423,7 @@
                         href="https://www.buymeacoffee.com/zzpr69dnqtr"
                         class="inline-flex items-center gap-3 bg-white/5 backdrop-blur-xl border border-white/10 text-white px-7 py-4 rounded-full font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:bg-white/10"
                     >
-                        ☕ Buy me a coffee
+                        Support the project
                     </a>
                 </div>
 
@@ -402,76 +432,91 @@
                     <div>
                         <div
                             class="screenshot-container relative h-[28rem] overflow-hidden rounded-2xl"
+                            role="region"
+                            aria-label="Immich Gallery screenshots"
                         >
                             <img
                                 src="./screenshots/login.png"
-                                alt="Login"
+                                alt="Immich Gallery login screen"
                                 class="screenshot-slide absolute w-full h-full object-contain opacity-0 transition-opacity duration-1000"
                                 data-index="1"
                             />
                             <img
                                 src="./screenshots/TopShelf.png"
-                                alt="Main Interface"
+                                alt="Immich Gallery on the Apple TV Top Shelf"
                                 class="screenshot-slide absolute w-full h-full object-contain opacity-0 transition-opacity duration-1000"
                                 data-index="0"
                             />
                             <img
                                 src="./screenshots/all-photos.png"
-                                alt="Photo Grid"
+                                alt="All Photos grid"
                                 class="screenshot-slide absolute w-full h-full object-contain opacity-0 transition-opacity duration-1000"
                                 data-index="2"
                             />
                             <img
                                 src="./screenshots/Timeline.png"
-                                alt="Timeline"
+                                alt="Timeline view"
+                                class="screenshot-slide absolute w-full h-full object-contain opacity-0 transition-opacity duration-1000"
+                                data-index="2"
+                            />
+                            <img
+                                src="./screenshots/Calendar.png"
+                                alt="Calendar month browser"
                                 class="screenshot-slide absolute w-full h-full object-contain opacity-0 transition-opacity duration-1000"
                                 data-index="2"
                             />
                             <img
                                 src="./screenshots/Filter.png"
-                                alt="People Tab"
+                                alt="Timeline filter controls"
                                 class="screenshot-slide absolute w-full h-full object-contain opacity-0 transition-opacity duration-1000"
                                 data-index="3"
                             />
                             <img
                                 src="./screenshots/albums.png"
-                                alt="Album Tab"
+                                alt="Albums view"
                                 class="screenshot-slide absolute w-full h-full object-contain opacity-0 transition-opacity duration-1000"
                                 data-index="3"
                             />
                             <img
                                 src="./screenshots/people.png"
-                                alt="People Tab"
+                                alt="People view"
                                 class="screenshot-slide absolute w-full h-full object-contain opacity-0 transition-opacity duration-1000"
                                 data-index="3"
                             />
                             <img
                                 src="./screenshots/Search.png"
-                                alt="Search"
+                                alt="Photo search"
                                 class="screenshot-slide absolute w-full h-full object-contain opacity-0 transition-opacity duration-1000"
                                 data-index="4"
                             />
                             <img
                                 src="./screenshots/Settings.png"
-                                alt="Settings"
+                                alt="App settings"
                                 class="screenshot-slide absolute w-full h-full object-contain opacity-0 transition-opacity duration-1000"
                                 data-index="5"
                             />
                             <img
                                 src="./screenshots/FoldersTab.png"
-                                alt="Folders Tab"
+                                alt="External folders view"
+                                class="screenshot-slide absolute w-full h-full object-contain opacity-0 transition-opacity duration-1000"
+                                data-index="5"
+                            />
+                            <img
+                                src="./screenshots/Explore.png"
+                                alt="Explore view"
                                 class="screenshot-slide absolute w-full h-full object-contain opacity-0 transition-opacity duration-1000"
                                 data-index="5"
                             />
                             <img
                                 src="./screenshots/Stats.png"
-                                alt="Stats"
+                                alt="Library statistics"
                                 class="screenshot-slide absolute w-full h-full object-contain opacity-0 transition-opacity duration-1000"
                                 data-index="5"
                             />
                         </div>
                         <div
                             class="screenshot-dots flex justify-center gap-2 mt-4"
+                            role="group"
                             aria-label="Screenshot navigation"
                         ></div>
                     </div>
@@ -483,9 +528,9 @@
         <section id="reviews" class="pt-6 pb-20">
             <div class="max-w-4xl mx-auto px-4">
                 <div class="text-center mb-14">
-                    <h3 class="text-3xl md:text-4xl font-bold">
+                    <h2 class="text-3xl md:text-4xl font-bold">
                         What people are saying
-                    </h3>
+                    </h2>
                 </div>
                 <div class="flex items-center justify-center">
                     <!-- Stacked Cards Container -->
@@ -575,7 +620,7 @@
                     >
                         Everything you need
                     </p>
-                    <h3 class="text-3xl md:text-4xl font-bold">Key Features</h3>
+                    <h2 class="text-3xl md:text-4xl font-bold">Key Features</h2>
                 </div>
                 <div
                     class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
@@ -585,12 +630,13 @@
                     >
                         <div
                             class="text-3xl mb-5 w-14 h-14 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10"
+                            aria-hidden="true"
                         >
                             📷
                         </div>
-                        <h4 class="text-lg font-semibold mb-3">
+                        <h3 class="text-lg font-semibold mb-3">
                             Full library, your way
-                        </h4>
+                        </h3>
                         <p class="text-gray-400 leading-relaxed">
                             Browse everything — or filter by people, albums and
                             tags — in a smooth, infinite-scrolling grid.
@@ -602,12 +648,13 @@
                     >
                         <div
                             class="text-3xl mb-5 w-14 h-14 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10"
+                            aria-hidden="true"
                         >
                             💻
                         </div>
-                        <h4 class="text-lg font-semibold mb-3">
+                        <h3 class="text-lg font-semibold mb-3">
                             Source Available
-                        </h4>
+                        </h3>
                         <p class="text-gray-400 leading-relaxed">
                             The complete source code is available on GitHub —
                             inspect it, fork it, contribute.
@@ -619,16 +666,22 @@
                     >
                         <div
                             class="text-3xl mb-5 w-14 h-14 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10"
+                            aria-hidden="true"
                         >
                             🔐
                         </div>
-                        <h4 class="text-lg font-semibold mb-3">
+                        <h3 class="text-lg font-semibold mb-3">
                             Flexible sign-in
-                        </h4>
+                        </h3>
                         <p class="text-gray-400 leading-relaxed">
-                            Log in with your password, or use an API key if you
-                            sign in with SSO.
+                            Sign in with a password or Immich API key.
                         </p>
+                        <a
+                            href="./api-key-permissions/"
+                            class="inline-flex mt-5 text-sm font-semibold text-teal-light hover:text-white transition-colors"
+                        >
+                            View required API key permissions
+                        </a>
                     </div>
 
                     <div
@@ -636,10 +689,11 @@
                     >
                         <div
                             class="text-3xl mb-5 w-14 h-14 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10"
+                            aria-hidden="true"
                         >
                             🔍
                         </div>
-                        <h4 class="text-lg font-semibold mb-3">Smart Search</h4>
+                        <h3 class="text-lg font-semibold mb-3">Smart Search</h3>
                         <p class="text-gray-400 leading-relaxed">
                             Quickly find photos by content, location, or
                             metadata.
@@ -651,12 +705,13 @@
                     >
                         <div
                             class="text-3xl mb-5 w-14 h-14 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10"
+                            aria-hidden="true"
                         >
                             📺
                         </div>
-                        <h4 class="text-lg font-semibold mb-3">
+                        <h3 class="text-lg font-semibold mb-3">
                             Top Shelf Integration
-                        </h4>
+                        </h3>
                         <p class="text-gray-400 leading-relaxed">
                             Showcase your latest photos right on the Apple TV
                             home screen.
@@ -668,12 +723,13 @@
                     >
                         <div
                             class="text-3xl mb-5 w-14 h-14 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10"
+                            aria-hidden="true"
                         >
                             ⚙️
                         </div>
-                        <h4 class="text-lg font-semibold mb-3">
+                        <h3 class="text-lg font-semibold mb-3">
                             Complete Customization
-                        </h4>
+                        </h3>
                         <p class="text-gray-400 leading-relaxed">
                             Tune the interface, slideshow settings, and
                             preferences to your taste.
@@ -685,15 +741,17 @@
                     >
                         <div
                             class="text-3xl mb-5 w-14 h-14 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10"
+                            aria-hidden="true"
                         >
                             🎬
                         </div>
-                        <h4 class="text-lg font-semibold mb-3">
+                        <h3 class="text-lg font-semibold mb-3">
                             Slideshow Mode
-                        </h4>
+                        </h3>
                         <p class="text-gray-400 leading-relaxed">
-                            Immersive full-screen slideshows with customizable
-                            timing and optional overlays.
+                            Beautiful full-screen slideshow mode with
+                            customizable playback options, timing, transitions,
+                            and optional overlays.
                         </p>
                     </div>
 
@@ -702,12 +760,13 @@
                     >
                         <div
                             class="text-3xl mb-5 w-14 h-14 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10"
+                            aria-hidden="true"
                         >
                             👤
                         </div>
-                        <h4 class="text-lg font-semibold mb-3">
+                        <h3 class="text-lg font-semibold mb-3">
                             Multi-User Support
-                        </h4>
+                        </h3>
                         <p class="text-gray-400 leading-relaxed">
                             Multiple Immich accounts with seamless switching
                             between servers.
@@ -719,15 +778,34 @@
                     >
                         <div
                             class="text-3xl mb-5 w-14 h-14 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10"
+                            aria-hidden="true"
                         >
                             📁
                         </div>
-                        <h4 class="text-lg font-semibold mb-3">
+                        <h3 class="text-lg font-semibold mb-3">
                             Albums &amp; Shared Albums
-                        </h4>
+                        </h3>
                         <p class="text-gray-400 leading-relaxed">
                             Reach your personal albums and collaborative shared
                             collections alike.
+                        </p>
+                    </div>
+
+                    <div
+                        class="group bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl transition-all duration-300 hover:-translate-y-1.5 hover:border-teal/40"
+                    >
+                        <div
+                            class="text-3xl mb-5 w-14 h-14 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10"
+                            aria-hidden="true"
+                        >
+                            🗂️
+                        </div>
+                        <h3 class="text-lg font-semibold mb-3">
+                            Tags &amp; External Folders
+                        </h3>
+                        <p class="text-gray-400 leading-relaxed">
+                            Browse tagged photos and the external library
+                            folders already organized on your Immich server.
                         </p>
                     </div>
                 </div>
@@ -738,9 +816,9 @@
         <section id="finances" class="py-20 scroll-mt-24">
             <div class="max-w-7xl mx-auto px-4">
                 <div class="text-center mb-10">
-                    <h3 class="text-3xl md:text-4xl font-bold">
+                    <h2 class="text-3xl md:text-4xl font-bold">
                         Financial Transparency
-                    </h3>
+                    </h2>
                 </div>
 
                 <article
@@ -762,7 +840,7 @@
                                     <p
                                         class="text-4xl md:text-5xl font-extrabold tracking-tight text-coral tabular-nums"
                                     >
-                                        &minus;$188.69
+                                        &minus;$178.69
                                     </p>
                                     <p class="text-gray-400 pb-1">CAD</p>
                                 </div>
@@ -780,7 +858,7 @@
                                 <dd
                                     class="font-semibold text-teal tabular-nums"
                                 >
-                                    $77.87 CAD
+                                    $87.87 CAD
                                 </dd>
                             </div>
                             <div
@@ -788,7 +866,7 @@
                                 aria-hidden="true"
                             >
                                 <div
-                                    class="h-full w-[29%] rounded-full bg-teal"
+                                    class="h-full w-[33%] rounded-full bg-teal"
                                 ></div>
                             </div>
 
@@ -828,11 +906,27 @@
                                 href="https://www.buymeacoffee.com/zzpr69dnqtr"
                                 class="shrink-0 inline-flex items-center justify-center gap-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white px-5 py-3 rounded-full font-semibold transition-all duration-300 hover:scale-105"
                             >
-                                ☕ Make the chart less red
+                                Make the chart less red
                             </a>
                         </div>
                     </div>
                 </article>
+
+                <div
+                    id="supporters"
+                    class="hidden max-w-4xl mx-auto mt-6 text-center"
+                >
+                    <p
+                        class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 mb-3"
+                    >
+                        Supporters
+                    </p>
+                    <ul
+                        id="supporter-pills"
+                        class="flex flex-wrap justify-center gap-2"
+                        aria-label="Project supporters"
+                    ></ul>
+                </div>
             </div>
         </section>
 
@@ -845,9 +939,9 @@
                     >
                         Built in the open
                     </p>
-                    <h3 class="text-3xl md:text-4xl font-bold">
+                    <h2 class="text-3xl md:text-4xl font-bold">
                         Project Stats
-                    </h3>
+                    </h2>
                 </div>
                 <div class="max-w-3xl mx-auto">
                     <div
@@ -863,6 +957,7 @@
             </div>
         </section>
 
+        </main>
         <!-- Footer Section -->
         <footer class="py-16 border-t border-white/5">
             <div class="max-w-7xl mx-auto px-4">
@@ -871,8 +966,7 @@
                 >
                     <div class="text-center">
                         <p class="text-gray-400 text-lg">
-                            &copy; 2025 Immich Gallery. Powered by Maple Syrup
-                            🍁
+                            &copy; 2026 Immich Gallery. Powered by Maple Syrup.
                         </p>
                     </div>
                     <script
@@ -881,7 +975,6 @@
                         data-name="bmc-button"
                         data-slug="zzpr69dnqtr"
                         data-color="#5F7FFF"
-                        data-emoji="☕"
                         data-font="Cookie"
                         data-text="Buy me a coffee"
                         data-outline-color="#000000"
@@ -894,6 +987,38 @@
 
         <script>
             document.addEventListener("DOMContentLoaded", function () {
+                // Supporter names are kept in JSON so this list can be updated
+                // without changing the finance section's markup.
+                const supportersSection =
+                    document.getElementById("supporters");
+                const supporterPills =
+                    document.getElementById("supporter-pills");
+
+                fetch("./supporters.json")
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error("Unable to load supporters");
+                        }
+                        return response.json();
+                    })
+                    .then(({ supporters = [] }) => {
+                        supporters.forEach((name) => {
+                            const pill = document.createElement("li");
+                            pill.className =
+                                "rounded-full border border-teal/25 bg-teal/10 px-3 py-1 text-xs font-semibold text-white";
+                            pill.textContent = name;
+                            supporterPills.appendChild(pill);
+                        });
+
+                        if (supporters.length > 0) {
+                            supportersSection.classList.remove("hidden");
+                        }
+                    })
+                    .catch(() => {
+                        // The supporter row is optional; keep it hidden if its
+                        // data file is unavailable or malformed.
+                    });
+
                 // Review Cards Stacked Animation (active card on top, others visible behind)
                 const reviewCards = document.querySelectorAll(".review-card");
                 let currentCardIndex = 0;
@@ -964,12 +1089,18 @@
                 let screenshotTimer;
 
                 function showScreenshot(index) {
-                    screenshots.forEach((img) => (img.style.opacity = "0"));
+                    screenshots.forEach((img, imageIndex) => {
+                        const isActive = imageIndex === index;
+                        img.style.opacity = isActive ? "1" : "0";
+                        img.setAttribute(
+                            "aria-hidden",
+                            isActive ? "false" : "true",
+                        );
+                    });
                     screenshotDots.forEach((dot) => {
                         dot.classList.remove("bg-white");
                         dot.classList.add("bg-gray-600");
                     });
-                    screenshots[index].style.opacity = "1";
                     screenshotDots[index].classList.remove("bg-gray-600");
                     screenshotDots[index].classList.add("bg-white");
                 }

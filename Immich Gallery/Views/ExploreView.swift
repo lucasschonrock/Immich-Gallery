@@ -28,6 +28,8 @@ struct ExploreView: View {
     @State private var navigationDirection: BackgroundImageView.NavigationDirection = .none
     @State private var previousFocusedItemID: String?
     @State private var randomizedFirstRowItems: [ExploreAsset] = []
+    @State private var isBackgroundBlurred = false
+    @State private var isScrolling = false
     
     // Computed property to get the focused explore item
     private var focusedExploreItem: ExploreAsset? {
@@ -43,12 +45,39 @@ struct ExploreView: View {
     var body: some View {
         ZStack {
             // Background with gradient mask
-            BackgroundImageView(
-                selectedItem: focusedExploreItem ?? exploreItems.first,
-                assetService: assetService,
-                exploreItems: exploreItems,
-                navigationDirection: navigationDirection
-            )
+            GeometryReader { geometry in
+                BackgroundImageView(
+                    selectedItem: focusedExploreItem ?? exploreItems.first,
+                    assetService: assetService,
+                    navigationDirection: navigationDirection
+                )
+                .frame(width: geometry.size.width, height: geometry.size.height)
+                .clipped()
+                .overlay {
+                    Rectangle()
+                        .fill(.regularMaterial)
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .mask {
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .black, location: 0.25),
+                                    .init(
+                                        color: .black.opacity(isBackgroundBlurred ? 1 : 0.3),
+                                        location: 0.375
+                                    ),
+                                    .init(
+                                        color: .black.opacity(isBackgroundBlurred ? 1 : 0),
+                                        location: 0.5
+                                    ),
+                                ],
+                                startPoint: .bottom,
+                                endPoint: .top
+                            )
+                        }
+                        .allowsHitTesting(false)
+                }
+            }
+            .ignoresSafeArea()
             .onAppear {
                 print("🎯 BackgroundImageView: Initial item - \((focusedExploreItem ?? exploreItems.first)?.primaryTitle ?? "nil")")
             }
@@ -132,12 +161,18 @@ struct ExploreView: View {
                         .containerRelativeFrame(.vertical, alignment: .topLeading) {
                             length, _ in length * 0.6
                         }
+                        .onScrollVisibilityChange { isVisible in
+                            withAnimation(.easeInOut(duration: 0.35)) {
+                                isBackgroundBlurred = !isVisible
+                            }
+                        }
                         
                         //                        .frame(height: calculateShowcaseHeight())
                         // First Row (Above the fold)
                         ExploreFirstRow(
                             exploreItems: randomizedFirstRowItems,
                             assetService: assetService,
+                            shouldLoadImage: !isScrolling,
                             focusedItemID: $focusedItemID,
                             onItemSelected: { item in
                                 selectedExploreItem = item
@@ -150,6 +185,7 @@ struct ExploreView: View {
                             ExploreRemainingGrid(
                                 exploreItems: exploreItems,
                                 assetService: assetService,
+                                shouldLoadImage: !isScrolling,
                                 focusedItemID: $focusedItemID,
                                 onItemSelected: { item in
                                     selectedExploreItem = item
@@ -158,6 +194,12 @@ struct ExploreView: View {
                             .padding(.vertical)
                         }
                     }
+                }
+                .onScrollPhaseChange { _, newPhase, context in
+                    isScrolling = ThumbnailScrollLoadingPolicy.shouldPauseLoading(
+                        during: newPhase,
+                        velocity: context.velocity
+                    )
                 }
                 //                .scrollTargetBehavior(
                 //                    FoldSnappingScrollTargetBehavior(
@@ -276,6 +318,7 @@ struct ExploreView: View {
 struct ExploreFirstRow: View {
     let exploreItems: [ExploreAsset]
     let assetService: AssetService
+    let shouldLoadImage: Bool
     @Binding var focusedItemID: String?
     let onItemSelected: (ExploreAsset) -> Void
     
@@ -288,6 +331,7 @@ struct ExploreFirstRow: View {
                 FirstRowItem(
                     item: item,
                     assetService: assetService,
+                    shouldLoadImage: shouldLoadImage,
                     onItemSelected: onItemSelected
                 )
                 .focused($localFocusedItem, equals: item.id)
@@ -315,6 +359,7 @@ struct ExploreFirstRow: View {
 struct FirstRowItem: View {
     let item: ExploreAsset
     let assetService: AssetService
+    let shouldLoadImage: Bool
     let onItemSelected: (ExploreAsset) -> Void
 
     private let cardSize = CGSize(width: 380, height: 260)
@@ -323,7 +368,12 @@ struct FirstRowItem: View {
         Button(action: {
             onItemSelected(item)
         }) {
-            ExploreLockupCard(item: item, assetService: assetService, cardSize: cardSize)
+            ExploreLockupCard(
+                item: item,
+                assetService: assetService,
+                cardSize: cardSize,
+                shouldLoadImage: shouldLoadImage
+            )
         }
         .frame(width: cardSize.width, height: cardSize.height)
         .padding(.top, 100)
@@ -338,6 +388,7 @@ struct FirstRowItem: View {
 struct ExploreRemainingGrid: View {
     let exploreItems: [ExploreAsset]
     let assetService: AssetService
+    let shouldLoadImage: Bool
     @Binding var focusedItemID: String?
     let onItemSelected: (ExploreAsset) -> Void
     
@@ -351,6 +402,7 @@ struct ExploreRemainingGrid: View {
                     FocusableGridItem(
                         item: item,
                         assetService: assetService,
+                        shouldLoadImage: shouldLoadImage,
                         isCurrentlyFocused: focusedItemID == item.id,
                         onFocusChange: { isFocused in
                             print("🎯 RemainingGrid: Focus change for \(item.primaryTitle) - isFocused: \(isFocused)")
@@ -415,6 +467,7 @@ struct ExploreCustomGrid: View {
 struct FocusableGridItem: View {
     let item: ExploreAsset
     let assetService: AssetService
+    var shouldLoadImage = true
     let isCurrentlyFocused: Bool
     let onFocusChange: (Bool) -> Void
     let onItemSelected: (ExploreAsset) -> Void
@@ -426,7 +479,12 @@ struct FocusableGridItem: View {
         Button(action: {
             onItemSelected(item)
         }) {
-            ExploreLockupCard(item: item, assetService: assetService, cardSize: cardSize)
+            ExploreLockupCard(
+                item: item,
+                assetService: assetService,
+                cardSize: cardSize,
+                shouldLoadImage: shouldLoadImage
+            )
         }
         .frame(width: cardSize.width, height: cardSize.height)
         .padding(10)
@@ -445,6 +503,7 @@ private struct ExploreLockupCard: View {
     let item: ExploreAsset
     let assetService: AssetService
     let cardSize: CGSize
+    let shouldLoadImage: Bool
 
     var body: some View {
         AsyncLandscapeOverlayLockupCard(
@@ -457,10 +516,11 @@ private struct ExploreLockupCard: View {
             trailingStatusIconNames: trailingStatusIconNames,
             fallbackIconName: item.iconName,
             fallbackTint: item.gridColor ?? .secondary,
-            cardSize: cardSize
+            cardSize: cardSize,
+            shouldLoadImage: shouldLoadImage
         ) {
             do {
-                return try await assetService.loadImage(assetId: item.asset.id, size: "preview")
+                return try await assetService.loadImage(assetId: item.asset.id, size: "thumbnail")
             } catch {
                 print("Failed to load thumbnail for explore item: \(error)")
                 return nil
@@ -487,12 +547,13 @@ private enum ExploreMetadataFormatter {
 struct BackgroundImageView: View {
     let selectedItem: ExploreAsset?
     let assetService: AssetService
-    let exploreItems: [ExploreAsset] // Need all items for mosaic
     let navigationDirection: NavigationDirection
     @State private var backgroundImage: UIImage?
-    @State private var additionalImages: [UIImage] = []
+    @State private var mosaicImages: [UIImage] = []
+    @State private var outgoingBackgroundImage: UIImage?
+    @State private var outgoingMosaicImages: [UIImage] = []
+    @State private var incomingOpacity = 1.0
     @State private var pendingItem: ExploreAsset?
-    @State private var opacity: Double = 1.0
     @State private var animationTask: Task<Void, Never>?
     
     enum NavigationDirection {
@@ -500,76 +561,113 @@ struct BackgroundImageView: View {
     }
     
     var body: some View {
-        Group {
-            if let backgroundImage = backgroundImage {
-                GeometryReader { geometry in
-                    let imageAspectRatio = backgroundImage.size.width / backgroundImage.size.height
-                    let isPortrait = imageAspectRatio < 1.0
-                    
-                    Group {
-                        if isPortrait && !additionalImages.isEmpty {
-                            // Portrait mosaic layout
-                            HStack(spacing: 0) {
-                                // Main image (left side)
-                                Image(uiImage: backgroundImage)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(width: geometry.size.width * 0.5)
-                                    .clipped()
-                                
-                                // Additional images (right side)
-                                VStack(spacing: 0) {
-                                    ForEach(Array(additionalImages.prefix(2).enumerated()), id: \.offset) { index, image in
-                                        Image(uiImage: image)
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .frame(
-                                                width: geometry.size.width * 0.5,
-                                                height: geometry.size.height / 1.65
-                                            )
-                                            .clipped()
-                                    }
-                                    
-                                    // Fill remaining space if we have less than 2 images
-                                    if additionalImages.count < 2 {
-                                        Rectangle()
-                                            .fill(Color.clear)
-                                            .frame(
-                                                width: geometry.size.width * 0.5,
-                                                height: geometry.size.height / 2
-                                            )
-                                    }
-                                }
-                                .frame(maxHeight: .infinity)
-                            }
-                            .ignoresSafeArea()
-                        } else {
-                            // Single image layout (landscape or no additional images)
-                            Image(uiImage: backgroundImage)
-                                .resizable()
-                                .aspectRatio(contentMode: isPortrait ? .fit : .fill)
-                                .frame(
-                                    width: isPortrait ? min(geometry.size.width * 0.8, geometry.size.height * imageAspectRatio) : geometry.size.width,
-                                    height: isPortrait ? min(geometry.size.height, geometry.size.width / imageAspectRatio) : geometry.size.height,
-                                    alignment: .center
-                                )
-                                .clipped()
-                                .ignoresSafeArea()
-                        }
-                    }
-                    .opacity(opacity)
-                    .animation(.easeIn(duration: 0.3), value: opacity)
-                }
-                .ignoresSafeArea()
-            } else {
+        GeometryReader { geometry in
+            ZStack {
                 SharedGradientBackground()
+
+                if let outgoingBackgroundImage {
+                    backgroundLayer(
+                        image: outgoingBackgroundImage,
+                        mosaicImages: outgoingMosaicImages,
+                        geometry: geometry
+                    )
+                    .opacity(1 - incomingOpacity)
+                }
+
+                if let backgroundImage {
+                    backgroundLayer(
+                        image: backgroundImage,
+                        mosaicImages: mosaicImages,
+                        geometry: geometry
+                    )
+                    .opacity(incomingOpacity)
+                }
             }
         }
+        .ignoresSafeArea()
         .task(id: selectedItem?.id) {
             await scheduleBackgroundImageUpdate()
         }
         .onDisappear {
             animationTask?.cancel()
+        }
+    }
+
+    @ViewBuilder
+    private func backgroundLayer(
+        image: UIImage,
+        mosaicImages: [UIImage],
+        geometry: GeometryProxy
+    ) -> some View {
+        let imageAspectRatio = image.size.width / image.size.height
+        let isPortrait = imageAspectRatio < 1.0
+
+        if isPortrait {
+            let images = [image] + mosaicImages.prefix(2)
+            let spacing: CGFloat = 18
+            let availableWidth = geometry.size.width - 120 - spacing * CGFloat(images.count - 1)
+            let totalAspectRatio = images.reduce(CGFloat.zero) {
+                $0 + ($1.size.width / $1.size.height)
+            }
+            let tileHeight = min(
+                geometry.size.height * 0.9,
+                availableWidth / max(totalAspectRatio, 0.01)
+            )
+
+            ZStack {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .scaleEffect(1.08)
+                    .blur(radius: 42)
+                    .clipped()
+
+                Color.black.opacity(0.24)
+
+                HStack(spacing: spacing) {
+                    ForEach(Array(images.enumerated()), id: \.offset) { _, image in
+                        Image(uiImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(
+                                width: tileHeight * image.size.width / image.size.height,
+                                height: tileHeight
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(.white.opacity(0.16), lineWidth: 2)
+                            }
+                            .shadow(color: .black.opacity(0.35), radius: 20, y: 10)
+                    }
+                }
+                .frame(maxWidth: geometry.size.width - 120)
+
+                LinearGradient(
+                    stops: [
+                        .init(color: .black.opacity(0.82), location: 0),
+                        .init(color: .black.opacity(0.48), location: 0.38),
+                        .init(color: .clear, location: 0.78),
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+
+                LinearGradient(
+                    colors: [.clear, .black.opacity(0.52)],
+                    startPoint: .center,
+                    endPoint: .bottom
+                )
+            }
+            .ignoresSafeArea()
+        } else {
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: geometry.size.width, height: geometry.size.height)
+                .clipped()
+                .ignoresSafeArea()
         }
     }
     
@@ -585,135 +683,155 @@ struct BackgroundImageView: View {
         // Store the pending item
         pendingItem = selectedItem
         
-        // Create a new task with 1-second delay
+        // Create a new task with a half-second focus debounce.
         animationTask = Task {
             do {
-                // Wait 1 second, but check if task is cancelled
-                try await Task.sleep(nanoseconds: 1_000_000_00) // 1 second
+                try await Task.sleep(nanoseconds: 500_000_000)
                 
                 // Check if this is still the current pending item and task wasn't cancelled
                 guard !Task.isCancelled, pendingItem?.id == selectedItem.id else {
                     print("🖼️ BackgroundImageView: Animation cancelled or focus changed")
                     return
                 }
-                
-                // Step 1: Fade out current image
-                await MainActor.run {
-                    opacity = 0.0
-                }
-                
-                // Wait for fade out animation to complete
-                try await Task.sleep(nanoseconds: 1_000_000_00) // 0.5 seconds
-                
-                // Check if still valid
-                guard !Task.isCancelled, pendingItem?.id == selectedItem.id else {
-                    print("🖼️ BackgroundImageView: Animation cancelled during fade out")
-                    return
-                }
-                
-                // Step 2: Load new image while faded out
-                await loadBackgroundImage(for: selectedItem)
-                
-                // Check if still valid
-                guard !Task.isCancelled, pendingItem?.id == selectedItem.id else {
+
+                // Keep the current background visible until its replacement is ready.
+                guard let loadedBackground = await loadBackgroundImage(for: selectedItem),
+                      !Task.isCancelled,
+                      pendingItem?.id == selectedItem.id else {
                     print("🖼️ BackgroundImageView: Animation cancelled after loading")
                     return
                 }
-                
-                // Step 3: Fade in new image
+
+                let hasCurrentBackground = await MainActor.run {
+                    backgroundImage != nil
+                }
+
+                guard hasCurrentBackground else {
+                    await MainActor.run {
+                        backgroundImage = loadedBackground.image
+                        mosaicImages = loadedBackground.mosaicImages
+                        incomingOpacity = 1
+                    }
+                    return
+                }
+
                 await MainActor.run {
-                    opacity = 1.0
+                    outgoingBackgroundImage = backgroundImage
+                    outgoingMosaicImages = mosaicImages
+                    backgroundImage = loadedBackground.image
+                    mosaicImages = loadedBackground.mosaicImages
+                    incomingOpacity = 0
+                }
+
+                // Give SwiftUI one render pass with both layers before crossfading.
+                await Task.yield()
+                try Task.checkCancellation()
+
+                await MainActor.run {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        incomingOpacity = 1
+                    }
+                }
+
+                try await Task.sleep(nanoseconds: 300_000_000)
+
+                guard !Task.isCancelled, pendingItem?.id == selectedItem.id else {
+                    return
+                }
+
+                await MainActor.run {
+                    outgoingBackgroundImage = nil
+                    outgoingMosaicImages = []
                 }
                 
             } catch is CancellationError {
                 print("🖼️ BackgroundImageView: Animation task was cancelled")
                 await MainActor.run {
-                    opacity = 1.0
+                    incomingOpacity = 1
+                    outgoingBackgroundImage = nil
+                    outgoingMosaicImages = []
                 }
             } catch {
                 print("🖼️ BackgroundImageView: Unexpected error in animation task: \(error)")
                 await MainActor.run {
-                    opacity = 1.0
+                    incomingOpacity = 1
+                    outgoingBackgroundImage = nil
+                    outgoingMosaicImages = []
                 }
             }
         }
     }
-    
-    
-    private func loadBackgroundImage() async {
-        guard let selectedItem = selectedItem else {
-            print("🖼️ BackgroundImageView: No selected item to load")
-            return
-        }
-        await loadBackgroundImage(for: selectedItem)
-    }
-    
-    private func loadBackgroundImage(for selectedItem: ExploreAsset) async {
+
+    private func loadBackgroundImage(
+        for selectedItem: ExploreAsset
+    ) async -> (image: UIImage, mosaicImages: [UIImage])? {
         
         print("🖼️ BackgroundImageView: Loading background for \(selectedItem.primaryTitle) (ID: \(selectedItem.id))")
         
         do {
             guard let image = try await assetService.loadImage(assetId: selectedItem.asset.id, size: "preview") else {
                 print("🖼️ BackgroundImageView: No image returned for \(selectedItem.primaryTitle)")
-                return
+                return nil
             }
             
-            // Check if image is portrait and load additional images
+            // Prefer a landscape image from the same location when available.
             let imageAspectRatio = image.size.width / image.size.height
             let isPortrait = imageAspectRatio < 1.0
             
             var finalImage = image
-            var additionalImagesArray: [UIImage] = []
-            var useMosaic = false
-            
+            var additionalPortraitImages: [UIImage] = []
             if isPortrait {
-                print("🖼️ BackgroundImageView: Portrait detected, checking for landscape alternatives from same location")
+                print("🖼️ BackgroundImageView: Portrait detected, loading two alternatives from same location")
                 
-                // Fetch additional assets from the same location
                 do {
-                    let cityAssets = try await assetService.fetchAssets(limit: 5, city: selectedItem.primaryTitle )
-                    
-                    // Get all assets excluding the main one
-                    let allAssets = cityAssets.assets.filter { $0.id != selectedItem.asset.id }
-                    
-                    var allLoadedImages: [UIImage] = []
-                    
-                    // Load all images to check their orientations
-                    for asset in allAssets.prefix(4) { // Load up to 4 additional images
+                    // Request three because the selected asset may be included,
+                    // then load at most two other images.
+                    let cityAssets = try await assetService.fetchAssets(
+                        limit: 3,
+                        city: selectedItem.primaryTitle
+                    )
+                    let candidateAssets = cityAssets.assets
+                        .filter { $0.id != selectedItem.asset.id }
+                        .prefix(2)
+                    var loadedCandidates: [UIImage] = []
+
+                    for asset in candidateAssets {
                         do {
-                            if let loadedImage = try await assetService.loadImage(assetId: asset.id, size: "preview") {
-                                allLoadedImages.append(loadedImage)
+                            if let candidate = try await assetService.loadImage(assetId: asset.id, size: "preview") {
+                                loadedCandidates.append(candidate)
                             }
                         } catch {
                             print("🖼️ BackgroundImageView: Failed to load image from \(selectedItem.primaryTitle): \(error)")
                         }
                     }
-                    
-                    // Find first landscape image
-                    if let landscapeImage = allLoadedImages.first(where: { $0.size.width / $0.size.height >= 1.0 }) {
-                        print("🖼️ BackgroundImageView: Found landscape alternative, using that instead of mosaic")
+
+                    if let landscapeImage = loadedCandidates.first(where: {
+                        $0.size.width / $0.size.height >= 1.0
+                    }) {
+                        print("🖼️ BackgroundImageView: Found landscape alternative")
                         finalImage = landscapeImage
-                        useMosaic = false
                     } else {
-                        print("🖼️ BackgroundImageView: No landscape alternatives found, using mosaic layout")
-                        additionalImagesArray = Array(allLoadedImages.prefix(2))
-                        useMosaic = true
+                        print("🖼️ BackgroundImageView: No landscape alternative found, building portrait mosaic")
+                        additionalPortraitImages = loadedCandidates.filter {
+                            $0.size.width / $0.size.height < 1.0
+                        }
+                        print("🖼️ BackgroundImageView: Added \(additionalPortraitImages.count) supporting portraits")
                     }
                     
                 } catch {
                     print("🖼️ BackgroundImageView: Failed to fetch additional assets for \(selectedItem.primaryTitle): \(error)")
-                    // Fallback to mosaic with original portrait image
-                    useMosaic = true
+                    print("🖼️ BackgroundImageView: Using single-image portrait mosaic")
                 }
             }
             
-            await MainActor.run {
-                print("🖼️ BackgroundImageView: Successfully loaded background for \(selectedItem.primaryTitle)")
-                backgroundImage = finalImage
-                additionalImages = useMosaic ? additionalImagesArray : []
-            }
+            print("🖼️ BackgroundImageView: Successfully loaded background for \(selectedItem.primaryTitle)")
+            return (
+                image: finalImage,
+                mosaicImages: finalImage === image ? additionalPortraitImages : []
+            )
         } catch {
             print("🖼️ BackgroundImageView: Failed to load background for \(selectedItem.primaryTitle): \(error)")
+            return nil
         }
     }
 }

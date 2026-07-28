@@ -71,6 +71,7 @@ private struct TagLockupGridView: View {
     let errorMessage: String?
     let onTagSelected: (Tag) -> Void
     let onRetry: () -> Void
+    @State private var isScrolling = false
 
     private let cardWidth: CGFloat = 500
     private let cardHeight: CGFloat = 300
@@ -121,7 +122,8 @@ private struct TagLockupGridView: View {
                                 TagLockupCard(
                                     tag: tag,
                                     thumbnailProvider: thumbnailProvider,
-                                    cardSize: CGSize(width: cardWidth, height: cardHeight)
+                                    cardSize: CGSize(width: cardWidth, height: cardHeight),
+                                    shouldLoadImage: !isScrolling
                                 )
                             }
                             .frame(width: cardWidth, height: cardHeight)
@@ -131,6 +133,12 @@ private struct TagLockupGridView: View {
                     }
                     .padding(.horizontal, 72)
                     .padding(.vertical, 48)
+                }
+                .onScrollPhaseChange { _, newPhase, context in
+                    isScrolling = ThumbnailScrollLoadingPolicy.shouldPauseLoading(
+                        during: newPhase,
+                        velocity: context.velocity
+                    )
                 }
             }
         }
@@ -149,6 +157,7 @@ private struct TagLockupCard: View {
     let tag: Tag
     let thumbnailProvider: TagThumbnailProvider
     let cardSize: CGSize
+    let shouldLoadImage: Bool
     @AppStorage(UserDefaultsKeys.lockupThumbnailMode) private var lockupThumbnailMode = LockupThumbnailMode.current.rawValue
 
     var body: some View {
@@ -162,7 +171,8 @@ private struct TagLockupCard: View {
             trailingStatusIconNames: [],
             fallbackIconName: tag.iconName,
             fallbackTint: tag.gridColor ?? .secondary,
-            cardSize: cardSize
+            cardSize: cardSize,
+            shouldLoadImage: shouldLoadImage
         ) {
             await thumbnailProvider.loadCoverThumbnail(for: tag)
         }

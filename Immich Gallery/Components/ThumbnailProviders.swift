@@ -38,8 +38,8 @@ private func loadSingleThumbnail(
             return nil
         }
 
-        return try await thumbnailCache.getThumbnail(for: asset.id, size: "preview") {
-            try await assetService.loadImage(assetId: asset.id, size: "preview")
+        return try await thumbnailCache.getThumbnail(for: asset.id, size: "thumbnail") {
+            try await assetService.loadImage(assetId: asset.id, size: "thumbnail")
         }
     } catch {
         print("Failed to load \(mode.rawValue) lockup thumbnail: \(error)")
@@ -68,8 +68,8 @@ class AlbumThumbnailProvider {
         }
         
         do {
-            return try await thumbnailCache.getThumbnail(for: thumbnailId, size: "preview") {
-                try await self.assetService.loadImage(assetId: thumbnailId, size: "preview")
+            return try await thumbnailCache.getThumbnail(for: thumbnailId, size: "thumbnail") {
+                try await self.assetService.loadImage(assetId: thumbnailId, size: "thumbnail")
             }
         } catch {
             print("Failed to load static thumbnail for album \(album.id): \(error)")
@@ -97,8 +97,8 @@ class AlbumThumbnailProvider {
                 return nil
             }
 
-            return try await thumbnailCache.getThumbnail(for: asset.id, size: "preview") {
-                try await self.assetService.loadImage(assetId: asset.id, size: "preview")
+            return try await thumbnailCache.getThumbnail(for: asset.id, size: "thumbnail") {
+                try await self.assetService.loadImage(assetId: asset.id, size: "thumbnail")
             }
         } catch {
             print("Failed to load cover thumbnail for album \(album.id): \(error)")
@@ -113,8 +113,8 @@ class AlbumThumbnailProvider {
                 return nil
             }
 
-            return try await thumbnailCache.getThumbnail(for: asset.id, size: "preview") {
-                try await self.assetService.loadImage(assetId: asset.id, size: "preview")
+            return try await thumbnailCache.getThumbnail(for: asset.id, size: "thumbnail") {
+                try await self.assetService.loadImage(assetId: asset.id, size: "thumbnail")
             }
         } catch {
             print("Failed to load random cover thumbnail for album \(album.id): \(error)")

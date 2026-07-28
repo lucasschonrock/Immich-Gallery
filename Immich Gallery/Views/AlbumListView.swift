@@ -273,6 +273,7 @@ private struct AlbumLockupGridView: View {
     let currentUserEmail: String?
     let onAlbumSelected: (ImmichAlbum) -> Void
     let onRetry: () -> Void
+    @State private var isScrolling = false
 
     private let cardWidth: CGFloat = 500
     private let cardHeight: CGFloat = 300
@@ -324,7 +325,8 @@ private struct AlbumLockupGridView: View {
                                     album: album,
                                     thumbnailProvider: thumbnailProvider,
                                     currentUserEmail: currentUserEmail,
-                                    cardSize: CGSize(width: cardWidth, height: cardHeight)
+                                    cardSize: CGSize(width: cardWidth, height: cardHeight),
+                                    shouldLoadImage: !isScrolling
                                 )
                             }
                             .frame(width: cardWidth, height: cardHeight)
@@ -334,6 +336,12 @@ private struct AlbumLockupGridView: View {
                     }
                     .padding(.horizontal, 72)
                     .padding(.vertical, 48)
+                }
+                .onScrollPhaseChange { _, newPhase, context in
+                    isScrolling = ThumbnailScrollLoadingPolicy.shouldPauseLoading(
+                        during: newPhase,
+                        velocity: context.velocity
+                    )
                 }
             }
         }
@@ -362,6 +370,7 @@ private struct AlbumLockupCard: View {
     let thumbnailProvider: AlbumThumbnailProvider
     let currentUserEmail: String?
     let cardSize: CGSize
+    let shouldLoadImage: Bool
     @AppStorage(UserDefaultsKeys.lockupThumbnailMode) private var lockupThumbnailMode = LockupThumbnailMode.current.rawValue
 
     private var isSmartAlbum: Bool {
@@ -379,7 +388,8 @@ private struct AlbumLockupCard: View {
             trailingStatusIconNames: trailingStatusIconNames,
             fallbackIconName: album.iconName,
             fallbackTint: album.gridColor ?? .secondary,
-            cardSize: cardSize
+            cardSize: cardSize,
+            shouldLoadImage: shouldLoadImage
         ) {
             await thumbnailProvider.loadCoverThumbnail(for: album)
         }

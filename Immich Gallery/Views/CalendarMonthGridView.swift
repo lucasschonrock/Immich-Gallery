@@ -137,8 +137,11 @@ struct CalendarMonthGridView: View {
             .padding(.horizontal, 72)
             .padding(.vertical, 48)
         }
-        .onScrollPhaseChange { _, newPhase in
-            isScrolling = newPhase.isScrolling
+        .onScrollPhaseChange { _, newPhase, context in
+            isScrolling = ThumbnailScrollLoadingPolicy.shouldPauseLoading(
+                during: newPhase,
+                velocity: context.velocity
+            )
         }
     }
 
@@ -224,8 +227,8 @@ private struct CalendarMonthCard: View {
             )
             guard let asset = assets.first else { return nil }
 
-            return try await ThumbnailCache.shared.getThumbnail(for: asset.id, size: "preview") {
-                try await assetService.loadImage(assetId: asset.id, size: "preview")
+            return try await ThumbnailCache.shared.getThumbnail(for: asset.id, size: "thumbnail") {
+                try await assetService.loadImage(assetId: asset.id, size: "thumbnail")
             }
         } catch {
             print("Failed to load cover for month \(bucket.timeBucket): \(error)")

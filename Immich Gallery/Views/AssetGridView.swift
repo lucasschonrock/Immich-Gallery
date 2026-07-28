@@ -40,6 +40,7 @@ struct AssetGridView: View {
     @State private var showingSlideshow = false
     @State private var showingFilterModal = false
     @State private var filters = PhotoFilterSelection.saved
+    @State private var isScrolling = false
 
     init(
         assetService: AssetService,
@@ -140,7 +141,9 @@ struct AssetGridView: View {
                                     AssetThumbnailView(
                                         asset: asset,
                                         assetService: assetService,
-                                        isFocused: focusedAssetId == asset.id
+                                        isFocused: focusedAssetId == asset.id,
+                                        shouldLoadThumbnail: !isScrolling,
+                                        allowsThumbhashPlaceholder: false
                                     )
                                 }
                                 .frame(width: 300, height: 360)
@@ -218,6 +221,12 @@ struct AssetGridView: View {
                             if let assetId = assetId {
                                 handleDeepLinkAsset(assetId)
                             }
+                        }
+                        .onScrollPhaseChange { _, newPhase, context in
+                            isScrolling = ThumbnailScrollLoadingPolicy.shouldPauseLoading(
+                                during: newPhase,
+                                velocity: context.velocity
+                            )
                         }
                         }
                     }

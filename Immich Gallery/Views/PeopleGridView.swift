@@ -136,6 +136,7 @@ private struct PeopleLockupGridView: View {
     let onPersonSelected: (Person) -> Void
     let onPersonAppear: (Person) -> Void
     let onRetry: () -> Void
+    @State private var isScrolling = false
 
     private let cardWidth: CGFloat = 380
     private let cardHeight: CGFloat = 380
@@ -188,7 +189,8 @@ private struct PeopleLockupGridView: View {
                                     person: person,
                                     peopleService: peopleService,
                                     thumbnailProvider: thumbnailProvider,
-                                    cardSize: CGSize(width: cardWidth, height: cardHeight)
+                                    cardSize: CGSize(width: cardWidth, height: cardHeight),
+                                    shouldLoadImage: !isScrolling
                                 )
                             }
                             .frame(width: cardWidth, height: cardHeight)
@@ -201,6 +203,12 @@ private struct PeopleLockupGridView: View {
                     }
                     .padding(.horizontal, 72)
                     .padding(.vertical, 48)
+                }
+                .onScrollPhaseChange { _, newPhase, context in
+                    isScrolling = ThumbnailScrollLoadingPolicy.shouldPauseLoading(
+                        during: newPhase,
+                        velocity: context.velocity
+                    )
                 }
             }
         }
@@ -230,6 +238,7 @@ private struct PersonLockupCard: View {
     let peopleService: PeopleService
     let thumbnailProvider: PeopleThumbnailProvider
     let cardSize: CGSize
+    let shouldLoadImage: Bool
     @AppStorage(UserDefaultsKeys.lockupThumbnailMode) private var lockupThumbnailMode = LockupThumbnailMode.current.rawValue
 
     var body: some View {
@@ -245,12 +254,17 @@ private struct PersonLockupCard: View {
                 fallbackIconName: "person.crop.rectangle",
                 fallbackTint: person.gridColor ?? .secondary,
                 cardSize: cardSize,
-                topContentLeadingInset: 68
+                topContentLeadingInset: 68,
+                shouldLoadImage: shouldLoadImage
             ) {
                 await thumbnailProvider.loadCoverThumbnail(for: person)
             }
 
-            PersonThumbnailBadge(person: person, peopleService: peopleService)
+            PersonThumbnailBadge(
+                person: person,
+                peopleService: peopleService,
+                shouldLoadImage: shouldLoadImage
+            )
                 .padding(16)
 
             if let birthday = BirthdayProximity.details(for: person) {
@@ -298,6 +312,7 @@ private struct BirthdayCardBadge: View {
 private struct PersonThumbnailBadge: View {
     let person: Person
     let peopleService: PeopleService
+    let shouldLoadImage: Bool
 
     @State private var thumbnail: UIImage?
     private let thumbnailCache = ThumbnailCache.shared
@@ -323,7 +338,8 @@ private struct PersonThumbnailBadge: View {
                 .stroke(Color.white.opacity(0.72), lineWidth: 2)
         }
         .shadow(color: .black.opacity(0.7), radius: 4, x: 0, y: 2)
-        .task(id: person.id) {
+        .task(id: "\(person.id)-\(shouldLoadImage)") {
+            guard shouldLoadImage else { return }
             await loadThumbnail()
         }
     }

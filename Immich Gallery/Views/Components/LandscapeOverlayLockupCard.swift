@@ -5,6 +5,23 @@
 
 import SwiftUI
 
+enum ThumbnailScrollLoadingPolicy {
+    /// Below this speed, thumbnail work is allowed to resume while the user
+    /// continues scrolling. Roughly two 300-point cards per second.
+    private static let fastScrollVelocityThreshold: CGFloat = 600
+
+    static func shouldPauseLoading(
+        during phase: ScrollPhase,
+        velocity: CGVector?
+    ) -> Bool {
+        guard phase.isScrolling else { return false }
+        guard let velocity else { return true }
+
+        let speed = max(abs(velocity.dx), abs(velocity.dy))
+        return speed >= fastScrollVelocityThreshold
+    }
+}
+
 private struct AsyncLandscapeImageTaskID<ID: Hashable>: Hashable {
     let imageId: ID
     let shouldLoad: Bool

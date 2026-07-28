@@ -20,6 +20,7 @@ struct SearchView: View {
     @State private var selectedAsset: ImmichAsset?
     @State private var showingFullScreen = false
     @State private var currentAssetIndex: Int = 0
+    @State private var isScrolling = false
     @FocusState private var focusedAssetId: String?
     
     private let columns = [
@@ -102,7 +103,8 @@ struct SearchView: View {
                                         AssetThumbnailView(
                                             asset: asset,
                                             assetService: assetService,
-                                            isFocused: focusedAssetId == asset.id
+                                            isFocused: focusedAssetId == asset.id,
+                                            shouldLoadThumbnail: !isScrolling
                                         )
                                     }
                                     .frame(width: 300, height: 360)
@@ -118,6 +120,12 @@ struct SearchView: View {
                             .focusSection()
                             .padding(.horizontal)
                             .padding(.bottom, 40)
+                        }
+                        .onScrollPhaseChange { _, newPhase, context in
+                            isScrolling = ThumbnailScrollLoadingPolicy.shouldPauseLoading(
+                                during: newPhase,
+                                velocity: context.velocity
+                            )
                         }
                     }
             }

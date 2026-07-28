@@ -1,5 +1,26 @@
 [
   {
+    "version": "1.3.2",
+    "changes": [
+      {
+        "type": "new_feature",
+        "title": "Timeline is now the default view",
+        "items": [
+          "Timeline is now the default view for browsing All Photos."
+        ]
+      },
+      {
+        "type": "bug_fix",
+        "title": "Bug fixes and improvements",
+        "items": [
+          "Fixed a bug where the grid and keyboard showed overlapping content.",
+          "Fixed a bug where Timeline did not show photos shared by partners."
+        ]
+      }
+    ],
+    "releaseDate": "2026-07-28T00:00:00"
+  },
+  {
     "version": "1.3.1",
     "changes": [
       {

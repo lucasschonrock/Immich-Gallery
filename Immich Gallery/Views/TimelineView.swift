@@ -15,6 +15,7 @@ import SwiftUI
 struct TimelineView: View {
     private enum ToolbarButton: Hashable {
         case filter
+        case favorites
         case resetFilters
         case sort
         case calendar
@@ -39,10 +40,10 @@ struct TimelineView: View {
     @State private var frontier = 0
     @State private var isLoading = false
     @State private var isScrolling = false
-    @State private var visibleAssetIds: Set<String> = []
     @State private var errorMessage: String?
     @State private var showingFilterModal = false
     @State private var filters = PhotoFilterSelection.saved
+    @State private var favoritesOnly = false
     @State private var loadGeneration = UUID()
     @State private var filteredNextPage: Int?
     @State private var isLoadingFilteredPage = false
@@ -53,7 +54,6 @@ struct TimelineView: View {
     /// onAppear fire again on the next scroll).
     private let growByAssetCount = 120
     private let filteredPageSize = 120
-    private let thumbnailLoadBuffer = 5
 
     @State private var selectedAsset: ImmichAsset?
     @State private var showingFullScreen = false
@@ -70,12 +70,16 @@ struct TimelineView: View {
         Array(repeating: GridItem(.fixed(tileWidth), spacing: gridSpacing), count: columnCount)
     }
 
-    private var hasActiveFilter: Bool {
+    private var hasMetadataFilter: Bool {
         filters.activeCount > 0
     }
 
+    private var hasActiveFilter: Bool {
+        hasMetadataFilter || favoritesOnly
+    }
+
     private var activeFilterCount: Int {
-        filters.activeCount
+        filters.activeCount + (favoritesOnly ? 1 : 0)
     }
 
     private var visibleBuckets: [TimelineBucket] {
@@ -86,26 +90,6 @@ struct TimelineView: View {
     // fullscreen viewer so left/right paging works across loaded months.
     private var loadedAssetsInOrder: [ImmichAsset] {
         buckets.flatMap { bucketAssets[$0.timeBucket] ?? [] }
-    }
-
-    private var thumbnailLoadAssetIds: Set<String> {
-        let assets = loadedAssetsInOrder
-        guard !assets.isEmpty else { return [] }
-
-        var idsToLoad = Set<String>()
-        let anchorIds = visibleAssetIds.union(focusedAssetId.map { [$0] } ?? [])
-
-        for anchorId in anchorIds {
-            guard let index = assets.firstIndex(where: { $0.id == anchorId }) else { continue }
-            let lowerBound = max(assets.startIndex, index - thumbnailLoadBuffer)
-            let upperBound = min(assets.index(before: assets.endIndex), index + thumbnailLoadBuffer)
-
-            for assetIndex in lowerBound...upperBound {
-                idsToLoad.insert(assets[assetIndex].id)
-            }
-        }
-
-        return idsToLoad
     }
 
     var body: some View {
@@ -156,7 +140,7 @@ struct TimelineView: View {
                     }
                     Spacer()
                 } else {
-                    timelineContent(loadableThumbnailIds: thumbnailLoadAssetIds)
+                    timelineContent
                 }
             }
             .padding(.top, 20)
@@ -207,14 +191,33 @@ struct TimelineView: View {
     private var filterAndSortButtons: some View {
         HStack(spacing: 30) {
             Button(action: { showingFilterModal = true }) {
-                Label {
-                    Text("Filter \(activeFilterCount > 0 ? "(\(activeFilterCount))" : "")")
-                } icon: {
-                    Image(systemName: activeFilterCount > 0 ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                Image(systemName: activeFilterCount > 0 ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                    .frame(width: 44, height: 32)
+                    .overlay(alignment: .topTrailing) {
+                        if activeFilterCount > 0 {
+                            Text("\(activeFilterCount)")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundStyle(.white)
+                                .frame(minWidth: 28, minHeight: 28)
+                                .background(.red, in: Circle())
+                                .offset(x: 12, y: -10)
+                        }
+                    }
                 }
-            }
             .buttonStyle(.bordered)
             .focused($focusedToolbarButton, equals: .filter)
+            .accessibilityLabel("Timeline filters")
+            .accessibilityValue(activeFilterCount > 0 ? "\(activeFilterCount) active" : "None active")
+            .accessibilityHint("Opens timeline filter settings")
+
+            Button(action: toggleFavoritesOnly) {
+                Image(systemName: favoritesOnly ? "heart.fill" : "heart")
+                    .foregroundStyle(.red)
+            }
+            .buttonStyle(.bordered)
+            .focused($focusedToolbarButton, equals: .favorites)
+            .accessibilityLabel(favoritesOnly ? "Show all timeline photos" : "Show favorites only")
+            .accessibilityHint("Toggles the favorites-only timeline filter")
 
             Button(action: resetFilters) {
                 Label("Reset", systemImage: "arrow.counterclockwise")
@@ -250,9 +253,15 @@ struct TimelineView: View {
         reloadTimeline()
     }
 
+    private func toggleFavoritesOnly() {
+        favoritesOnly.toggle()
+        reloadTimeline()
+    }
+
     private func resetFilters() {
         guard hasActiveFilter else { return }
         filters.reset()
+        favoritesOnly = false
         filters.save()
         reloadTimeline()
     }
@@ -266,7 +275,7 @@ struct TimelineView: View {
 
     // MARK: - Month section
 
-    private func timelineContent(loadableThumbnailIds: Set<String>) -> some View {
+    private var timelineContent: some View {
         let renderedBuckets = visibleBuckets
 
         return ScrollViewReader { proxy in
@@ -286,13 +295,13 @@ struct TimelineView: View {
                 LazyVGrid(columns: columns, spacing: gridSpacing) {
                     if let firstBucket = renderedBuckets.first {
                         Section {
-                            sectionContent(for: firstBucket, loadableThumbnailIds: loadableThumbnailIds)
+                            sectionContent(for: firstBucket)
                         }
                     }
 
                     ForEach(renderedBuckets.dropFirst()) { bucket in
                         Section {
-                            sectionContent(for: bucket, loadableThumbnailIds: loadableThumbnailIds)
+                            sectionContent(for: bucket)
                         } header: {
                             sectionHeader(for: bucket)
                         }
@@ -331,8 +340,11 @@ struct TimelineView: View {
                         .padding(.bottom, 40)
                 }
             }
-            .onScrollPhaseChange { _, newPhase in
-                isScrolling = newPhase.isScrolling
+            .onScrollPhaseChange { _, newPhase, context in
+                isScrolling = ThumbnailScrollLoadingPolicy.shouldPauseLoading(
+                    during: newPhase,
+                    velocity: context.velocity
+                )
             }
         }
     }
@@ -369,15 +381,15 @@ struct TimelineView: View {
     /// just shows its header briefly until its assets arrive. This keeps the
     /// number of declared/focusable views bounded to what's actually loaded.
     @ViewBuilder
-    private func sectionContent(for bucket: TimelineBucket, loadableThumbnailIds: Set<String>) -> some View {
+    private func sectionContent(for bucket: TimelineBucket) -> some View {
         if let assets = bucketAssets[bucket.timeBucket] {
             ForEach(assets) { asset in
-                assetTile(asset, shouldLoadThumbnail: loadableThumbnailIds.contains(asset.id))
+                assetTile(asset)
             }
         }
     }
 
-    private func assetTile(_ asset: ImmichAsset, shouldLoadThumbnail: Bool) -> some View {
+    private func assetTile(_ asset: ImmichAsset) -> some View {
         Button(action: {
             selectedAsset = asset
             if let index = loadedAssetsInOrder.firstIndex(of: asset) {
@@ -389,22 +401,16 @@ struct TimelineView: View {
                 asset: asset,
                 assetService: assetService,
                 isFocused: focusedAssetId == asset.id,
-                shouldLoadThumbnail: !isScrolling && shouldLoadThumbnail,
+                shouldLoadThumbnail: !isScrolling,
                 allowsThumbhashPlaceholder: false,
-                showsDateOverlay: false
+                showsDateOverlay: false,
+                thumbnailLoadDelayNanoseconds: 0
             )
         }
         .frame(width: tileWidth, height: tileHeight)
         .id(asset.id)
         .focused($focusedAssetId, equals: asset.id)
         .animation(.easeInOut(duration: 0.2), value: focusedAssetId)
-        .onScrollVisibilityChange { isVisible in
-            if isVisible {
-                visibleAssetIds.insert(asset.id)
-            } else {
-                visibleAssetIds.remove(asset.id)
-            }
-        }
         .buttonStyle(CardButtonStyle())
     }
 
@@ -417,33 +423,71 @@ struct TimelineView: View {
             return
         }
 
+        // Keep an already-rendered timeline mounted while a toolbar action
+        // refreshes it. Replacing the scroll view with the loading screen moves
+        // the focused toolbar and makes the whole page visibly jump.
+        let preservesCurrentTimeline = !buckets.isEmpty
         let generation = UUID()
         loadGeneration = generation
-        buckets = []
-        bucketAssets = [:]
         loadingBuckets = []
-        frontier = 0
-        visibleAssetIds = []
-        focusedAssetId = nil
         filteredNextPage = nil
         isLoadingFilteredPage = false
-        isLoading = true
+        isLoading = !preservesCurrentTimeline
         errorMessage = nil
 
-        if hasActiveFilter {
+        if !preservesCurrentTimeline {
+            buckets = []
+            bucketAssets = [:]
+            frontier = 0
+            focusedAssetId = nil
+        }
+
+        if hasMetadataFilter {
             loadFilteredTimelinePage(1, generation: generation, isInitialPage: true)
         } else {
-            loadBuckets(generation: generation)
+            loadBuckets(generation: generation, preservingContent: preservesCurrentTimeline)
         }
     }
 
-    private func loadBuckets(generation: UUID) {
+    private func loadBuckets(generation: UUID, preservingContent: Bool) {
         let order = allPhotosSortOrder
+        let favoritesOnly = favoritesOnly
 
         Task {
             do {
-                let fetched = try await assetService.fetchTimelineBuckets(order: order)
+                let fetched = try await assetService.fetchTimelineBuckets(
+                    order: order,
+                    isFavorite: favoritesOnly
+                )
                 let sorted = Self.filteredAndSortedBuckets(fetched, order: order, year: nil)
+
+                if preservingContent {
+                    var initialFrontier = 0
+                    var assetCount = 0
+                    while initialFrontier < sorted.count && assetCount < growByAssetCount {
+                        assetCount += max(1, sorted[initialFrontier].count)
+                        initialFrontier += 1
+                    }
+
+                    var initialAssets: [String: [ImmichAsset]] = [:]
+                    for bucket in sorted.prefix(initialFrontier) {
+                        initialAssets[bucket.timeBucket] = try await assetService.fetchBucketAssets(
+                            timeBucket: bucket.timeBucket,
+                            order: order,
+                            isFavorite: favoritesOnly
+                        )
+                    }
+
+                    await MainActor.run {
+                        guard self.loadGeneration == generation else { return }
+                        self.buckets = sorted
+                        self.bucketAssets = initialAssets
+                        self.loadingBuckets = []
+                        self.frontier = initialFrontier
+                        self.isLoading = false
+                    }
+                    return
+                }
 
                 await MainActor.run {
                     guard self.loadGeneration == generation else { return }
@@ -466,7 +510,7 @@ struct TimelineView: View {
     /// Advances `frontier` through enough buckets to add ~a screenful of assets
     /// so the load-more sentinel gets pushed off screen and can fire again.
     private func growFrontier() {
-        if hasActiveFilter {
+        if hasMetadataFilter {
             if let nextPage = filteredNextPage, !isLoadingFilteredPage {
                 loadFilteredTimelinePage(nextPage, generation: loadGeneration, isInitialPage: false)
             }
@@ -497,7 +541,11 @@ struct TimelineView: View {
 
         Task {
             do {
-                let assets = try await assetService.fetchBucketAssets(timeBucket: key, order: order)
+                let assets = try await assetService.fetchBucketAssets(
+                    timeBucket: key,
+                    order: order,
+                    isFavorite: favoritesOnly
+                )
                 await MainActor.run {
                     guard self.loadGeneration == generation else { return }
                     self.bucketAssets[key] = assets
@@ -518,6 +566,7 @@ struct TimelineView: View {
         isLoadingFilteredPage = true
         let order = allPhotosSortOrder
         let filters = filters
+        let favoritesOnly = favoritesOnly
 
         Task {
             do {
@@ -531,7 +580,8 @@ struct TimelineView: View {
                     cameraMake: filters.cameraMake,
                     cameraModel: filters.cameraModel,
                     lensModel: filters.lensModel,
-                    year: filters.year
+                    year: filters.year,
+                    isFavorite: favoritesOnly
                 )
                 await MainActor.run {
                     guard self.loadGeneration == generation else { return }

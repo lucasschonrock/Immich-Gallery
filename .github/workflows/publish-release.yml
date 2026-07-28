@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout release revision
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.ref }}
 
@@ -92,13 +92,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          existing_sha="$(
+          if existing_sha="$(
             gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG_NAME}" \
-              --jq '.object.sha' 2>/dev/null \
-              || true
-          )"
-
-          if [[ -n "$existing_sha" ]]; then
+              --jq '.object.sha' 2>/dev/null
+          )"; then
             if [[ "$existing_sha" != "$MERGE_SHA" ]]; then
               echo "::error::Tag ${TAG_NAME} already points to ${existing_sha}, not merge commit ${MERGE_SHA}."
               exit 1

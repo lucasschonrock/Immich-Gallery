@@ -232,6 +232,31 @@ struct Immich_GalleryTests {
         #expect(descending.map(\.timeBucket) == ["2026-07-01T00:00:00.000Z", "2026-01-01T00:00:00.000Z"])
     }
 
+    @Test func timelineBucketRequestsIncludePartnerAssets() {
+        let bucketsEndpoint = AssetService.timelineBucketsEndpoint(order: "desc", withStacked: true)
+        let assetsEndpoint = AssetService.timelineBucketEndpoint(
+            timeBucket: "2026-07-01T00:00:00.000Z",
+            order: "desc"
+        )
+        let favoritesEndpoint = AssetService.timelineBucketsEndpoint(
+            order: "desc",
+            withStacked: true,
+            isFavorite: true
+        )
+        let favoriteAssetsEndpoint = AssetService.timelineBucketEndpoint(
+            timeBucket: "2026-07-01T00:00:00.000Z",
+            order: "desc",
+            isFavorite: true
+        )
+        let yearsEndpoint = AssetService.timelineBucketsEndpoint()
+
+        #expect(bucketsEndpoint == "/api/timeline/buckets?visibility=timeline&withPartners=true&order=desc&withStacked=true")
+        #expect(assetsEndpoint == "/api/timeline/bucket?timeBucket=2026-07-01T00:00:00.000Z&visibility=timeline&withPartners=true&order=desc&withStacked=true")
+        #expect(favoritesEndpoint == "/api/timeline/buckets?order=desc&withStacked=true&isFavorite=true")
+        #expect(favoriteAssetsEndpoint == "/api/timeline/bucket?timeBucket=2026-07-01T00:00:00.000Z&order=desc&withStacked=true&isFavorite=true")
+        #expect(yearsEndpoint == "/api/timeline/buckets?visibility=timeline&withPartners=true")
+    }
+
     @Test func timelineMetadataFilterUsesServerSideDateAndLocationFields() {
         let request = AssetService.timelineSearchRequest(
             page: 1,

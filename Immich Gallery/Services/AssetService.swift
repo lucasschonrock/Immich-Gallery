@@ -142,7 +142,7 @@ class AssetService: ObservableObject {
     }
 
     func fetchAllYears() async throws -> [Int] {
-        let endpoint = "/api/timeline/buckets?isTrashed=false"
+        let endpoint = Self.timelineBucketsEndpoint()
 
         struct Bucket: Codable {
             let timeBucket: String
@@ -172,8 +172,11 @@ class AssetService: ObservableObject {
         isFavorite: Bool = false
     ) async throws -> [TimelineBucket] {
         let order = requestedOrder ?? UserDefaults.standard.allPhotosSortOrder
-        let favoriteFilter = isFavorite ? "&isFavorite=true" : ""
-        let endpoint = "/api/timeline/buckets?isTrashed=false&order=\(order)&withStacked=true\(favoriteFilter)"
+        let endpoint = Self.timelineBucketsEndpoint(
+            order: order,
+            withStacked: true,
+            isFavorite: isFavorite
+        )
         return try await networkService.makeRequest(
             endpoint: endpoint,
             method: .GET,
@@ -190,15 +193,54 @@ class AssetService: ObservableObject {
         isFavorite: Bool = false
     ) async throws -> [ImmichAsset] {
         let order = requestedOrder ?? UserDefaults.standard.allPhotosSortOrder
-        let encoded = timeBucket.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? timeBucket
-        let favoriteFilter = isFavorite ? "&isFavorite=true" : ""
-        let endpoint = "/api/timeline/bucket?timeBucket=\(encoded)&isTrashed=false&order=\(order)&withStacked=true\(favoriteFilter)"
+        let endpoint = Self.timelineBucketEndpoint(
+            timeBucket: timeBucket,
+            order: order,
+            isFavorite: isFavorite
+        )
         let response: TimeBucketAssetResponse = try await networkService.makeRequest(
             endpoint: endpoint,
             method: .GET,
             responseType: TimeBucketAssetResponse.self
         )
         return response.toAssets()
+    }
+
+    static func timelineBucketsEndpoint(
+        order: String? = nil,
+        withStacked: Bool = false,
+        isFavorite: Bool = false
+    ) -> String {
+        var queryItems = isFavorite
+            ? []
+            : ["visibility=timeline", "withPartners=true"]
+        if let order {
+            queryItems.append("order=\(order)")
+        }
+        if withStacked {
+            queryItems.append("withStacked=true")
+        }
+        if isFavorite {
+            queryItems.append("isFavorite=true")
+        }
+        return "/api/timeline/buckets?\(queryItems.joined(separator: "&"))"
+    }
+
+    static func timelineBucketEndpoint(
+        timeBucket: String,
+        order: String,
+        isFavorite: Bool = false
+    ) -> String {
+        let encoded = timeBucket.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? timeBucket
+        var queryItems = ["timeBucket=\(encoded)"]
+        if !isFavorite {
+            queryItems.append(contentsOf: ["visibility=timeline", "withPartners=true"])
+        }
+        queryItems.append(contentsOf: ["order=\(order)", "withStacked=true"])
+        if isFavorite {
+            queryItems.append("isFavorite=true")
+        }
+        return "/api/timeline/bucket?\(queryItems.joined(separator: "&"))"
     }
 
     /// Filtered Timeline requests use the stable metadata search endpoint,

@@ -12,7 +12,7 @@ struct SearchView: View {
     @ObservedObject var searchService: SearchService
     @ObservedObject var assetService: AssetService
     @ObservedObject var authService: AuthenticationService
-    
+
     @State private var searchText = ""
     @State private var assets: [ImmichAsset] = []
     @State private var isLoading = false
@@ -21,123 +21,57 @@ struct SearchView: View {
     @State private var showingFullScreen = false
     @State private var currentAssetIndex: Int = 0
     @State private var isScrolling = false
+    @State private var searchTask: Task<Void, Never>? = nil
     @FocusState private var focusedAssetId: String?
-    
-    private let columns = [
-        GridItem(.fixed(300), spacing: 50),
-        GridItem(.fixed(300), spacing: 50),
-        GridItem(.fixed(300), spacing: 50),
-        GridItem(.fixed(300), spacing: 50),
-        GridItem(.fixed(300), spacing: 50),
-    ]
-    
+
     var body: some View {
         ZStack {
-            // Background
             SharedGradientBackground()
-            
-            VStack(spacing: 20) {
-                    // Search results
-                    if isLoading {
-                        Spacer()
-                        ProgressView("Searching...")
-                            .foregroundColor(.white)
-                            .scaleEffect(1.5)
-                        Spacer()
-                    } else if let errorMessage = errorMessage {
-                        Spacer()
-                        VStack {
-                            Image(systemName: "exclamationmark.triangle")
-                                .font(.system(size: 60))
-                                .foregroundColor(.orange)
-                            Text("Error")
-                                .font(.title)
-                                .foregroundColor(.white)
-                            Text(errorMessage)
-                                .foregroundColor(.gray)
-                                .multilineTextAlignment(.center)
-                                .padding()
-                            Button("Retry") {
-                                performSearch()
-                            }
-                            .buttonStyle(.borderedProminent)
-                        }
-                        Spacer()
-                    } else if assets.isEmpty && !searchText.isEmpty {
-                        Spacer()
-                        VStack {
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 60))
-                                .foregroundColor(.gray)
-                            Text("No Results Found")
-                                .font(.title)
-                                .foregroundColor(.white)
-                            Text("Try different search terms")
-                                .foregroundColor(.gray)
-                        }
-                        Spacer()
-                    } else if searchText.isEmpty {
-                        Spacer()
-                        VStack {
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 60))
-                                .foregroundColor(.gray)
-                            Text("Search Your Photos")
-                                .font(.title)
-                                .foregroundColor(.white)
-                            Text("Use the search field to find your photos")
-                                .foregroundColor(.gray)
-                        }
-                        Spacer()
-                    } else {
-                        ScrollView {
-                            LazyVGrid(columns: columns, spacing: 50) {
-                                ForEach(assets) { asset in
-                                    Button(action: {
-                                        selectedAsset = asset
-                                        if let index = assets.firstIndex(of: asset) {
-                                            currentAssetIndex = index
-                                        }
-                                        showingFullScreen = true
-                                    }) {
-                                        AssetThumbnailView(
-                                            asset: asset,
-                                            assetService: assetService,
-                                            isFocused: focusedAssetId == asset.id,
-                                            shouldLoadThumbnail: !isScrolling
-                                        )
-                                    }
-                                    .frame(width: 300, height: 360)
-                                    .id(asset.id)
-                                    .focused($focusedAssetId, equals: asset.id)
-                                    .animation(.easeInOut(duration: 0.2), value: focusedAssetId)
-                                    .buttonStyle(CardButtonStyle())
-                                }
-                            }
-                            // Treat the full grid width as a focus destination.
-                            // Without this, a single card in the far-left column
-                            // has no directional path from the search control.
-                            .focusSection()
-                            .padding(.horizontal)
-                            .padding(.bottom, 40)
-                        }
-                        .onScrollPhaseChange { _, newPhase, context in
-                            isScrolling = ThumbnailScrollLoadingPolicy.shouldPauseLoading(
-                                during: newPhase,
-                                velocity: context.velocity
-                            )
-                        }
-                    }
+
+            // Pass down tracking states to the dynamic geometric grid child view
+            SearchGridContent(
+                assets: assets,
+                assetService: assetService,
+                isScrolling: isScrolling,
+                focusedAssetId: $focusedAssetId,
+                selectedAsset: $selectedAsset,
+                currentAssetIndex: $currentAssetIndex,
+                showingFullScreen: $showingFullScreen
+            )
+            .onScrollPhaseChange { _, newPhase, context in
+                isScrolling = ThumbnailScrollLoadingPolicy.shouldPauseLoading(
+                    during: newPhase,
+                    velocity: context.velocity
+                )
             }
-        }
-        .searchable(text: $searchText, prompt: "Search by context: Mountains, sunsets, etc...")
-        .onSubmit(of: .search) {
-            performSearch()
-        }
-        .onChange(of: searchText) { oldValue, newValue in
-            // Debounce search to avoid too many API calls while typing
-            if !newValue.isEmpty {
+            .overlay {
+                searchStateOverlay
+            }
+            // Standard tvOS searchable modifier
+            .searchable(text: $searchText, prompt: "Search by context: Mountains, sunsets, etc...")
+            .onSubmit(of: .search) {
+                searchTask?.cancel()
                 performSearch()
+            }
+            .onChange(of: searchText) { _, newValue in
+                searchTask?.cancel()
+
+                let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else {
+                    assets = []
+                    return
+                }
+
+                // 0.5-second debounce to protect your Immich instance from keyboard key-stutters
+                searchTask = Task {
+                    do {
+                        try await Task.sleep(for: .seconds(0.5))
+                        guard !Task.isCancelled else { return }
+                        performSearch()
+                    } catch {
+                        // Task cancelled by a newer keystroke
+                    }
+                }
             }
         }
         .fullScreenCover(isPresented: $showingFullScreen) {
@@ -153,22 +87,70 @@ struct SearchView: View {
             }
         }
     }
-    
+
+    @ViewBuilder
+    private var searchStateOverlay: some View {
+        if isLoading {
+            ProgressView("Searching...")
+                .foregroundColor(.white)
+                .scaleEffect(1.5)
+        } else if let errorMessage {
+            VStack {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 60))
+                    .foregroundColor(.orange)
+                Text("Error")
+                    .font(.title)
+                    .foregroundColor(.white)
+                Text(errorMessage)
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+                    .padding()
+                Button("Retry") {
+                    performSearch()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        } else if assets.isEmpty && !searchText.isEmpty {
+            VStack {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 60))
+                    .foregroundColor(.gray)
+                Text("No Results Found")
+                    .font(.title)
+                    .foregroundColor(.white)
+                Text("Try different search terms")
+                    .foregroundColor(.gray)
+            }
+        } else if searchText.isEmpty {
+            VStack {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 60))
+                    .foregroundColor(.gray)
+                Text("Search Your Photos")
+                    .font(.title)
+                    .foregroundColor(.white)
+                Text("Use the search field to find your photos")
+                    .foregroundColor(.gray)
+            }
+        }
+    }
+
     private func performSearch() {
         let trimmedText = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else {
             return
         }
-        
+
         print("SearchView: Performing search for: '\(trimmedText)'")
-        
+
         Task {
             await MainActor.run {
                 isLoading = true
                 errorMessage = nil
                 assets = []
             }
-            
+
             do {
                 let result = try await searchService.searchAssets(query: trimmedText)
                 await MainActor.run {
@@ -183,6 +165,70 @@ struct SearchView: View {
                     isLoading = false
                 }
             }
+        }
+    }
+}
+
+// Dynamic container view that adapts based on actual available layout width
+private struct SearchGridContent: View {
+    @Environment(\.isSearching) private var isSearching
+
+    let assets: [ImmichAsset]
+    let assetService: AssetService
+    let isScrolling: Bool
+
+    @FocusState.Binding var focusedAssetId: String?
+    @Binding var selectedAsset: ImmichAsset?
+    @Binding var currentAssetIndex: Int
+    @Binding var showingFullScreen: Bool
+
+    var body: some View {
+        GeometryReader { geometry in
+            // On tvOS, if a side grid keyboard is present, the available width drops below ~1300pt.
+            // If a linear top-bar keyboard is active, the width stays full-screen (~1920pt).
+            let isSideKeyboardActive = isSearching && (geometry.size.width < 1300)
+
+            let gridWidth: CGFloat = isSideKeyboardActive ? 1_000 : 1_700
+            let columnCount = isSideKeyboardActive ? 3 : 5
+
+            let columns = Array(
+                repeating: GridItem(.flexible(minimum: 250, maximum: 350), spacing: 50),
+                count: columnCount
+            )
+
+            ScrollView {
+                VStack(spacing: 0) {
+                    LazyVGrid(columns: columns, alignment: .leading, spacing: 50) {
+                        ForEach(assets) { asset in
+                            Button(action: {
+                                selectedAsset = asset
+                                if let index = assets.firstIndex(of: asset) {
+                                    currentAssetIndex = index
+                                }
+                                showingFullScreen = true
+                            }) {
+                                AssetThumbnailView(
+                                    asset: asset,
+                                    assetService: assetService,
+                                    isFocused: focusedAssetId == asset.id,
+                                    shouldLoadThumbnail: !isScrolling
+                                )
+                            }
+                            .frame(width: 300, height: 360)
+                            .id(asset.id)
+                            .focused($focusedAssetId, equals: asset.id)
+                            .animation(.easeInOut(duration: 0.2), value: focusedAssetId)
+                            .buttonStyle(CardButtonStyle())
+                        }
+                    }
+                    .focusSection()
+                    .frame(width: gridWidth, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.horizontal)
+                    .padding(.bottom, 40)
+                }
+            }
+            .defaultFocus($focusedAssetId, assets.first?.id)
         }
     }
 }

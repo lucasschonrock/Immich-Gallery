@@ -10,7 +10,6 @@ import SwiftUI
 struct AssetGridView: View {
     @ObservedObject var assetService: AssetService
     @ObservedObject var authService: AuthenticationService
-    @ObservedObject private var thumbnailCache = ThumbnailCache.shared
     let assetProvider: AssetProvider
     @AppStorage("allPhotosSortOrder") private var allPhotosSortOrder = "desc"
     @AppStorage(UserDefaultsKeys.assetSortOrder) private var assetSortOrder = "desc"

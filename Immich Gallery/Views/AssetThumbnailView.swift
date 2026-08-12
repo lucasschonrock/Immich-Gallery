@@ -7,10 +7,12 @@
 
 import SwiftUI
 
+// TEMP DEBUG: RenderStormStats now lives in Components/RenderStormStats.swift
+// so the on-screen DiagnosticsOverlay can read the same counters.
+
 struct AssetThumbnailView: View {
     let asset: ImmichAsset
     @ObservedObject var assetService: AssetService
-    @ObservedObject private var thumbnailCache = ThumbnailCache.shared
     @State private var image: UIImage?
     @State private var placeholder: UIImage?   // instant blur from thumbhash
     @State private var loadingTask: Task<Void, Never>?
@@ -23,6 +25,7 @@ struct AssetThumbnailView: View {
     var thumbnailLoadDelayNanoseconds: UInt64 = 150_000_000
     
     var body: some View {
+        let _ = RenderStormStats.tickBody() // TEMP DEBUG
         ZStack(alignment: .bottomTrailing) {
         
              RoundedRectangle(cornerRadius: 12)
@@ -168,7 +171,7 @@ struct AssetThumbnailView: View {
             do {
                 try Task.checkCancellation()
 
-                let thumbnail = try await thumbnailCache.getThumbnail(for: asset.id, size: "thumbnail") {
+                let thumbnail = try await ThumbnailCache.shared.getThumbnail(for: asset.id, size: "thumbnail") {
                     // Check cancellation before network request
                     try Task.checkCancellation()
                     // Load from server if not in cache

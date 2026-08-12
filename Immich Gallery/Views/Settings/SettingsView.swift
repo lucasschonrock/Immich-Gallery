@@ -96,6 +96,7 @@ struct SettingsView: View {
     @AppStorage("topShelfImageSelection", store: UserDefaults(suiteName: AppConstants.appGroupIdentifier)) private var topShelfImageSelection = "recent"
     @AppStorage(UserDefaultsKeys.autoSlideshowTimeout) private var autoSlideshowTimeout: Int = 0 // 0 = off
     @AppStorage(UserDefaultsKeys.launchIntoSlideshow) private var launchIntoSlideshow: Bool = false
+    @AppStorage(UserDefaultsKeys.showDiagnosticsOverlay) private var showDiagnosticsOverlay = false // TEMP DEBUG
     @AppStorage("artModeLevel") private var artModeLevel = "off"
     @AppStorage("artModeDayStart") private var artModeDayStart = 7
     @AppStorage("artModeNightStart") private var artModeNightStart = 20
@@ -647,8 +648,31 @@ struct SettingsView: View {
                             })
                         }
                         
+                        // Diagnostics Section
+                        // TEMP DEBUG: ships outside #if DEBUG on purpose - the
+                        // focus-lag reporter runs a TestFlight build and needs
+                        // to be able to switch this on themselves.
+                        SettingsSection(title: "Diagnostics") {
+                            AnyView(VStack(spacing: 12) {
+                                SettingsRow(
+                                    icon: "waveform.path.ecg",
+                                    title: "Show Diagnostics Overlay",
+                                    subtitle: "Display live view-render and thumbnail-cache rates on screen. Only needed when we ask you to report a performance problem.",
+                                    content: AnyView(
+                                        Picker("Show Diagnostics Overlay", selection: $showDiagnosticsOverlay) {
+                                            Text("Off").tag(false)
+                                            Text("On").tag(true)
+                                        }
+                                        .pickerStyle(.menu)
+                                        .frame(width: 300, alignment: .trailing)
+                                    ),
+                                    isOn: showDiagnosticsOverlay
+                                )
+                            })
+                        }
+
                         // Cache Section (Debug only)
-                        
+
 #if DEBUG
                         CacheSection(
                             thumbnailCache: thumbnailCache,

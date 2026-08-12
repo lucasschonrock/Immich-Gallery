@@ -1,5 +1,28 @@
 [
   {
+    "version": "1.3.3",
+    "changes": [
+      {
+        "type": "new_feature",
+        "title": "Slideshows now loop",
+        "items": [
+          "When a slideshow reaches the end, it starts over from the beginning instead of stopping on the last photo."
+        ]
+      },
+      {
+        "type": "bug_fix",
+        "title": "Performance and reliability",
+        "items": [
+          "Fixed sluggish remote navigation on the Timeline while photos were still loading.",
+          "Faster thumbnail loading, especially on first browse.",
+          "Fixed slideshows freezing on one photo when the server was slow to respond — they now recover automatically.",
+          "Added a diagnostics overlay in Settings to help troubleshoot performance issues."
+        ]
+      }
+    ],
+    "releaseDate": "2026-08-12T00:00:00"
+  },
+  {
     "version": "1.3.2",
     "changes": [
       {

@@ -14,7 +14,15 @@ class NetworkService: ObservableObject {
     @Published var accessToken: String?
     @Published var currentAuthType: SavedUser.AuthType = .jwt
     
-    private let session = URLSession.shared
+    /// `URLSession.shared` only enforces a 60s *idle* timeout that resets on every
+    /// byte received, so a trickling server can keep a request alive indefinitely.
+    /// Bound both the idle gap and the total transfer time instead.
+    private let session: URLSession = {
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForRequest = 30
+        configuration.timeoutIntervalForResource = 120
+        return URLSession(configuration: configuration)
+    }()
     private weak var userManager: UserManager?
     
     init(userManager: UserManager) {

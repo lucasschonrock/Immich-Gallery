@@ -156,6 +156,9 @@ struct TimelineView: View {
                     authenticationService: authService,
                     currentAssetIndex: $currentAssetIndex
                 )
+                // TEMP DEBUG: a fullScreenCover doesn't inherit the presenter's
+                // overlay, so the diagnostics readout is re-attached here.
+                .diagnosticsOverlay()
             }
         }
         .fullScreenCover(isPresented: $showingCalendar, onDismiss: restoreCalendarButtonFocus) {

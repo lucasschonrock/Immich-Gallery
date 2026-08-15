@@ -1,5 +1,20 @@
 [
   {
+    "version": "1.3.4",
+    "changes": [
+      {
+        "type": "bug_fix",
+        "title": "Timeline performance",
+        "items": [
+          "Fixed severe vertical navigation delays in Timeline libraries containing exceptionally large months.",
+          "Timeline photos now load in bounded pages as you scroll instead of exposing an entire month to the focus engine at once.",
+          "Expanded the optional diagnostics overlay with Timeline, network, CPU, memory, and UI-stall measurements."
+        ]
+      }
+    ],
+    "releaseDate": "2026-08-14T00:00:00"
+  },
+  {
     "version": "1.3.3",
     "changes": [
       {

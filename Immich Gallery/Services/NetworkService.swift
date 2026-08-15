@@ -167,10 +167,14 @@ class NetworkService: ObservableObject {
     ) async throws -> T {
         let request = try buildAuthenticatedRequest(endpoint: endpoint, method: method, body: body)
         print("NetworkService: Making request to \(request.url?.absoluteString ?? endpoint)")
+        PerformanceDiagnostics.networkRequestStarted()
+        var responseByteCount = 0
+        defer { PerformanceDiagnostics.networkRequestFinished(responseBytes: responseByteCount) }
         
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await session.data(for: request)
+            responseByteCount = data.count
         } catch {
             print("NetworkService: Network error occurred: \(error)")
             // Handle network connectivity issues (timeouts, connection refused, DNS failures, etc.)
@@ -197,10 +201,14 @@ class NetworkService: ObservableObject {
         
         // Remove Content-Type header for data requests (we don't want application/json for binary data)
         request.setValue(nil, forHTTPHeaderField: "Content-Type")
+        PerformanceDiagnostics.networkRequestStarted()
+        var responseByteCount = 0
+        defer { PerformanceDiagnostics.networkRequestFinished(responseBytes: responseByteCount) }
         
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await session.data(for: request)
+            responseByteCount = data.count
         } catch {
             print("NetworkService: Network error occurred in makeDataRequest: \(error)")
             // Handle network connectivity issues (timeouts, connection refused, DNS failures, etc.)
@@ -217,10 +225,14 @@ class NetworkService: ObservableObject {
     ) async throws {
         let request = try buildAuthenticatedRequest(endpoint: endpoint, method: method, body: body)
         print("NetworkService: Making void request to \(request.url?.absoluteString ?? endpoint)")
+        PerformanceDiagnostics.networkRequestStarted()
+        var responseByteCount = 0
+        defer { PerformanceDiagnostics.networkRequestFinished(responseBytes: responseByteCount) }
 
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await session.data(for: request)
+            responseByteCount = data.count
         } catch {
             print("NetworkService: Network error occurred in makeVoidRequest: \(error)")
             throw ImmichError.networkError

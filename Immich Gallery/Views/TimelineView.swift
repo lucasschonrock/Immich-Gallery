@@ -31,13 +31,12 @@ struct TimelineView: View {
 
     @State private var buckets: [TimelineBucket] = []
     @State private var bucketAssets: [String: [ImmichAsset]] = [:]
-    @State private var loadingBuckets: Set<String> = []
-    // Number of buckets (from the top) currently committed to the view. We only
-    // ever render `buckets.prefix(frontier)` — never the whole library — and
-    // grow it as the user scrolls, exactly like All Photos paginates. Declaring
-    // every bucket's cells up front is what made the tvOS focus engine's
-    // candidate/occlusion search run for 10+ seconds on a single button press.
-    @State private var frontier = 0
+    // The bucket endpoint returns a whole month at once, which can be tens of
+    // thousands of assets. Keep fetched assets separate from the number exposed
+    // to SwiftUI/tvOS focus: the focus engine must never receive an entire large
+    // month just because that month crossed a page boundary.
+    @State private var visibleAssetLimit = 0
+    @State private var isLoadingUnfilteredPage = false
     @State private var isLoading = false
     @State private var isScrolling = false
     @State private var errorMessage: String?
@@ -49,11 +48,7 @@ struct TimelineView: View {
     @State private var isLoadingFilteredPage = false
     @State private var showingCalendar = false
 
-    /// Grow the frontier by roughly a screenful of assets at a time so each
-    /// extension pushes the load-more sentinel off screen (and thus lets its
-    /// onAppear fire again on the next scroll).
-    private let growByAssetCount = 120
-    private let filteredPageSize = 120
+    private let assetPageSize = 120
 
     @State private var selectedAsset: ImmichAsset?
     @State private var showingFullScreen = false
@@ -82,8 +77,53 @@ struct TimelineView: View {
         filters.activeCount + (favoritesOnly ? 1 : 0)
     }
 
-    private var visibleBuckets: [TimelineBucket] {
-        Array(buckets.prefix(frontier))
+    private struct RenderedSection: Identifiable {
+        let bucket: TimelineBucket
+        let assets: ArraySlice<ImmichAsset>
+
+        var id: String { bucket.id }
+    }
+
+    /// Month sections containing at most `visibleAssetLimit` actual cells in
+    /// total. A loaded 15,000-photo month can therefore contribute only the
+    /// remaining cells in the current 120-item page.
+    private var renderedSections: [RenderedSection] {
+        let loadedBuckets = buckets.prefix { bucketAssets[$0.timeBucket] != nil }
+        let availableCounts = loadedBuckets.map { bucketAssets[$0.timeBucket]?.count ?? 0 }
+        let visibleCounts = Self.visibleCounts(availableCounts: availableCounts, limit: visibleAssetLimit)
+
+        return zip(loadedBuckets, visibleCounts).compactMap { bucket, visibleCount in
+            guard visibleCount > 0, let assets = bucketAssets[bucket.timeBucket] else { return nil }
+            return RenderedSection(bucket: bucket, assets: assets.prefix(visibleCount))
+        }
+    }
+
+    private var renderedAssetCount: Int {
+        renderedSections.reduce(0) { $0 + $1.assets.count }
+    }
+
+    private var loadedAssetCount: Int {
+        buckets.reduce(0) { $0 + (bucketAssets[$1.timeBucket]?.count ?? 0) }
+    }
+
+    private var loadedMonthCount: Int {
+        buckets.reduce(0) { $0 + (bucketAssets[$1.timeBucket] == nil ? 0 : 1) }
+    }
+
+    private var largestLoadedMonth: Int {
+        bucketAssets.values.map(\.count).max() ?? 0
+    }
+
+    private var hasMoreUnfilteredAssets: Bool {
+        visibleAssetLimit < loadedAssetCount || bucketAssets.count < buckets.count
+    }
+
+    private var canRequestMoreAssets: Bool {
+        guard renderedAssetCount > 0 else { return false }
+        if hasMetadataFilter {
+            return filteredNextPage != nil && !isLoadingFilteredPage
+        }
+        return hasMoreUnfilteredAssets && !isLoadingUnfilteredPage
     }
 
     // Flat, ordered list of every asset loaded so far — passed to the
@@ -93,6 +133,15 @@ struct TimelineView: View {
     }
 
     var body: some View {
+        let _ = PerformanceDiagnostics.updateTimeline(
+            visibleAssets: renderedAssetCount,
+            loadedAssets: loadedAssetCount,
+            loadedMonths: loadedMonthCount,
+            totalMonths: buckets.count,
+            largestLoadedMonth: largestLoadedMonth,
+            isPaging: isLoadingFilteredPage || isLoadingUnfilteredPage
+        )
+
         ZStack {
             SharedGradientBackground()
 
@@ -177,7 +226,7 @@ struct TimelineView: View {
             }
         }
         .onAppear {
-            print("🟢🟢🟢 TIMELINE-BUILD-CHECK v3: frontier-paginated TimelineView (renders only loaded buckets, no whole-library placeholders) IS RUNNING")
+            print("🟢🟢🟢 TIMELINE-BUILD-CHECK v4: asset-paginated TimelineView (hard 120-cell pages) IS RUNNING")
             if buckets.isEmpty && !isLoading {
                 reloadTimeline()
             }
@@ -279,34 +328,32 @@ struct TimelineView: View {
     // MARK: - Month section
 
     private var timelineContent: some View {
-        let renderedBuckets = visibleBuckets
+        let sections = renderedSections
 
         return ScrollViewReader { proxy in
             ScrollView {
-                if let firstBucket = renderedBuckets.first {
-                    timelineHeader(for: firstBucket)
+                if let firstSection = sections.first {
+                    timelineHeader(for: firstSection.bucket)
                         .padding(.horizontal, 72)
                         .padding(.top, 16)
                         .id(ScrollAnchor.top)
                 }
 
-                // A SINGLE lazy grid, and we only ever declare the buckets
-                // committed so far (`prefix(frontier)`) — not the whole
-                // library. Both matter for the tvOS focus engine: declaring
-                // every bucket's cells up front makes focus movement search
-                // an enormous candidate/occluder set and hang for seconds.
+                // A single grid with a hard cell limit. `LazyVGrid` alone is not
+                // enough on tvOS: the focus engine can still evaluate declared
+                // off-screen buttons when resolving vertical movement.
                 LazyVGrid(columns: columns, spacing: gridSpacing) {
-                    if let firstBucket = renderedBuckets.first {
+                    if let firstSection = sections.first {
                         Section {
-                            sectionContent(for: firstBucket)
+                            sectionContent(firstSection)
                         }
                     }
 
-                    ForEach(renderedBuckets.dropFirst()) { bucket in
+                    ForEach(sections.dropFirst()) { section in
                         Section {
-                            sectionContent(for: bucket)
+                            sectionContent(section)
                         } header: {
-                            sectionHeader(for: bucket)
+                            sectionHeader(for: section.bucket)
                         }
                     }
                 }
@@ -315,6 +362,7 @@ struct TimelineView: View {
                 .focusSection()
                 .padding(.horizontal)
                 .padding(.top, 20)
+                .padding(.bottom, 40)
                 .onExitCommand {
                     guard focusedAssetId != nil else { return }
 
@@ -329,15 +377,7 @@ struct TimelineView: View {
                     }
                 }
 
-                // Load-more sentinel: when the bottom of the committed
-                // content scrolls into view, commit the next screenful of
-                // buckets. Mirrors All Photos' paginated load-more.
-                Color.clear
-                    .frame(height: 1)
-                    .onAppear { growFrontier() }
-                    .padding(.bottom, 40)
-
-                if isLoadingFilteredPage {
+                if isLoadingFilteredPage || isLoadingUnfilteredPage {
                     ProgressView("Loading more...")
                         .foregroundColor(.white)
                         .padding(.bottom, 40)
@@ -348,6 +388,17 @@ struct TimelineView: View {
                     during: newPhase,
                     velocity: context.velocity
                 )
+            }
+            // A normal ScrollView child's onAppear fires when it enters the view
+            // hierarchy, not when it reaches the viewport. Observe real scroll
+            // geometry instead so a page is revealed only near the actual end.
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                let viewportBottom = geometry.contentOffset.y + geometry.containerSize.height
+                let distanceToBottom = geometry.contentSize.height - viewportBottom
+                return distanceToBottom <= tileHeight * 2
+            } action: { wasNearBottom, isNearBottom in
+                guard !wasNearBottom, isNearBottom, canRequestMoreAssets else { return }
+                loadNextAssetPage()
             }
         }
     }
@@ -379,16 +430,10 @@ struct TimelineView: View {
             .padding(.top, 20)
     }
 
-    /// Section body: the month's tiles once loaded, nothing before then. We
-    /// never emit per-photo placeholder cells — an unloaded committed bucket
-    /// just shows its header briefly until its assets arrive. This keeps the
-    /// number of declared/focusable views bounded to what's actually loaded.
     @ViewBuilder
-    private func sectionContent(for bucket: TimelineBucket) -> some View {
-        if let assets = bucketAssets[bucket.timeBucket] {
-            ForEach(assets) { asset in
-                assetTile(asset)
-            }
+    private func sectionContent(_ section: RenderedSection) -> some View {
+        ForEach(section.assets) { asset in
+            assetTile(asset)
         }
     }
 
@@ -413,7 +458,6 @@ struct TimelineView: View {
         .frame(width: tileWidth, height: tileHeight)
         .id(asset.id)
         .focused($focusedAssetId, equals: asset.id)
-        .animation(.easeInOut(duration: 0.2), value: focusedAssetId)
         .buttonStyle(CardButtonStyle())
     }
 
@@ -432,27 +476,27 @@ struct TimelineView: View {
         let preservesCurrentTimeline = !buckets.isEmpty
         let generation = UUID()
         loadGeneration = generation
-        loadingBuckets = []
         filteredNextPage = nil
         isLoadingFilteredPage = false
+        isLoadingUnfilteredPage = false
         isLoading = !preservesCurrentTimeline
         errorMessage = nil
 
         if !preservesCurrentTimeline {
             buckets = []
             bucketAssets = [:]
-            frontier = 0
+            visibleAssetLimit = 0
             focusedAssetId = nil
         }
 
         if hasMetadataFilter {
             loadFilteredTimelinePage(1, generation: generation, isInitialPage: true)
         } else {
-            loadBuckets(generation: generation, preservingContent: preservesCurrentTimeline)
+            loadBuckets(generation: generation)
         }
     }
 
-    private func loadBuckets(generation: UUID, preservingContent: Bool) {
+    private func loadBuckets(generation: UUID) {
         let order = allPhotosSortOrder
         let favoritesOnly = favoritesOnly
 
@@ -464,40 +508,23 @@ struct TimelineView: View {
                 )
                 let sorted = Self.filteredAndSortedBuckets(fetched, order: order, year: nil)
 
-                if preservingContent {
-                    var initialFrontier = 0
-                    var assetCount = 0
-                    while initialFrontier < sorted.count && assetCount < growByAssetCount {
-                        assetCount += max(1, sorted[initialFrontier].count)
-                        initialFrontier += 1
-                    }
-
-                    var initialAssets: [String: [ImmichAsset]] = [:]
-                    for bucket in sorted.prefix(initialFrontier) {
-                        initialAssets[bucket.timeBucket] = try await assetService.fetchBucketAssets(
-                            timeBucket: bucket.timeBucket,
-                            order: order,
-                            isFavorite: favoritesOnly
-                        )
-                    }
-
-                    await MainActor.run {
-                        guard self.loadGeneration == generation else { return }
-                        self.buckets = sorted
-                        self.bucketAssets = initialAssets
-                        self.loadingBuckets = []
-                        self.frontier = initialFrontier
-                        self.isLoading = false
-                    }
-                    return
-                }
+                // Fetch enough complete bucket responses to cover the first
+                // cell page, then install them atomically. The response may
+                // contain far more assets, but rendering remains capped below.
+                let initialAssets = try await fetchBucketAssets(
+                    covering: assetPageSize,
+                    in: sorted,
+                    startingWith: [:],
+                    order: order,
+                    favoritesOnly: favoritesOnly
+                )
 
                 await MainActor.run {
                     guard self.loadGeneration == generation else { return }
                     self.buckets = sorted
+                    self.bucketAssets = initialAssets
+                    self.visibleAssetLimit = min(self.assetPageSize, Self.assetCount(in: initialAssets, orderedBy: sorted))
                     self.isLoading = false
-                    // Commit and load the first screenful of buckets.
-                    self.growFrontier()
                 }
             } catch {
                 await MainActor.run {
@@ -509,10 +536,7 @@ struct TimelineView: View {
         }
     }
 
-    /// Commit the next batch of buckets to the view and start loading them.
-    /// Advances `frontier` through enough buckets to add ~a screenful of assets
-    /// so the load-more sentinel gets pushed off screen and can fire again.
-    private func growFrontier() {
+    private func loadNextAssetPage() {
         if hasMetadataFilter {
             if let nextPage = filteredNextPage, !isLoadingFilteredPage {
                 loadFilteredTimelinePage(nextPage, generation: loadGeneration, isInitialPage: false)
@@ -520,48 +544,76 @@ struct TimelineView: View {
             return
         }
 
-        guard frontier < buckets.count else { return }
+        guard !isLoadingUnfilteredPage, hasMoreUnfilteredAssets else { return }
+        isLoadingUnfilteredPage = true
 
-        var added = 0
-        var i = frontier
-        while i < buckets.count && added < growByAssetCount {
-            added += max(1, buckets[i].count)
-            i += 1
-        }
-        let newFrontier = i
-        for j in frontier..<newFrontier {
-            loadBucket(buckets[j])
-        }
-        frontier = newFrontier
-    }
-
-    private func loadBucket(_ bucket: TimelineBucket) {
-        let key = bucket.timeBucket
-        guard bucketAssets[key] == nil, !loadingBuckets.contains(key) else { return }
-        loadingBuckets.insert(key)
+        let targetLimit = visibleAssetLimit + assetPageSize
         let generation = loadGeneration
         let order = allPhotosSortOrder
+        let favoritesOnly = favoritesOnly
+        let sortedBuckets = buckets
+        let existingAssets = bucketAssets
 
         Task {
             do {
-                let assets = try await assetService.fetchBucketAssets(
-                    timeBucket: key,
+                let updatedAssets = try await fetchBucketAssets(
+                    covering: targetLimit,
+                    in: sortedBuckets,
+                    startingWith: existingAssets,
                     order: order,
-                    isFavorite: favoritesOnly
+                    favoritesOnly: favoritesOnly
                 )
                 await MainActor.run {
                     guard self.loadGeneration == generation else { return }
-                    self.bucketAssets[key] = assets
-                    self.loadingBuckets.remove(key)
+                    self.bucketAssets = updatedAssets
+                    self.visibleAssetLimit = min(
+                        targetLimit,
+                        Self.assetCount(in: updatedAssets, orderedBy: sortedBuckets)
+                    )
+                    self.isLoadingUnfilteredPage = false
                 }
             } catch {
                 await MainActor.run {
                     guard self.loadGeneration == generation else { return }
-                    // Leave unloaded so it retries when the section reappears.
-                    self.loadingBuckets.remove(key)
+                    self.isLoadingUnfilteredPage = false
                 }
             }
         }
+    }
+
+    /// Bucket responses are all-or-nothing, so load consecutive months until
+    /// their real response sizes cover the requested cell limit. Responses are
+    /// accumulated off-screen and committed together by the caller.
+    private func fetchBucketAssets(
+        covering targetCount: Int,
+        in orderedBuckets: [TimelineBucket],
+        startingWith existingAssets: [String: [ImmichAsset]],
+        order: String,
+        favoritesOnly: Bool
+    ) async throws -> [String: [ImmichAsset]] {
+        var result = existingAssets
+        var accumulated = 0
+
+        for bucket in orderedBuckets {
+            try Task.checkCancellation()
+
+            if let assets = result[bucket.timeBucket] {
+                accumulated += assets.count
+            } else {
+                guard accumulated < targetCount else { break }
+                let assets = try await assetService.fetchBucketAssets(
+                    timeBucket: bucket.timeBucket,
+                    order: order,
+                    isFavorite: favoritesOnly
+                )
+                result[bucket.timeBucket] = assets
+                accumulated += assets.count
+            }
+
+            if accumulated >= targetCount { break }
+        }
+
+        return result
     }
 
     private func loadFilteredTimelinePage(_ page: Int, generation: UUID, isInitialPage: Bool) {
@@ -575,7 +627,7 @@ struct TimelineView: View {
             do {
                 let result = try await assetService.fetchFilteredTimelineAssets(
                     page: page,
-                    size: filteredPageSize,
+                    size: assetPageSize,
                     order: order,
                     city: filters.city,
                     state: filters.state,
@@ -613,7 +665,7 @@ struct TimelineView: View {
         let keys = grouped.keys.sorted { order == "asc" ? $0 < $1 : $0 > $1 }
         buckets = keys.map { TimelineBucket(timeBucket: $0, count: grouped[$0]?.count ?? 0) }
         bucketAssets = Dictionary(uniqueKeysWithValues: keys.map { ($0, grouped[$0] ?? []) })
-        frontier = buckets.count
+        visibleAssetLimit = merged.count
     }
 
     private func applyFilters() {
@@ -649,6 +701,31 @@ struct TimelineView: View {
         return yearFiltered.sorted { first, second in
             order == "asc" ? first.timeBucket < second.timeBucket : first.timeBucket > second.timeBucket
         }
+    }
+
+    /// Counts fetched assets in timeline order. Kept internal for regression
+    /// tests covering highly uneven month sizes.
+    static func assetCount(
+        in assetsByBucket: [String: [ImmichAsset]],
+        orderedBy buckets: [TimelineBucket]
+    ) -> Int {
+        buckets.reduce(0) { $0 + (assetsByBucket[$1.timeBucket]?.count ?? 0) }
+    }
+
+    /// Returns the number of cells each consecutive month may contribute to a
+    /// hard global limit. This is the invariant the old bucket frontier lacked.
+    static func visibleCounts(availableCounts: [Int], limit: Int) -> [Int] {
+        guard limit > 0 else { return [] }
+        var remaining = limit
+        var result: [Int] = []
+
+        for count in availableCounts where remaining > 0 {
+            let visible = min(max(0, count), remaining)
+            result.append(visible)
+            remaining -= visible
+        }
+
+        return result
     }
 
     private static let bucketParser: DateFormatter = {

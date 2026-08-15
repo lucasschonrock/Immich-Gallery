@@ -232,6 +232,27 @@ struct Immich_GalleryTests {
         #expect(descending.map(\.timeBucket) == ["2026-07-01T00:00:00.000Z", "2026-01-01T00:00:00.000Z"])
     }
 
+    @Test func timelineAssetPagesCapActualCellsAcrossUnevenMonths() {
+        let monthCounts = [100, 200, 3_000, 15_000]
+
+        #expect(TimelineView.visibleCounts(availableCounts: monthCounts, limit: 120) == [100, 20])
+        #expect(TimelineView.visibleCounts(availableCounts: monthCounts, limit: 240) == [100, 140])
+        #expect(TimelineView.visibleCounts(availableCounts: monthCounts, limit: 360) == [100, 200, 60])
+        #expect(TimelineView.visibleCounts(availableCounts: monthCounts, limit: 3_301) == [100, 200, 3_000, 1])
+    }
+
+    @Test func timelineAssetPagesNeverExceedTheirCellLimit() {
+        let monthCounts = [0, 100, 200, 3_000, 15_000]
+
+        for limit in stride(from: 120, through: 18_360, by: 120) {
+            let visibleCounts = TimelineView.visibleCounts(availableCounts: monthCounts, limit: limit)
+            #expect(visibleCounts.reduce(0, +) <= limit)
+            #expect(zip(visibleCounts, monthCounts).allSatisfy { visible, available in
+                visible >= 0 && visible <= available
+            })
+        }
+    }
+
     @Test func timelineBucketRequestsIncludePartnerAssets() {
         let bucketsEndpoint = AssetService.timelineBucketsEndpoint(order: "desc", withStacked: true)
         let assetsEndpoint = AssetService.timelineBucketEndpoint(

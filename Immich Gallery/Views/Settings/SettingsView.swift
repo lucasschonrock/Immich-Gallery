@@ -556,7 +556,7 @@ struct SettingsView: View {
                         }
                         
                         // Help Section
-                        SettingsSection(title: "Help & Tips") {
+                        SettingsSection(title: "Help & Support") {
                             AnyView(VStack(spacing: 12) {
                                 SettingsRow(
                                     icon: "play.circle",
@@ -599,6 +599,23 @@ struct SettingsView: View {
                                             .padding(.vertical, 6)
                                             .background(Color.gray.opacity(0.1))
                                             .cornerRadius(8)
+                                    )
+                                )
+
+                                SettingsRow(
+                                    icon: "ladybug",
+                                    title: "Report an Issue",
+                                    subtitle: "Scan with your phone to open https://github.com/mensadilabs/Immich-Gallery/issues",
+                                    content: AnyView(
+                                        Image("GitHubIssuesQRCode")
+                                            .resizable()
+                                            .interpolation(.none)
+                                            .scaledToFit()
+                                            .frame(width: 160, height: 160)
+                                            .padding(12)
+                                            .background(Color.white)
+                                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                                            .accessibilityLabel("QR code for Immich Gallery GitHub Issues")
                                     )
                                 )
                                 

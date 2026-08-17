@@ -1,9 +1,12 @@
 ![Platform](https://img.shields.io/badge/platform-TvOS-blue) ![Language](https://img.shields.io/github/languages/top/mensadilabs/Immich-Gallery) [![Unit Tests](https://github.com/mensadilabs/Immich-Gallery/actions/workflows/unit-tests.yml/badge.svg?branch=dev)](https://github.com/mensadilabs/Immich-Gallery/actions/workflows/unit-tests.yml)
 
 
-[Download from Apple TV App Store](https://apps.apple.com/ca/app/immich-gallery/id6748482378)
+<a href="https://www.buymeacoffee.com/zzpr69dnqtr" target="_blank">☕️ Buy me a coffee, Help cover app store fee ☕️ </a>  or <a href="https://mensadilabs.github.io/Immich-Gallery/#finances" target="_blank"> See supporters list hee </a>
 
-<a href="https://www.buymeacoffee.com/zzpr69dnqtr" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a> Help cover app store fee.
+Ok, ok, I'm no wordsmith, don't judge my rhymes!
+
+<a href="https://apps.apple.com/ca/app/immich-gallery/id6748482378?itscg=30200&itsct=apps_box_badge&mttnsubad=6748482378" style="display: inline-block;">     <img src="https://toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/black/en-us?releaseDate=1754092800" alt="Download on the App Store" style="width: 123; height: 41px; vertical-align: middle; object-fit: contain;" />     </a> 
+
 
 # Immich Gallery for Apple TV
 
@@ -86,15 +89,6 @@ Immich Gallery is an independent client for Immich and is not affiliated with or
 
 See the [Immich Gallery API key permissions guide](https://mensadilabs.github.io/Immich-Gallery/api-key-permissions/) for the exact scoped permissions required for complete app functionality.
 
-### Building from Source
-
-1. Clone the repository
-2. Open `Immich Gallery.xcodeproj` in Xcode
-3. Select Apple TV target device
-4. Build and run
-
 ## Stats
 
-![Alt](https://repobeats.axiom.co/api/embed/3fea253de89fc88824c16adb77a456f7e7d657b7.svg "Repobeats analytics image")
-
-[![Star History Chart](https://api.star-history.com/svg?repos=mensadilabs/Immich-Gallery&type=Timeline)](https://www.star-history.com/#mensadilabs/Immich-Gallery&Timeline)
+![Alt](https://repobeats.axiom.co/api/embed/afe816bac58715128633a3c518c2feda431a5d6c.svg "Repobeats analytics image")

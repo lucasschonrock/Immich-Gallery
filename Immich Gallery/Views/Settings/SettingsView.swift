@@ -96,6 +96,7 @@ struct SettingsView: View {
     @AppStorage("topShelfImageSelection", store: UserDefaults(suiteName: AppConstants.appGroupIdentifier)) private var topShelfImageSelection = "recent"
     @AppStorage(UserDefaultsKeys.autoSlideshowTimeout) private var autoSlideshowTimeout: Int = 0 // 0 = off
     @AppStorage(UserDefaultsKeys.launchIntoSlideshow) private var launchIntoSlideshow: Bool = false
+    @AppStorage(UserDefaultsKeys.showDiagnosticsOverlay) private var showDiagnosticsOverlay = false
     @AppStorage("artModeLevel") private var artModeLevel = "off"
     @AppStorage("artModeDayStart") private var artModeDayStart = 7
     @AppStorage("artModeNightStart") private var artModeNightStart = 20
@@ -555,7 +556,7 @@ struct SettingsView: View {
                         }
                         
                         // Help Section
-                        SettingsSection(title: "Help & Tips") {
+                        SettingsSection(title: "Help & Support") {
                             AnyView(VStack(spacing: 12) {
                                 SettingsRow(
                                     icon: "play.circle",
@@ -598,6 +599,23 @@ struct SettingsView: View {
                                             .padding(.vertical, 6)
                                             .background(Color.gray.opacity(0.1))
                                             .cornerRadius(8)
+                                    )
+                                )
+
+                                SettingsRow(
+                                    icon: "ladybug",
+                                    title: "Report an Issue",
+                                    subtitle: "Scan with your phone to open https://github.com/mensadilabs/Immich-Gallery/issues",
+                                    content: AnyView(
+                                        Image("GitHubIssuesQRCode")
+                                            .resizable()
+                                            .interpolation(.none)
+                                            .scaledToFit()
+                                            .frame(width: 160, height: 160)
+                                            .padding(12)
+                                            .background(Color.white)
+                                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                                            .accessibilityLabel("QR code for Immich Gallery GitHub Issues")
                                     )
                                 )
                                 
@@ -647,8 +665,30 @@ struct SettingsView: View {
                             })
                         }
                         
+                        // Diagnostics Section
+                        // Available in release builds so field reporters can
+                        // capture performance data without connecting Xcode.
+                        SettingsSection(title: "Diagnostics") {
+                            AnyView(VStack(spacing: 12) {
+                                SettingsRow(
+                                    icon: "waveform.path.ecg",
+                                    title: "Show Diagnostics Overlay",
+                                    subtitle: "Display live Timeline, network, CPU, UI-delay, and memory-footprint measurements.",
+                                    content: AnyView(
+                                        Picker("Show Diagnostics Overlay", selection: $showDiagnosticsOverlay) {
+                                            Text("Off").tag(false)
+                                            Text("On").tag(true)
+                                        }
+                                        .pickerStyle(.menu)
+                                        .frame(width: 300, alignment: .trailing)
+                                    ),
+                                    isOn: showDiagnosticsOverlay
+                                )
+                            })
+                        }
+
                         // Cache Section (Debug only)
-                        
+
 #if DEBUG
                         CacheSection(
                             thumbnailCache: thumbnailCache,

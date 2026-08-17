@@ -82,6 +82,10 @@ struct SlideshowView: View {
     @State private var kenBurnsOffset: CGSize = .zero
     @State private var enableShuffle: Bool = UserDefaults.standard.enableSlideshowShuffle
     @State private var isSharedAlbum: Bool = false
+    @State private var emptyQueueRetryCount = 0
+    @State private var retriedAssetIDs: Set<String> = []
+    @State private var isPreloadingImages = false
+    @State private var isRestarting = false
     @FocusState private var isFocused: Bool
     
     /// Computed property to get current Art Mode level from UserDefaults
@@ -149,6 +153,11 @@ struct SlideshowView: View {
 
     // Global slide animation duration for both slide-in and slide-out
     private let slideAnimationDuration: Double = 1.5
+
+    // Backoff used when the advance timer fires with nothing loaded yet. Retrying
+    // keeps the slideshow moving once images arrive; backing off stops a slow or
+    // down server from being hammered.
+    private static let emptyQueueRetryDelays: [TimeInterval] = [2, 5, 15]
 
     // Transitions picked at random for each new image. Declared once as static
     // constants so they aren't reallocated on every slide advance.
@@ -559,7 +568,10 @@ struct SlideshowView: View {
         NotificationCenter.default.post(name: NSNotification.Name(NotificationNames.resumeInactivityMonitoring), object: nil)
     }
 
-    private func loadInitialAssets() async {
+    /// Fetches the first page of assets. `fromStartingIndex` only applies to the
+    /// first play-through: a loop restart replays the source from its very first
+    /// asset, no matter which photo the user launched the slideshow from.
+    private func loadInitialAssets(fromStartingIndex: Bool = true) async {
         guard !Task.isCancelled, let assetProvider = assetProvider else { return }
 
         do {
@@ -578,7 +590,7 @@ struct SlideshowView: View {
             await MainActor.run {
                 let imageAssets = searchResult.assets.filter { $0.type == .image }
                 // Handle starting index - drop assets before the starting point\n
-                let actualStartingIndex = min(startingIndex, max(0, imageAssets.count - 1))
+                let actualStartingIndex = fromStartingIndex ? min(startingIndex, max(0, imageAssets.count - 1)) : 0
                 self.assetQueue = Array(imageAssets.dropFirst(actualStartingIndex))
                 self.hasMoreAssets = searchResult.nextPage != nil || (enableShuffle && !isSharedAlbum)
                 print("SlideshowView: Loaded \(imageAssets.count) assets, starting at index \(startingIndex)")
@@ -601,24 +613,55 @@ struct SlideshowView: View {
 
         // Load first 2-3 images
         let imagesToLoad = min(3, assetQueue.count)
+        var failedAssets: [ImmichAsset] = []
         for i in 0..<imagesToLoad {
             guard i < assetQueue.count else { break }
-            await loadImageIntoQueue(asset: assetQueue[i])
+            let asset = assetQueue[i]
+            let loaded = await loadImageIntoQueue(asset: asset)
+            if !loaded {
+                failedAssets.append(asset)
+            }
         }
 
-        // Remove loaded assets from asset queue
+        // Remove the assets we attempted, then requeue the failures for one retry
         await MainActor.run {
             self.assetQueue.removeFirst(min(imagesToLoad, self.assetQueue.count))
+            self.requeueFailedAssets(failedAssets)
         }
     }
 
-    private func loadImageIntoQueue(asset: ImmichAsset) async {
-        guard !Task.isCancelled else { return }
+    /// Raised when a full-image load outlives its deadline so the caller can treat
+    /// it like any other load failure.
+    private struct ImageLoadTimeout: Error {}
+
+    /// Loads one asset's full-size image into the display queue.
+    /// Returns false when the load failed, timed out, or produced no image, so the
+    /// caller can decide what to do with the asset instead of silently dropping it.
+    private func loadImageIntoQueue(asset: ImmichAsset) async -> Bool {
+        guard !Task.isCancelled else { return false }
+
+        // Originals are multi-megabyte, and one stalled download starves the whole
+        // queue. Cap each load at 2x the slide interval, never under 15s so short
+        // intervals don't cut off legitimate loads.
+        let deadline = max(slideInterval * 2, 15)
+        let assetService = self.assetService
 
         do {
-            guard let image = try await assetService.loadFullImage(asset: asset) else {
+            let image = try await withThrowingTaskGroup(of: UIImage?.self) { group -> UIImage? in
+                group.addTask {
+                    try await assetService.loadFullImage(asset: asset)
+                }
+                group.addTask {
+                    try await Task.sleep(nanoseconds: UInt64(deadline * 1_000_000_000))
+                    throw ImageLoadTimeout()
+                }
+                defer { group.cancelAll() }
+                return try await group.next() ?? nil
+            }
+
+            guard let image = image else {
                 print("SlideshowView: loadFullImage returned nil for asset \(asset.id)")
-                return
+                return false
             }
 
             let dominantColor = slideshowBackgroundColor == "auto" ?
@@ -628,22 +671,40 @@ struct SlideshowView: View {
                 self.imageQueue.append((asset: asset, image: image, dominantColor: dominantColor))
                 print("SlideshowView: Loaded image for asset \(asset.id) into queue")
             }
+            return true
+        } catch is ImageLoadTimeout {
+            print("SlideshowView: Timed out after \(deadline)s loading asset \(asset.id)")
+            return false
         } catch {
             print("SlideshowView: Failed to load image for asset \(asset.id): \(error)")
+            return false
+        }
+    }
+
+    /// Sends assets that failed to load to the back of the asset queue for one more
+    /// attempt. Already-retried assets are dropped so a permanently broken asset
+    /// can't cycle through the queue forever.
+    @MainActor
+    private func requeueFailedAssets(_ assets: [ImmichAsset]) {
+        for asset in assets {
+            guard !retriedAssetIDs.contains(asset.id) else {
+                print("SlideshowView: Dropping asset \(asset.id) after failed retry")
+                continue
+            }
+            retriedAssetIDs.insert(asset.id)
+            assetQueue.append(asset)
         }
     }
 
     private func showFirstImage() async {
         await MainActor.run {
-            guard !self.imageQueue.isEmpty else {
-                self.isLoading = false
-                return
-            }
-
             // Move first image from queue to current
             guard !self.imageQueue.isEmpty else {
                 print("SlideshowView: No images in queue to show")
                 self.isLoading = false
+                // Nothing loaded on the cold start (slow server, timed-out loads):
+                // retry rather than sitting on the empty-state screen forever.
+                self.scheduleEmptyQueueRetry()
                 return
             }
             self.currentImageData = self.imageQueue.removeFirst()
@@ -680,6 +741,18 @@ struct SlideshowView: View {
     }
 
     private func loadMoreImagesIfNeeded() async {
+        // One preloader at a time: the empty-queue retry can fire while a slow load
+        // is still running, and overlapping runs would consume the same assets twice.
+        let shouldPreload = await MainActor.run {
+            guard !self.isPreloadingImages else {
+                print("SlideshowView: Preload already in progress")
+                return false
+            }
+            self.isPreloadingImages = true
+            return true
+        }
+        guard shouldPreload else { return }
+
         let shouldLoadAssets = await MainActor.run {
             return self.assetQueue.count <= 2 && self.hasMoreAssets && !self.isLoadingAssets
         }
@@ -693,12 +766,18 @@ struct SlideshowView: View {
             return Array(self.assetQueue.prefix(min(2, self.assetQueue.count)))
         }
 
+        var failedAssets: [ImmichAsset] = []
         for asset in assetsToLoad {
-            await loadImageIntoQueue(asset: asset)
+            let loaded = await loadImageIntoQueue(asset: asset)
+            if !loaded {
+                failedAssets.append(asset)
+            }
         }
 
         await MainActor.run {
             self.assetQueue.removeFirst(min(assetsToLoad.count, self.assetQueue.count))
+            self.requeueFailedAssets(failedAssets)
+            self.isPreloadingImages = false
         }
     }
 
@@ -708,6 +787,7 @@ struct SlideshowView: View {
         // Check if we have next image ready
         guard !imageQueue.isEmpty else {
             print("SlideshowView: No more images in queue")
+            scheduleEmptyQueueRetry()
             return
         }
 
@@ -719,15 +799,22 @@ struct SlideshowView: View {
 
         // Wait for slide out to complete, then change image
         DispatchQueue.main.asyncAfter(deadline: .now() + slideAnimationDuration) {
-            // Discard current image to free memory
-            self.currentImageData = nil
-
             // Move next image from queue to current
             guard !self.imageQueue.isEmpty else {
                 print("SlideshowView: No more images in queue to advance")
+                // The queue drained during the transition: slide the current image
+                // back in rather than stranding the view mid-animation, and retry.
+                withAnimation(.easeInOut(duration: self.slideAnimationDuration)) {
+                    self.isTransitioning = false
+                }
+                self.scheduleEmptyQueueRetry()
                 return
             }
+
+            // Discard current image to free memory before retaining the next one
+            self.currentImageData = nil
             self.currentImageData = self.imageQueue.removeFirst()
+            self.emptyQueueRetryCount = 0
 
             // Set dominant color if available
             if let dominantColor = self.currentImageData?.dominantColor,
@@ -764,6 +851,81 @@ struct SlideshowView: View {
         autoAdvanceTimer = Timer.scheduledTimer(withTimeInterval: slideInterval, repeats: false) { _ in
             print("SlideshowView: Timer fired - queue size: \(self.imageQueue.count)")
             self.nextImage()
+        }
+    }
+
+    /// Called whenever an advance finds nothing to show. Either the queue is only
+    /// temporarily starved (retry with backoff) or the source has been played to
+    /// the end (loop back to the beginning).
+    private func scheduleEmptyQueueRetry() {
+        // Nothing buffered, nothing pending, nothing left to fetch: the slideshow
+        // has played everything, so loop back to the first asset. The current
+        // image has already had its full interval by the time we get here, and it
+        // stays on screen while the first page reloads.
+        if assetQueue.isEmpty && !hasMoreAssets && !isLoadingAssets {
+            guard currentImageData != nil else {
+                // Never showed anything at all (empty album, no matching assets):
+                // leave the empty state up instead of polling the server forever.
+                print("SlideshowView: No assets to display, nothing to loop back to")
+                return
+            }
+            restartFromBeginning()
+            return
+        }
+
+        armEmptyQueueRetryTimer()
+    }
+
+    /// Arms the backoff timer that re-attempts an advance, and restarts the
+    /// preloader, so a queue starved by a slow server recovers on its own.
+    private func armEmptyQueueRetryTimer() {
+        let delay = Self.emptyQueueRetryDelays[min(emptyQueueRetryCount, Self.emptyQueueRetryDelays.count - 1)]
+        emptyQueueRetryCount += 1
+        print("SlideshowView: Queue empty - retrying advance in \(delay)s")
+
+        // Reuse autoAdvanceTimer so dismissal cancels the retry like any other timer
+        stopAutoAdvance()
+        autoAdvanceTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { _ in
+            self.nextImage()
+        }
+
+        Task {
+            await self.maintainImageQueue()
+        }
+    }
+
+    /// Starts the source over from its first asset once every asset has played.
+    /// The last image keeps showing until the first image of the new cycle is
+    /// buffered, so the loop has no loading flash and no shortened slide.
+    private func restartFromBeginning() {
+        guard !isRestarting else { return }
+        isRestarting = true
+        print("SlideshowView: Reached the end - looping back to the beginning")
+
+        // Reset pagination so the next fetch is page one again, and forget which
+        // assets already burned their retry so each cycle gets fresh attempts.
+        stopAutoAdvance()
+        currentPage = 1
+        hasMoreAssets = true
+        retriedAssetIDs.removeAll()
+
+        loadAssetsTask = Task {
+            await loadInitialAssets(fromStartingIndex: false)
+            await loadMoreImagesIfNeeded()
+
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                self.isRestarting = false
+                guard !self.imageQueue.isEmpty else {
+                    // The whole cycle produced nothing loadable. Fall back to the
+                    // backoff timer rather than restarting again immediately, so a
+                    // broken source can't hot-loop fetches.
+                    print("SlideshowView: Loop restart loaded no images")
+                    self.armEmptyQueueRetryTimer()
+                    return
+                }
+                self.nextImage()
+            }
         }
     }
 

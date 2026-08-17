@@ -14,7 +14,15 @@ class NetworkService: ObservableObject {
     @Published var accessToken: String?
     @Published var currentAuthType: SavedUser.AuthType = .jwt
     
-    private let session = URLSession.shared
+    /// `URLSession.shared` only enforces a 60s *idle* timeout that resets on every
+    /// byte received, so a trickling server can keep a request alive indefinitely.
+    /// Bound both the idle gap and the total transfer time instead.
+    private let session: URLSession = {
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForRequest = 30
+        configuration.timeoutIntervalForResource = 120
+        return URLSession(configuration: configuration)
+    }()
     private weak var userManager: UserManager?
     
     init(userManager: UserManager) {
@@ -159,10 +167,14 @@ class NetworkService: ObservableObject {
     ) async throws -> T {
         let request = try buildAuthenticatedRequest(endpoint: endpoint, method: method, body: body)
         print("NetworkService: Making request to \(request.url?.absoluteString ?? endpoint)")
+        let diagnosticsTracked = PerformanceDiagnostics.networkRequestStarted()
+        var responseByteCount = 0
+        defer { PerformanceDiagnostics.networkRequestFinished(responseBytes: responseByteCount, wasTracked: diagnosticsTracked) }
         
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await session.data(for: request)
+            responseByteCount = data.count
         } catch {
             print("NetworkService: Network error occurred: \(error)")
             // Handle network connectivity issues (timeouts, connection refused, DNS failures, etc.)
@@ -189,10 +201,14 @@ class NetworkService: ObservableObject {
         
         // Remove Content-Type header for data requests (we don't want application/json for binary data)
         request.setValue(nil, forHTTPHeaderField: "Content-Type")
+        let diagnosticsTracked = PerformanceDiagnostics.networkRequestStarted()
+        var responseByteCount = 0
+        defer { PerformanceDiagnostics.networkRequestFinished(responseBytes: responseByteCount, wasTracked: diagnosticsTracked) }
         
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await session.data(for: request)
+            responseByteCount = data.count
         } catch {
             print("NetworkService: Network error occurred in makeDataRequest: \(error)")
             // Handle network connectivity issues (timeouts, connection refused, DNS failures, etc.)
@@ -209,10 +225,14 @@ class NetworkService: ObservableObject {
     ) async throws {
         let request = try buildAuthenticatedRequest(endpoint: endpoint, method: method, body: body)
         print("NetworkService: Making void request to \(request.url?.absoluteString ?? endpoint)")
+        let diagnosticsTracked = PerformanceDiagnostics.networkRequestStarted()
+        var responseByteCount = 0
+        defer { PerformanceDiagnostics.networkRequestFinished(responseBytes: responseByteCount, wasTracked: diagnosticsTracked) }
 
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await session.data(for: request)
+            responseByteCount = data.count
         } catch {
             print("NetworkService: Network error occurred in makeVoidRequest: \(error)")
             throw ImmichError.networkError

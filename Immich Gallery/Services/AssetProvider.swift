@@ -43,10 +43,16 @@ struct AssetProviderFactory {
 }
 
 protocol AssetProvider {
-    func fetchAssets(page: Int, limit: Int) async throws -> SearchResult
+    func fetchAssets(page: Int, limit: Int, assetType: AssetType?) async throws -> SearchResult
     func fetchRandomAssets(limit: Int) async throws -> SearchResult
     func fetchAllCities() async throws -> [String]
     func fetchAllYears() async throws -> [Int]
+}
+
+extension AssetProvider {
+    func fetchAssets(page: Int, limit: Int) async throws -> SearchResult {
+        try await fetchAssets(page: page, limit: limit, assetType: nil)
+    }
 }
 
 /// Adapts one compact timeline month bucket to the paginated AssetProvider
@@ -77,8 +83,11 @@ final class TimelineMonthAssetProvider: AssetProvider {
         )
     }
 
-    func fetchAssets(page: Int, limit: Int) async throws -> SearchResult {
-        let assets = try await loadAssets()
+    func fetchAssets(page: Int, limit: Int, assetType: AssetType?) async throws -> SearchResult {
+        let loadedAssets = try await loadAssets()
+        let assets = assetType.map { type in
+            loadedAssets.filter { $0.type == type }
+        } ?? loadedAssets
         let pageSize = max(limit, 1)
         let startIndex = max((page - 1) * pageSize, 0)
         let endIndex = min(startIndex + pageSize, assets.count)
@@ -138,8 +147,13 @@ class AlbumAssetProvider: AssetProvider {
         return allAssets
     }
     
-    func fetchAssets(page: Int, limit: Int) async throws -> SearchResult {
-        try await assetService.fetchAssets(page: page, limit: limit, albumId: albumId)
+    func fetchAssets(page: Int, limit: Int, assetType: AssetType?) async throws -> SearchResult {
+        try await assetService.fetchAssets(
+            page: page,
+            limit: limit,
+            albumId: albumId,
+            assetType: assetType
+        )
     }
     
     func fetchRandomAssets(limit: Int) async throws -> SearchResult {
@@ -217,10 +231,17 @@ class GeneralAssetProvider: AssetProvider {
         self.folderPath = folderPath
     }
     
-    func fetchAssets(page: Int, limit: Int) async throws -> SearchResult {
+    func fetchAssets(page: Int, limit: Int, assetType: AssetType?) async throws -> SearchResult {
         // If config is provided, use it; otherwise fall back to individual parameters
         if let config = config {
-            return try await assetService.fetchAssets(config: config, page: page, limit: limit, isAllPhotos: isAllPhotos)
+            let result = try await assetService.fetchAssets(
+                config: config,
+                page: page,
+                limit: limit,
+                isAllPhotos: isAllPhotos,
+                assetType: assetType
+            )
+            return result
         } else {
             return try await assetService.fetchAssets(
                 page: page,
@@ -231,7 +252,8 @@ class GeneralAssetProvider: AssetProvider {
                 city: city,
                 isAllPhotos: isAllPhotos,
                 isFavorite: isFavorite,
-                folderPath: folderPath
+                folderPath: folderPath,
+                assetType: assetType
             )
         }
     }
@@ -281,8 +303,11 @@ class LockedAssetProvider: AssetProvider {
         return result.assets
     }
 
-    func fetchAssets(page: Int, limit: Int) async throws -> SearchResult {
-        let assets = try await loadLockedAssets()
+    func fetchAssets(page: Int, limit: Int, assetType: AssetType?) async throws -> SearchResult {
+        let loadedAssets = try await loadLockedAssets()
+        let assets = assetType.map { type in
+            loadedAssets.filter { $0.type == type }
+        } ?? loadedAssets
         let pageSize = max(limit, 1)
         let startIndex = max((page - 1) * pageSize, 0)
         let endIndex = min(startIndex + pageSize, assets.count)

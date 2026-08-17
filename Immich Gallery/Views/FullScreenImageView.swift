@@ -560,7 +560,9 @@ struct VideoThumbnailView: View {
     let asset: ImmichAsset
     let assetService: AssetService
     let onPlayButtonTapped: () -> Void
-    @ObservedObject private var thumbnailCache = ThumbnailCache.shared
+    // Plain reference, not @ObservedObject: this view only calls into the cache
+    // and must not re-render every time the cache's stats publish.
+    private let thumbnailCache = ThumbnailCache.shared
     
     @State private var thumbnail: UIImage?
     @State private var isLoading = true

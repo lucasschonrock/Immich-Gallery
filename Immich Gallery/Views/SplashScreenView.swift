@@ -36,11 +36,13 @@ struct ChangelogVersion: Identifiable, Codable {
     let id = UUID()
     let version: String
     let releaseDate: String?
+    let isBeta: Bool?
     var changes: [ChangelogSection]
 
     enum CodingKeys: String, CodingKey {
         case version
         case releaseDate
+        case isBeta
         case changes
     }
 
@@ -49,11 +51,12 @@ struct ChangelogVersion: Identifiable, Codable {
     }
 
     var versionDisplayText: String {
+        let betaSuffix = isBeta == true ? " Beta" : ""
         guard let formattedReleaseDate else {
-            return "Version \(version)"
+            return "Version \(version)\(betaSuffix)"
         }
 
-        return "Version \(version) - \(formattedReleaseDate)"
+        return "Version \(version)\(betaSuffix) - \(formattedReleaseDate)"
     }
 }
 
@@ -205,7 +208,9 @@ private extension WhatsNewView {
                     }
                 }
             }
-            .padding(.trailing, 80)
+            // Native tvOS card focus expands beyond its resting frame. Keep
+            // enough room on both sides so the focus effect is not clipped.
+            .padding(.horizontal, 60)
             .padding(.top, 80)
             .padding(.bottom, 100)
         }

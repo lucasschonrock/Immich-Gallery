@@ -4,16 +4,19 @@
     "changes": [
       {
         "type": "new_feature",
-        "title": "Video filtering",
+        "title": "More ways to browse",
         "items": [
-          "Filter the Timeline and media collections to show videos only."
+          "Filter the Timeline and media collections to show videos only.",
+          "Slideshows now loop continuously."
         ]
       },
       {
-        "type": "improvement",
-        "title": "Diagnostics",
+        "type": "bug_fix",
+        "title": "Performance and reliability",
         "items": [
-          "Improved memory reporting and reduced diagnostics overhead."
+          "Improved Timeline navigation and thumbnail loading for large libraries.",
+          "Slideshows now recover when the server is slow.",
+          "Added optional diagnostics with more accurate memory reporting."
         ]
       }
     ],
@@ -21,6 +24,7 @@
   },
   {
     "version": "1.3.4",
+    "isBeta": true,
     "changes": [
       {
         "type": "bug_fix",
@@ -36,6 +40,7 @@
   },
   {
     "version": "1.3.3",
+    "isBeta": true,
     "changes": [
       {
         "type": "new_feature",

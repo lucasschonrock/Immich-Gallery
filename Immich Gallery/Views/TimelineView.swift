@@ -16,9 +16,36 @@ struct TimelineView: View {
     private enum ToolbarButton: Hashable {
         case filter
         case favorites
+        case mediaType
         case resetFilters
         case sort
         case calendar
+    }
+
+    private enum MediaFilter: Hashable {
+        case all
+        case video
+
+        var title: String {
+            switch self {
+            case .all: "All"
+            case .video: "Video"
+            }
+        }
+
+        var iconName: String {
+            switch self {
+            case .all: "photo.on.rectangle.angled"
+            case .video: "video.fill"
+            }
+        }
+
+        var assetType: AssetType? {
+            switch self {
+            case .all: nil
+            case .video: .video
+            }
+        }
     }
 
     private enum ScrollAnchor: Hashable {
@@ -43,6 +70,7 @@ struct TimelineView: View {
     @State private var showingFilterModal = false
     @State private var filters = PhotoFilterSelection.saved
     @State private var favoritesOnly = false
+    @State private var mediaFilter: MediaFilter = .all
     @State private var loadGeneration = UUID()
     @State private var filteredNextPage: Int?
     @State private var isLoadingFilteredPage = false
@@ -66,7 +94,7 @@ struct TimelineView: View {
     }
 
     private var hasMetadataFilter: Bool {
-        filters.activeCount > 0
+        filters.activeCount > 0 || mediaFilter != .all
     }
 
     private var hasActiveFilter: Bool {
@@ -74,7 +102,9 @@ struct TimelineView: View {
     }
 
     private var activeFilterCount: Int {
-        filters.activeCount + (favoritesOnly ? 1 : 0)
+        filters.activeCount
+            + (favoritesOnly ? 1 : 0)
+            + (mediaFilter == .all ? 0 : 1)
     }
 
     private struct RenderedSection: Identifiable {
@@ -180,13 +210,13 @@ struct TimelineView: View {
                         .padding(.horizontal, 72)
                     Spacer()
                     VStack {
-                        Image(systemName: "calendar")
+                        Image(systemName: emptyStateIconName)
                             .font(.system(size: 60))
                             .foregroundColor(.gray)
-                        Text("No Photos Found")
+                        Text(emptyStateTitle)
                             .font(.title)
                             .foregroundColor(.white)
-                        Text(activeFilterCount > 0 ? "Try changing the active filters" : "Your photos will appear here")
+                        Text(emptyStateMessage)
                             .foregroundColor(.gray)
                     }
                     Spacer()
@@ -269,17 +299,26 @@ struct TimelineView: View {
             }
             .buttonStyle(.bordered)
             .focused($focusedToolbarButton, equals: .favorites)
-            .accessibilityLabel(favoritesOnly ? "Show all timeline photos" : "Show favorites only")
+            .accessibilityLabel(favoritesOnly ? "Show all timeline media" : "Show favorites only")
             .accessibilityHint("Toggles the favorites-only timeline filter")
 
+            Button(action: toggleMediaFilter) {
+                Image(systemName: mediaFilter.iconName)
+            }
+            .buttonStyle(.bordered)
+            .focused($focusedToolbarButton, equals: .mediaType)
+            .accessibilityLabel(mediaFilter == .all ? "Show videos only" : "Show all media")
+            .accessibilityValue(mediaFilter.title)
+            .accessibilityHint("Toggles the timeline media-type filter")
+
             Button(action: resetFilters) {
-                Label("Reset", systemImage: "arrow.counterclockwise")
+                Image(systemName: "arrow.counterclockwise")
             }
             .buttonStyle(.bordered)
             .focused($focusedToolbarButton, equals: .resetFilters)
             .disabled(!hasActiveFilter)
             .accessibilityLabel("Reset timeline filters")
-            .accessibilityHint("Clears all active photo filters")
+            .accessibilityHint("Clears all active timeline filters")
 
             AllPhotosSortButton(
                 sortOrder: allPhotosSortOrder,
@@ -311,10 +350,16 @@ struct TimelineView: View {
         reloadTimeline()
     }
 
+    private func toggleMediaFilter() {
+        mediaFilter = mediaFilter == .all ? .video : .all
+        reloadTimeline()
+    }
+
     private func resetFilters() {
         guard hasActiveFilter else { return }
         filters.reset()
         favoritesOnly = false
+        mediaFilter = .all
         filters.save()
         reloadTimeline()
     }
@@ -623,6 +668,7 @@ struct TimelineView: View {
         let order = allPhotosSortOrder
         let filters = filters
         let favoritesOnly = favoritesOnly
+        let assetType = mediaFilter.assetType
 
         Task {
             do {
@@ -637,7 +683,8 @@ struct TimelineView: View {
                     cameraModel: filters.cameraModel,
                     lensModel: filters.lensModel,
                     year: filters.year,
-                    isFavorite: favoritesOnly
+                    isFavorite: favoritesOnly,
+                    assetType: assetType
                 )
                 await MainActor.run {
                     guard self.loadGeneration == generation else { return }
@@ -673,6 +720,45 @@ struct TimelineView: View {
         filters.save()
         showingFilterModal = false
         reloadTimeline()
+    }
+
+    private var emptyStateIconName: String {
+        if mediaFilter == .video {
+            return "video.fill"
+        }
+        if favoritesOnly {
+            return "heart.fill"
+        }
+        return "calendar"
+    }
+
+    private var emptyStateTitle: String {
+        if favoritesOnly && mediaFilter == .video {
+            return "No Favorite Videos Found"
+        }
+        if mediaFilter == .video {
+            return "No Videos Found"
+        }
+        if favoritesOnly {
+            return "No Favorites Found"
+        }
+        return "No Media Found"
+    }
+
+    private var emptyStateMessage: String {
+        if filters.activeCount > 0 {
+            return "Try changing the active filters"
+        }
+        if favoritesOnly && mediaFilter == .video {
+            return "Your favorite videos will appear here"
+        }
+        if mediaFilter == .video {
+            return "Your videos will appear here"
+        }
+        if favoritesOnly {
+            return "Your favorite photos and videos will appear here"
+        }
+        return "Your photos and videos will appear here"
     }
 
     // MARK: - Formatting

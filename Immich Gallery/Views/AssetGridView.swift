@@ -8,6 +8,25 @@
 import SwiftUI
 
 struct AssetGridView: View {
+    private enum MediaFilter: Equatable {
+        case all
+        case video
+
+        var iconName: String {
+            switch self {
+            case .all: "photo.on.rectangle.angled"
+            case .video: "video.fill"
+            }
+        }
+
+        var assetType: AssetType? {
+            switch self {
+            case .all: nil
+            case .video: .video
+            }
+        }
+    }
+
     @ObservedObject var assetService: AssetService
     @ObservedObject var authService: AuthenticationService
     let assetProvider: AssetProvider
@@ -40,6 +59,8 @@ struct AssetGridView: View {
     @State private var showingFilterModal = false
     @State private var filters = PhotoFilterSelection.saved
     @State private var isScrolling = false
+    @State private var mediaFilter: MediaFilter = .all
+    @State private var loadGeneration = UUID()
 
     init(
         assetService: AssetService,
@@ -111,7 +132,7 @@ struct AssetGridView: View {
                         allPhotosToolbar
                             .padding(.bottom, 20)
                     }
-                    Image(systemName: "photo.on.rectangle.angled")
+                    Image(systemName: getEmptyStateIconName())
                         .font(.system(size: 60))
                         .foregroundColor(.gray)
                     Text(getEmptyStateTitle())
@@ -267,6 +288,16 @@ struct AssetGridView: View {
             }
         }
         .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: toggleMediaFilter) {
+                    Image(systemName: mediaFilter.iconName)
+                        .foregroundColor(.white)
+                }
+                .accessibilityLabel(mediaFilter == .all ? "Show videos only" : "Show all media")
+                .accessibilityValue(mediaFilter == .all ? "All media" : "Videos only")
+                .accessibilityHint("Toggles the media-type filter")
+            }
+
             if !isAllPhotos {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     AssetSortToolbarButton(
@@ -350,14 +381,24 @@ struct AssetGridView: View {
         }
         
         isLoading = true
+        isLoadingMore = false
+        loadMoreTask?.cancel()
         errorMessage = nil
         nextPage = nil
         hasMoreAssets = true
+        let generation = UUID()
+        loadGeneration = generation
+        let assetType = mediaFilter.assetType
         
         Task {
             do {
-                let searchResult = try await assetProvider.fetchAssets(page: 1, limit: 200)
+                let searchResult = try await assetProvider.fetchAssets(
+                    page: 1,
+                    limit: 200,
+                    assetType: assetType
+                )
                 await MainActor.run {
+                    guard loadGeneration == generation else { return }
                     self.assets = searchResult.assets
                     self.nextPage = searchResult.nextPage
                     self.isLoading = false
@@ -372,6 +413,7 @@ struct AssetGridView: View {
                 ThumbnailCache.shared.preloadThumbnails(for: searchResult.assets)
             } catch {
                 await MainActor.run {
+                    guard loadGeneration == generation else { return }
                     self.errorMessage = error.localizedDescription
                     self.isLoading = false
                 }
@@ -382,6 +424,11 @@ struct AssetGridView: View {
     private func applyFilters() {
         filters.save()
         showingFilterModal = false
+        loadAssets()
+    }
+
+    private func toggleMediaFilter() {
+        mediaFilter = mediaFilter == .all ? .video : .all
         loadAssets()
     }
     
@@ -418,13 +465,21 @@ struct AssetGridView: View {
             return 
         }
         
+        let generation = loadGeneration
+        let assetType = mediaFilter.assetType
+
         Task {
             do {
                 // Extract page number from nextPage string
                 let pageNumber = extractPageFromNextPage(nextPage!)
-                let searchResult = try await assetProvider.fetchAssets(page: pageNumber, limit: 200)
+                let searchResult = try await assetProvider.fetchAssets(
+                    page: pageNumber,
+                    limit: 200,
+                    assetType: assetType
+                )
                 
                 await MainActor.run {
+                    guard loadGeneration == generation else { return }
                     if !searchResult.assets.isEmpty {
                         self.assets.append(contentsOf: searchResult.assets)
                         self.nextPage = searchResult.nextPage
@@ -441,6 +496,7 @@ struct AssetGridView: View {
                 ThumbnailCache.shared.preloadThumbnails(for: searchResult.assets)
             } catch {
                 await MainActor.run {
+                    guard loadGeneration == generation else { return }
                     self.isLoadingMore = false
                 }
             }
@@ -467,27 +523,59 @@ struct AssetGridView: View {
     }
     
     private func getEmptyStateTitle() -> String {
-        if isAllPhotos, filters.activeCount > 0 {
+        if mediaFilter == .video, isFavorite {
+            return "No Favorite Videos"
+        } else if mediaFilter == .video, personId != nil {
+            return "No Videos of Person"
+        } else if mediaFilter == .video, albumId != nil {
+            return "No Videos in Album"
+        } else if mediaFilter == .video {
+            return "No Videos Found"
+        } else if isAllPhotos, filters.activeCount > 0 {
             return "No Results for Filters"
+        } else if isFavorite {
+            return "No Favorites Found"
         } else if personId != nil {
             return "No Photos of Person"
         } else if albumId != nil {
             return "No Photos in Album"
         } else {
-        return "No Photos Found"
+            return "No Photos Found"
         }
     }
     
     private func getEmptyStateMessage() -> String {
-        if isAllPhotos, filters.activeCount > 0 {
+        if mediaFilter == .video, isAllPhotos, filters.activeCount > 0 {
+            return "Try adjusting your filters to find videos."
+        } else if mediaFilter == .video, isFavorite {
+            return "Your favorite videos will appear here"
+        } else if mediaFilter == .video, personId != nil {
+            return "This person has no videos"
+        } else if mediaFilter == .video, albumId != nil {
+            return "This album has no videos"
+        } else if mediaFilter == .video {
+            return "Videos in this collection will appear here"
+        } else if isAllPhotos, filters.activeCount > 0 {
             return "Try adjusting your filter settings."
+        } else if isFavorite {
+            return "Your favorite photos and videos will appear here"
         } else if personId != nil {
             return "This person has no photos"
         } else if albumId != nil {
             return "This album is empty"
         } else {
-        return "Your photos will appear here"
+            return "Your photos will appear here"
         }
+    }
+
+    private func getEmptyStateIconName() -> String {
+        if mediaFilter == .video {
+            return "video.fill"
+        }
+        if isFavorite {
+            return "heart.fill"
+        }
+        return "photo.on.rectangle.angled"
     }
     
     private func startSlideshow() {

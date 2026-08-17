@@ -200,12 +200,23 @@ struct Immich_GalleryTests {
         let thirdPage = try await provider.fetchAssets(page: 3, limit: 200)
 
         #expect(assetService.requestedPages == [1, 3])
+        #expect(assetService.requestedAssetTypes.allSatisfy { $0 == nil })
         #expect(firstPage.assets.count == 200)
         #expect(firstPage.total == 500)
         #expect(firstPage.nextPage == "2")
         #expect(thirdPage.assets.count == 100)
         #expect(thirdPage.total == 500)
         #expect(thirdPage.nextPage == nil)
+    }
+
+    @Test func albumAssetProviderPassesVideoFilterToMetadataSearch() async throws {
+        let assetService = PaginatedAlbumAssetService()
+        let provider = AlbumAssetProvider(assetService: assetService, albumId: "album-1")
+
+        _ = try await provider.fetchAssets(page: 1, limit: 200, assetType: .video)
+
+        #expect(assetService.requestedAssetTypes.count == 1)
+        #expect(assetService.requestedAssetTypes[0] == .video)
     }
 
     @Test func albumAssetProviderLoadsAllMetadataPagesForAggregateAlbumOperations() async throws {
@@ -289,7 +300,8 @@ struct Immich_GalleryTests {
             cameraMake: "Apple",
             cameraModel: "iPhone 17 Pro",
             lensModel: "iPhone 17 Pro back triple camera",
-            year: 2026
+            year: 2026,
+            assetType: .video
         )
 
         #expect(request["page"] as? Int == 1)
@@ -301,8 +313,21 @@ struct Immich_GalleryTests {
         #expect(request["make"] as? String == "Apple")
         #expect(request["model"] as? String == "iPhone 17 Pro")
         #expect(request["lensModel"] as? String == "iPhone 17 Pro back triple camera")
+        #expect(request["type"] as? String == AssetType.video.rawValue)
         #expect(request["takenAfter"] as? String == "2026-01-01T00:00:00.000Z")
         #expect(request["takenBefore"] as? String == "2026-12-31T23:59:59.999Z")
+    }
+
+    @Test func timelineAllMediaFilterOmitsAssetType() {
+        let request = AssetService.timelineSearchRequest(
+            page: 1,
+            size: 120,
+            order: "desc",
+            city: nil,
+            year: nil
+        )
+
+        #expect(request["type"] == nil)
     }
 
     @Test func timelineMetadataFilterPreservesUnknownSuggestionsAsNull() {
@@ -376,6 +401,7 @@ struct Immich_GalleryTests {
 
 private final class PaginatedAlbumAssetService: AssetService {
     private(set) var requestedPages: [Int] = []
+    private(set) var requestedAssetTypes: [AssetType?] = []
 
     init() {
         super.init(networkService: NetworkService(userManager: UserManager()))
@@ -390,9 +416,11 @@ private final class PaginatedAlbumAssetService: AssetService {
         city: String? = nil,
         isAllPhotos: Bool = false,
         isFavorite: Bool = false,
-        folderPath: String? = nil
+        folderPath: String? = nil,
+        assetType: AssetType? = nil
     ) async throws -> SearchResult {
         requestedPages.append(page)
+        requestedAssetTypes.append(assetType)
         #expect(limit == 200)
         #expect(albumId == "album-1")
 

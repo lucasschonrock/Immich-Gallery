@@ -25,7 +25,7 @@ class AssetService: ObservableObject {
         self.networkService = networkService
     }
 
-    func fetchAssets(page: Int = 1, limit: Int? = nil, albumId: String? = nil, personId: String? = nil, tagId: String? = nil, city: String? = nil, isAllPhotos: Bool = false, isFavorite: Bool = false, folderPath: String? = nil) async throws -> SearchResult {
+    func fetchAssets(page: Int = 1, limit: Int? = nil, albumId: String? = nil, personId: String? = nil, tagId: String? = nil, city: String? = nil, isAllPhotos: Bool = false, isFavorite: Bool = false, folderPath: String? = nil, assetType: AssetType? = nil) async throws -> SearchResult {
         // Use separate sort order for All Photos tab vs everything else
         let sortOrder = isAllPhotos 
             ? UserDefaults.standard.allPhotosSortOrder
@@ -59,6 +59,9 @@ class AssetService: ObservableObject {
         }
         if isFavorite {
             searchRequest["isFavorite"] = true
+        }
+        if let assetType {
+            searchRequest["type"] = assetType.rawValue
         }
         if let value = Self.metadataFilterValue(selectedCity) { searchRequest["city"] = value }
         if let value = Self.metadataFilterValue(selectedState) { searchRequest["state"] = value }
@@ -244,7 +247,7 @@ class AssetService: ObservableObject {
     }
 
     /// Filtered Timeline requests use the stable metadata search endpoint,
-    /// because the bucket API cannot filter by capture date or EXIF location.
+    /// because the bucket API cannot filter by media type, capture date, or EXIF.
     func fetchFilteredTimelineAssets(
         page: Int,
         size: Int,
@@ -256,7 +259,8 @@ class AssetService: ObservableObject {
         cameraModel: String? = nil,
         lensModel: String? = nil,
         year: Int?,
-        isFavorite: Bool = false
+        isFavorite: Bool = false,
+        assetType: AssetType? = nil
     ) async throws -> SearchResult {
         let request = Self.timelineSearchRequest(
             page: page,
@@ -269,7 +273,8 @@ class AssetService: ObservableObject {
             cameraModel: cameraModel,
             lensModel: lensModel,
             year: year,
-            isFavorite: isFavorite
+            isFavorite: isFavorite,
+            assetType: assetType
         )
         let response: SearchResponse = try await networkService.makeRequest(
             endpoint: "/api/search/metadata",
@@ -295,7 +300,8 @@ class AssetService: ObservableObject {
         cameraModel: String? = nil,
         lensModel: String? = nil,
         year: Int?,
-        isFavorite: Bool = false
+        isFavorite: Bool = false,
+        assetType: AssetType? = nil
     ) -> [String: Any] {
         var request: [String: Any] = [
             "page": page,
@@ -312,6 +318,7 @@ class AssetService: ObservableObject {
         if let value = metadataFilterValue(cameraModel) { request["model"] = value }
         if let value = metadataFilterValue(lensModel) { request["lensModel"] = value }
         if isFavorite { request["isFavorite"] = true }
+        if let assetType { request["type"] = assetType.rawValue }
         if let year, let range = makeYearRange(year: year) {
             request["takenAfter"] = range.start
             request["takenBefore"] = range.end
@@ -406,7 +413,13 @@ class AssetService: ObservableObject {
     }
 
     /// Fetches assets using slideshow configuration
-    func fetchAssets(config: SlideshowConfig, page: Int = 1, limit: Int = 50, isAllPhotos: Bool = false) async throws -> SearchResult {
+    func fetchAssets(
+        config: SlideshowConfig,
+        page: Int = 1,
+        limit: Int = 50,
+        isAllPhotos: Bool = false,
+        assetType: AssetType? = nil
+    ) async throws -> SearchResult {
         // Use separate sort order for All Photos tab vs everything else
         let sortOrder = isAllPhotos
             ? UserDefaults.standard.allPhotosSortOrder
@@ -427,6 +440,9 @@ class AssetService: ObservableObject {
         if !config.personIds.isEmpty {
             searchRequest["personIds"] = config.personIds
             searchRequest["type"] = "IMAGE"
+        }
+        if let assetType {
+            searchRequest["type"] = assetType.rawValue
         }
         
         let result: SearchResponse = try await networkService.makeRequest(

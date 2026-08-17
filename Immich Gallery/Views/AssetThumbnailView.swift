@@ -7,9 +7,6 @@
 
 import SwiftUI
 
-// TEMP DEBUG: RenderStormStats now lives in Components/RenderStormStats.swift
-// so the on-screen DiagnosticsOverlay can read the same counters.
-
 struct AssetThumbnailView: View {
     let asset: ImmichAsset
     @ObservedObject var assetService: AssetService
@@ -25,7 +22,6 @@ struct AssetThumbnailView: View {
     var thumbnailLoadDelayNanoseconds: UInt64 = 150_000_000
     
     var body: some View {
-        let _ = RenderStormStats.tickBody() // TEMP DEBUG
         ZStack(alignment: .bottomTrailing) {
         
              RoundedRectangle(cornerRadius: 12)

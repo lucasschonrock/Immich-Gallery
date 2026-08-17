@@ -9,6 +9,15 @@
 import Foundation
 
 enum PerformanceDiagnostics {
+    struct TimelineSnapshot: Equatable {
+        var visibleAssets = 0
+        var loadedAssets = 0
+        var loadedMonths = 0
+        var totalMonths = 0
+        var largestLoadedMonth = 0
+        var isPaging = false
+    }
+
     struct Snapshot: Equatable {
         var visibleTimelineAssets = 0
         var loadedTimelineAssets = 0
@@ -22,33 +31,64 @@ enum PerformanceDiagnostics {
 
     private static let lock = NSLock()
     private static var value = Snapshot()
+    private static var collectionEnabled = false
 
-    static func updateTimeline(
-        visibleAssets: Int,
-        loadedAssets: Int,
-        loadedMonths: Int,
-        totalMonths: Int,
-        largestLoadedMonth: Int,
-        isPaging: Bool
-    ) {
+    static func setCollectionEnabled(_ enabled: Bool) {
         lock.lock()
-        value.visibleTimelineAssets = visibleAssets
-        value.loadedTimelineAssets = loadedAssets
-        value.loadedTimelineMonths = loadedMonths
-        value.totalTimelineMonths = totalMonths
-        value.largestLoadedMonth = largestLoadedMonth
-        value.isTimelinePaging = isPaging
+        if enabled && !collectionEnabled {
+            value = Snapshot()
+        }
+        collectionEnabled = enabled
+        if !enabled {
+            value = Snapshot()
+        }
         lock.unlock()
     }
 
-    static func networkRequestStarted() {
+    /// The snapshot builder stays lazy so Timeline's aggregate counts are not
+    /// calculated during normal rendering while diagnostics are disabled.
+    static func updateTimeline(_ makeSnapshot: () -> TimelineSnapshot) {
         lock.lock()
+        let shouldCollect = collectionEnabled
+        lock.unlock()
+        guard shouldCollect else { return }
+
+        let timeline = makeSnapshot()
+
+        lock.lock()
+        guard collectionEnabled else {
+            lock.unlock()
+            return
+        }
+        value.visibleTimelineAssets = timeline.visibleAssets
+        value.loadedTimelineAssets = timeline.loadedAssets
+        value.loadedTimelineMonths = timeline.loadedMonths
+        value.totalTimelineMonths = timeline.totalMonths
+        value.largestLoadedMonth = timeline.largestLoadedMonth
+        value.isTimelinePaging = timeline.isPaging
+        lock.unlock()
+    }
+
+    /// Returns whether this request was admitted to diagnostics, allowing its
+    /// completion to remain balanced if the setting changes mid-request.
+    static func networkRequestStarted() -> Bool {
+        lock.lock()
+        guard collectionEnabled else {
+            lock.unlock()
+            return false
+        }
         value.activeNetworkRequests += 1
         lock.unlock()
+        return true
     }
 
-    static func networkRequestFinished(responseBytes: Int) {
+    static func networkRequestFinished(responseBytes: Int, wasTracked: Bool) {
+        guard wasTracked else { return }
         lock.lock()
+        guard collectionEnabled else {
+            lock.unlock()
+            return
+        }
         value.activeNetworkRequests = max(0, value.activeNetworkRequests - 1)
         value.totalResponseBytes += Int64(max(0, responseBytes))
         lock.unlock()

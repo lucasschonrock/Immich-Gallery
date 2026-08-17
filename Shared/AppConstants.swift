@@ -70,7 +70,7 @@ struct UserDefaultsKeys {
     static let defaultStartupTab = "defaultStartupTab"
     static let lastSeenVersion = "lastSeenVersion"
     static let assetSortOrder = "assetSortOrder"
-    static let showDiagnosticsOverlay = "showDiagnosticsOverlay" // TEMP DEBUG: render-storm overlay
+    static let showDiagnosticsOverlay = "showDiagnosticsOverlay"
 
     // Art Mode settings
     static let artModeLevel = "artModeLevel"

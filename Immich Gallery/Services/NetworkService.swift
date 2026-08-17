@@ -167,9 +167,9 @@ class NetworkService: ObservableObject {
     ) async throws -> T {
         let request = try buildAuthenticatedRequest(endpoint: endpoint, method: method, body: body)
         print("NetworkService: Making request to \(request.url?.absoluteString ?? endpoint)")
-        PerformanceDiagnostics.networkRequestStarted()
+        let diagnosticsTracked = PerformanceDiagnostics.networkRequestStarted()
         var responseByteCount = 0
-        defer { PerformanceDiagnostics.networkRequestFinished(responseBytes: responseByteCount) }
+        defer { PerformanceDiagnostics.networkRequestFinished(responseBytes: responseByteCount, wasTracked: diagnosticsTracked) }
         
         let (data, response): (Data, URLResponse)
         do {
@@ -201,9 +201,9 @@ class NetworkService: ObservableObject {
         
         // Remove Content-Type header for data requests (we don't want application/json for binary data)
         request.setValue(nil, forHTTPHeaderField: "Content-Type")
-        PerformanceDiagnostics.networkRequestStarted()
+        let diagnosticsTracked = PerformanceDiagnostics.networkRequestStarted()
         var responseByteCount = 0
-        defer { PerformanceDiagnostics.networkRequestFinished(responseBytes: responseByteCount) }
+        defer { PerformanceDiagnostics.networkRequestFinished(responseBytes: responseByteCount, wasTracked: diagnosticsTracked) }
         
         let (data, response): (Data, URLResponse)
         do {
@@ -225,9 +225,9 @@ class NetworkService: ObservableObject {
     ) async throws {
         let request = try buildAuthenticatedRequest(endpoint: endpoint, method: method, body: body)
         print("NetworkService: Making void request to \(request.url?.absoluteString ?? endpoint)")
-        PerformanceDiagnostics.networkRequestStarted()
+        let diagnosticsTracked = PerformanceDiagnostics.networkRequestStarted()
         var responseByteCount = 0
-        defer { PerformanceDiagnostics.networkRequestFinished(responseBytes: responseByteCount) }
+        defer { PerformanceDiagnostics.networkRequestFinished(responseBytes: responseByteCount, wasTracked: diagnosticsTracked) }
 
         let (data, response): (Data, URLResponse)
         do {

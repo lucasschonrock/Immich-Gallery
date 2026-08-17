@@ -54,12 +54,6 @@ extension UserDefaults {
         set { set(newValue, forKey: UserDefaultsKeys.slideshowBackgroundColor) }
     }
     
-    // TEMP DEBUG: gates the render-storm diagnostics overlay.
-    var showDiagnosticsOverlay: Bool {
-        get { bool(forKey: UserDefaultsKeys.showDiagnosticsOverlay) }
-        set { set(newValue, forKey: UserDefaultsKeys.showDiagnosticsOverlay) }
-    }
-
     var showTagsTab: Bool {
         get { bool(forKey: UserDefaultsKeys.showTagsTab) }
         set { set(newValue, forKey: UserDefaultsKeys.showTagsTab) }

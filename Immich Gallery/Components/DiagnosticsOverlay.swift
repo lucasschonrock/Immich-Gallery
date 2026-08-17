@@ -9,64 +9,62 @@ import Combine
 import Darwin
 import SwiftUI
 
-// TEMP DEBUG (remove with RenderStormStats): an on-screen version of the
-// render-storm log. Attach with `.diagnosticsOverlay()` anywhere; it is off
-// unless the user turns on "Diagnostics Overlay" in Settings, which lets a
-// field reporter without a Mac photograph the numbers for us.
-struct DiagnosticsOverlay: View {
-    // Polling instead of observing: RenderStormStats is deliberately not an
-    // ObservableObject, because a publisher that fired on every tick would
-    // re-render this overlay thousands of times a second and become the very
-    // render storm it is measuring.
+/// A single app-wide sampler keeps session peaks stable when a full-screen
+/// presentation needs its own overlay. It runs only while diagnostics are on.
+@MainActor
+final class DiagnosticsMonitor: ObservableObject {
+    static let shared = DiagnosticsMonitor()
+
     private static let sampleInterval: TimeInterval = 1.0
 
-    @State private var snapshot = RenderStormStats.Snapshot()
-    @State private var performance = PerformanceDiagnostics.Snapshot()
-    @State private var cpuPercent = 0.0
-    @State private var residentMemoryMB = 0.0
-    @State private var peakResidentMemoryMB = 0.0
-    @State private var networkBytesPerSecond = 0.0
-    @State private var currentMainThreadStall = 0.0
-    @State private var peakMainThreadStall = 0.0
-    @State private var lastSampleUptime: TimeInterval?
-    @State private var lastCPUTime: TimeInterval?
-    @State private var lastResponseBytes: Int64?
-    private let ticker = Timer.publish(every: DiagnosticsOverlay.sampleInterval, on: .main, in: .common).autoconnect()
+    struct Sample: Equatable {
+        var performance = PerformanceDiagnostics.Snapshot()
+        var cpuPercent = 0.0
+        var footprintMB = 0.0
+        var peakFootprintMB = 0.0
+        var networkBytesPerSecond = 0.0
+        var currentMainTimerDelay = 0.0
+        var peakMainTimerDelay = 0.0
+    }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("DIAGNOSTICS")
-            Text("body   \(snapshot.bodyEvalsPerSecond)/s  peak \(snapshot.peakBodyEvalsPerSecond)")
-            Text("cache  \(snapshot.publishesPerSecond)/s  peak \(snapshot.peakPublishesPerSecond)")
-            Text("timeline visible \(performance.visibleTimelineAssets)  loaded \(performance.loadedTimelineAssets)")
-            Text("months \(performance.loadedTimelineMonths)/\(performance.totalTimelineMonths)  largest \(performance.largestLoadedMonth)")
-            Text("paging \(performance.isTimelinePaging ? "loading" : "idle")")
-            Text("network \(performance.activeNetworkRequests) active  \(Self.byteRate(networkBytesPerSecond))")
-            Text("cpu \(cpuPercent, specifier: "%.0f")%  UI stall \(currentMainThreadStall, specifier: "%.1f")s peak \(peakMainThreadStall, specifier: "%.1f")s")
-            Text("memory \(residentMemoryMB, specifier: "%.0f") MB  peak \(peakResidentMemoryMB, specifier: "%.0f") MB")
-        }
-        .font(.system(.caption, design: .monospaced))
-        .foregroundColor(.white)
-        .padding(10)
-        .background(Color.black.opacity(0.65), in: RoundedRectangle(cornerRadius: 8))
-        .padding(40)
-        .onAppear {
+    @Published private(set) var sample = Sample()
+
+    private var ticker: AnyCancellable?
+    private var lastSampleUptime: TimeInterval?
+    private var lastCPUTime: TimeInterval?
+    private var lastResponseBytes: Int64?
+
+    private init() {
+        setEnabled(UserDefaults.standard.bool(forKey: UserDefaultsKeys.showDiagnosticsOverlay))
+    }
+
+    func setEnabled(_ enabled: Bool) {
+        PerformanceDiagnostics.setCollectionEnabled(enabled)
+
+        if enabled {
+            guard ticker == nil else { return }
             establishPerformanceBaseline()
-        }
-        .onReceive(ticker) { _ in
-            samplePerformance()
+            ticker = Timer.publish(every: Self.sampleInterval, on: .main, in: .common)
+                .autoconnect()
+                .sink { [weak self] _ in
+                    self?.samplePerformance()
+                }
+        } else {
+            ticker?.cancel()
+            ticker = nil
+            lastSampleUptime = nil
+            lastCPUTime = nil
+            lastResponseBytes = nil
         }
     }
 
     private func establishPerformanceBaseline() {
-        let now = ProcessInfo.processInfo.systemUptime
         let diagnostics = PerformanceDiagnostics.snapshot()
-        lastSampleUptime = now
+        lastSampleUptime = ProcessInfo.processInfo.systemUptime
         lastCPUTime = Self.processCPUTime()
         lastResponseBytes = diagnostics.totalResponseBytes
-        updateMemorySample()
-        performance = diagnostics
-        snapshot = RenderStormStats.snapshot()
+        updateFootprintSample()
+        sample.performance = diagnostics
     }
 
     private func samplePerformance() {
@@ -76,23 +74,58 @@ struct DiagnosticsOverlay: View {
 
         if let previousUptime = lastSampleUptime {
             let elapsed = max(0.001, now - previousUptime)
-            currentMainThreadStall = max(0, elapsed - Self.sampleInterval)
-            peakMainThreadStall = max(peakMainThreadStall, currentMainThreadStall)
 
-            if let previousCPUTime = lastCPUTime {
-                cpuPercent = max(0, (cpuTime - previousCPUTime) / elapsed * 100)
-            }
-            if let previousResponseBytes = lastResponseBytes {
-                networkBytesPerSecond = Double(max(0, diagnostics.totalResponseBytes - previousResponseBytes)) / elapsed
+            // A long gap means the app or run loop was suspended, not that the UI
+            // stalled for that entire duration. Re-baseline instead of recording
+            // a misleading peak after returning to the foreground.
+            if elapsed <= Self.sampleInterval * 3 {
+                sample.currentMainTimerDelay = max(0, elapsed - Self.sampleInterval)
+                sample.peakMainTimerDelay = max(sample.peakMainTimerDelay, sample.currentMainTimerDelay)
+
+                if let previousCPUTime = lastCPUTime {
+                    sample.cpuPercent = max(0, (cpuTime - previousCPUTime) / elapsed * 100)
+                }
+                if let previousResponseBytes = lastResponseBytes {
+                    sample.networkBytesPerSecond = Double(max(0, diagnostics.totalResponseBytes - previousResponseBytes)) / elapsed
+                }
+            } else {
+                sample.currentMainTimerDelay = 0
+                sample.cpuPercent = 0
+                sample.networkBytesPerSecond = 0
             }
         }
 
         lastSampleUptime = now
         lastCPUTime = cpuTime
         lastResponseBytes = diagnostics.totalResponseBytes
-        updateMemorySample()
-        performance = diagnostics
-        snapshot = RenderStormStats.snapshot()
+        updateFootprintSample()
+        sample.performance = diagnostics
+    }
+
+    private func updateFootprintSample() {
+        let megabytes = Double(Self.processPhysicalFootprintBytes()) / 1_048_576
+        sample.footprintMB = megabytes
+        sample.peakFootprintMB = max(sample.peakFootprintMB, megabytes)
+    }
+
+    /// Physical footprint is the closest available process metric to Xcode's
+    /// Memory Gauge and is more representative of memory pressure than RSS.
+    private static func processPhysicalFootprintBytes() -> UInt64 {
+        var info = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(
+            MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size
+        )
+        let result = withUnsafeMutablePointer(to: &info) { pointer in
+            pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                task_info(
+                    mach_task_self_,
+                    task_flavor_t(TASK_VM_INFO),
+                    $0,
+                    &count
+                )
+            }
+        }
+        return result == KERN_SUCCESS ? UInt64(info.phys_footprint) : 0
     }
 
     private static func processCPUTime() -> TimeInterval {
@@ -104,27 +137,31 @@ struct DiagnosticsOverlay: View {
     private static func timevalSeconds(_ value: timeval) -> TimeInterval {
         TimeInterval(value.tv_sec) + TimeInterval(value.tv_usec) / 1_000_000
     }
+}
 
-    private func updateMemorySample() {
-        let megabytes = Double(Self.processResidentMemoryBytes()) / 1_048_576
-        residentMemoryMB = megabytes
-        peakResidentMemoryMB = max(peakResidentMemoryMB, megabytes)
-    }
+/// Optional field diagnostics for performance reports from devices that are not
+/// attached to Xcode. The shared monitor publishes at most once per second.
+struct DiagnosticsOverlay: View {
+    @ObservedObject private var monitor = DiagnosticsMonitor.shared
 
-    private static func processResidentMemoryBytes() -> UInt64 {
-        var info = mach_task_basic_info()
-        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size) / 4
-        let result = withUnsafeMutablePointer(to: &info) { pointer in
-            pointer.withMemoryRebound(to: integer_t.self, capacity: 1) {
-                task_info(
-                    mach_task_self_,
-                    task_flavor_t(MACH_TASK_BASIC_INFO),
-                    $0,
-                    &count
-                )
-            }
+    var body: some View {
+        let sample = monitor.sample
+        let performance = sample.performance
+
+        VStack(alignment: .leading, spacing: 2) {
+            Text("DIAGNOSTICS")
+            Text("timeline visible \(performance.visibleTimelineAssets)  loaded \(performance.loadedTimelineAssets)")
+            Text("months \(performance.loadedTimelineMonths)/\(performance.totalTimelineMonths)  largest \(performance.largestLoadedMonth)")
+            Text("paging \(performance.isTimelinePaging ? "loading" : "idle")")
+            Text("network \(performance.activeNetworkRequests) active  \(Self.byteRate(sample.networkBytesPerSecond))")
+            Text("cpu \(sample.cpuPercent, specifier: "%.0f")%  UI delay \(sample.currentMainTimerDelay, specifier: "%.1f")s peak \(sample.peakMainTimerDelay, specifier: "%.1f")s")
+            Text("footprint \(sample.footprintMB, specifier: "%.0f") MB  peak \(sample.peakFootprintMB, specifier: "%.0f") MB")
         }
-        return result == KERN_SUCCESS ? info.resident_size : 0
+        .font(.system(.caption, design: .monospaced))
+        .foregroundColor(.white)
+        .padding(10)
+        .background(Color.black.opacity(0.65), in: RoundedRectangle(cornerRadius: 8))
+        .padding(40)
     }
 
     private static func byteRate(_ bytesPerSecond: Double) -> String {
@@ -145,6 +182,7 @@ struct DiagnosticsOverlay: View {
 /// the subtree it wraps — for ContentView, the entire main interface.
 private struct DiagnosticsOverlayModifier: ViewModifier {
     @AppStorage(UserDefaultsKeys.showDiagnosticsOverlay) private var showDiagnosticsOverlay = false
+    @ObservedObject private var monitor = DiagnosticsMonitor.shared
 
     func body(content: Content) -> some View {
         content.overlay(alignment: .topTrailing) {
@@ -155,6 +193,9 @@ private struct DiagnosticsOverlayModifier: ViewModifier {
                     .focusable(false)
                     .accessibilityHidden(true)
             }
+        }
+        .onChange(of: showDiagnosticsOverlay) { _, isEnabled in
+            monitor.setEnabled(isEnabled)
         }
     }
 }

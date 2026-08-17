@@ -133,14 +133,16 @@ struct TimelineView: View {
     }
 
     var body: some View {
-        let _ = PerformanceDiagnostics.updateTimeline(
-            visibleAssets: renderedAssetCount,
-            loadedAssets: loadedAssetCount,
-            loadedMonths: loadedMonthCount,
-            totalMonths: buckets.count,
-            largestLoadedMonth: largestLoadedMonth,
-            isPaging: isLoadingFilteredPage || isLoadingUnfilteredPage
-        )
+        let _ = PerformanceDiagnostics.updateTimeline {
+            PerformanceDiagnostics.TimelineSnapshot(
+                visibleAssets: renderedAssetCount,
+                loadedAssets: loadedAssetCount,
+                loadedMonths: loadedMonthCount,
+                totalMonths: buckets.count,
+                largestLoadedMonth: largestLoadedMonth,
+                isPaging: isLoadingFilteredPage || isLoadingUnfilteredPage
+            )
+        }
 
         ZStack {
             SharedGradientBackground()
@@ -205,8 +207,8 @@ struct TimelineView: View {
                     authenticationService: authService,
                     currentAssetIndex: $currentAssetIndex
                 )
-                // TEMP DEBUG: a fullScreenCover doesn't inherit the presenter's
-                // overlay, so the diagnostics readout is re-attached here.
+                // A fullScreenCover doesn't inherit the presenter's overlay, so
+                // reattach the same shared diagnostics monitor here.
                 .diagnosticsOverlay()
             }
         }
@@ -226,7 +228,6 @@ struct TimelineView: View {
             }
         }
         .onAppear {
-            print("🟢🟢🟢 TIMELINE-BUILD-CHECK v4: asset-paginated TimelineView (hard 120-cell pages) IS RUNNING")
             if buckets.isEmpty && !isLoading {
                 reloadTimeline()
             }

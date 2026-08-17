@@ -259,7 +259,7 @@ struct ContentView: View {
                         recordUserActivity()
                     }
                     .id(refreshTrigger) // Force refresh when user switches
-                    .diagnosticsOverlay() // TEMP DEBUG: no-op unless enabled in Settings
+                    .diagnosticsOverlay() // No-op unless enabled in Settings
                     // .accentColor(.blue)
                 }
             }

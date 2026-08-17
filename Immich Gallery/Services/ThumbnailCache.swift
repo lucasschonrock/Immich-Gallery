@@ -90,7 +90,6 @@ class ThumbnailCache: NSObject, ObservableObject {
             
             // Update memory cache statistics
             DispatchQueue.main.async {
-                RenderStormStats.tickPublish(); RenderStormStats.tickPublish() // TEMP DEBUG: 2 @Published mutations
                 self.memoryCacheSize += cachedImage.size
                 self.memoryCacheCount += 1
             }
@@ -222,7 +221,6 @@ class ThumbnailCache: NSObject, ObservableObject {
         
         // Update memory cache statistics
         DispatchQueue.main.async {
-            RenderStormStats.tickPublish(); RenderStormStats.tickPublish() // TEMP DEBUG: 2 @Published mutations
             self.memoryCacheSize += cachedImage.size
             self.memoryCacheCount += 1
         }
@@ -260,8 +258,12 @@ class ThumbnailCache: NSObject, ObservableObject {
                 let fileURL = self.cacheDirectory.appendingPathComponent(cacheKey)
 
                 do {
+                    let previousSize = (try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
                     try imageData.write(to: fileURL)
-                    self.diskCacheSizeBytes += imageData.count
+                    self.diskCacheSizeBytes = max(
+                        0,
+                        self.diskCacheSizeBytes - previousSize + imageData.count
+                    )
 
                     // Check if we need to clean up old files
                     if self.diskCacheSizeBytes > self.maxDiskCacheSize {
@@ -307,7 +309,6 @@ class ThumbnailCache: NSObject, ObservableObject {
                 self.diskCacheSizeBytes = totalSize
 
                 DispatchQueue.main.async {
-                    RenderStormStats.tickPublish() // TEMP DEBUG
                     self.diskCacheSize = totalSize
                 }
             } catch {
@@ -343,7 +344,6 @@ class ThumbnailCache: NSObject, ObservableObject {
 
             let currentSize = diskCacheSizeBytes
             DispatchQueue.main.async {
-                RenderStormStats.tickPublish() // TEMP DEBUG
                 self.diskCacheSize = currentSize
             }
         } catch {
@@ -371,10 +371,6 @@ class ThumbnailCache: NSObject, ObservableObject {
     }
     
     private func updateMemoryCacheStatistics() {
-        // Calculate actual memory cache statistics from the NSCache
-        var totalSize = 0
-        var count = 0
-        
         // Note: NSCache doesn't provide direct access to all objects, so we'll use our tracking
         // but also recalculate disk cache size periodically
         DispatchQueue.main.async {
@@ -419,7 +415,6 @@ extension ThumbnailCache: NSCacheDelegate {
     func cache(_ cache: NSCache<AnyObject, AnyObject>, willEvictObject obj: Any) {
         if let cachedImage = obj as? CachedImage {
             DispatchQueue.main.async {
-                RenderStormStats.tickPublish(); RenderStormStats.tickPublish() // TEMP DEBUG: 2 @Published mutations
                 self.memoryCacheSize -= cachedImage.size
                 self.memoryCacheCount -= 1
             }

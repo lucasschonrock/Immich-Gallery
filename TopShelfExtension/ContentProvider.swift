@@ -280,7 +280,7 @@ class ContentProvider: TVTopShelfContentProvider {
         request.httpBody = try JSONSerialization.data(withJSONObject: searchRequest)
         
         print("TopShelf: Sending API request...")
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await ImmichHTTPClient.shared.session.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             print("TopShelf: Invalid HTTP response")
@@ -330,7 +330,7 @@ class ContentProvider: TVTopShelfContentProvider {
         request.httpBody = try JSONSerialization.data(withJSONObject: searchRequest)
 
         print("TopShelf: Sending random API request...")
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await ImmichHTTPClient.shared.session.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             print("TopShelf: Invalid HTTP response")
@@ -401,7 +401,7 @@ class ContentProvider: TVTopShelfContentProvider {
         
         do {
             print("TopShelf: Starting image download request...")
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await ImmichHTTPClient.shared.session.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse else {
                 print("TopShelf: Invalid image download response")
@@ -447,7 +447,7 @@ class ContentProvider: TVTopShelfContentProvider {
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         }
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await ImmichHTTPClient.shared.session.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             print("TopShelf: Invalid test response")

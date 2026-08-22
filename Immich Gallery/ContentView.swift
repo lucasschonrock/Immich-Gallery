@@ -104,6 +104,13 @@ struct ContentView: View {
     @State private var deepLinkAssetId: String?
     @State private var deepLinkedAsset: ImmichAsset?
     @State private var deepLinkedAssetIndex = 0
+    @StateObject private var secretComboMonitor = RemoteSecretComboMonitor()
+    @State private var showingLockedPinPrompt = false
+    @State private var lockedPinCode = ""
+    @State private var lockedPinError: String?
+    @State private var isUnlockingLockedFolder = false
+    @State private var selectedLockedAlbum: ImmichAlbum?
+    @State private var isLockedFolderOpen = false
     
     init() {
         let userManager = UserManager()
@@ -246,6 +253,7 @@ struct ContentView: View {
                         checkForAppUpdate()
                         recordUserActivity()
                         startLaunchSlideshowIfNeeded()
+                        secretComboMonitor.startControllerMonitoring()
                     }
                     .onChange(of: selectedTab) { oldValue, newValue in
                         searchTabHighlighted = false
@@ -260,7 +268,45 @@ struct ContentView: View {
                     }
                     .id(refreshTrigger) // Force refresh when user switches
                     .diagnosticsOverlay() // No-op unless enabled in Settings
-                    // .accentColor(.blue)
+                    .onPlayPauseCommand {
+                        guard
+                            !showingLockedPinPrompt,
+                            selectedLockedAlbum == nil,
+                            !isInactivityMonitoringPaused
+                        else { return }
+                        secretComboMonitor.recordSecretPress()
+                    }
+                    .onChange(of: secretComboMonitor.shouldPresentUnlock) { _, shouldPresent in
+                        guard shouldPresent else { return }
+                        secretComboMonitor.acknowledgePresentation()
+                        lockedPinCode = ""
+                        lockedPinError = nil
+                        showingLockedPinPrompt = true
+                    }
+                    .onChange(of: showingLockedPinPrompt) { _, showing in
+                        if showing {
+                            NotificationCenter.default.post(name: NSNotification.Name(NotificationNames.pauseInactivityMonitoring), object: nil)
+                        } else if selectedLockedAlbum == nil {
+                            NotificationCenter.default.post(name: NSNotification.Name(NotificationNames.resumeInactivityMonitoring), object: nil)
+                        }
+                    }
+                    .sheet(isPresented: $showingLockedPinPrompt) {
+                        LockedPinEntryPanel(
+                            pinCode: $lockedPinCode,
+                            errorMessage: lockedPinError,
+                            isUnlocking: isUnlockingLockedFolder,
+                            onUnlock: unlockLockedFolder
+                        )
+                        .interactiveDismissDisabled(isUnlockingLockedFolder)
+                    }
+                    .fullScreenCover(item: $selectedLockedAlbum, onDismiss: lockLockedFolderSessionIfNeeded) { album in
+                        AlbumDetailView(
+                            album: album,
+                            albumService: albumService,
+                            authService: authService,
+                            assetService: assetService
+                        )
+                    }
                 }
             }
             .navigationTitle("Immich Gallery")
@@ -470,6 +516,54 @@ struct ContentView: View {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
         return "\(version).\(build)"
+    }
+
+    private func unlockLockedFolder() {
+        let trimmedPin = lockedPinCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedPin.isEmpty else { return }
+
+        if userManager.currentUser?.authType == .apiKey {
+            lockedPinError = "Private library unlock needs a password login. API keys cannot elevate the session."
+            return
+        }
+
+        lockedPinError = nil
+        isUnlockingLockedFolder = true
+
+        Task {
+            do {
+                try await authService.unlockAuthSession(pinCode: trimmedPin)
+                await MainActor.run {
+                    isUnlockingLockedFolder = false
+                    showingLockedPinPrompt = false
+                    lockedPinCode = ""
+                    isLockedFolderOpen = true
+                    if let user = userManager.currentUser {
+                        selectedLockedAlbum = LockedFolderAlbum.make(user: user)
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    lockedPinError = error.localizedDescription
+                    isUnlockingLockedFolder = false
+                    lockedPinCode = ""
+                }
+            }
+        }
+    }
+
+    private func lockLockedFolderSessionIfNeeded() {
+        guard isLockedFolderOpen else { return }
+        isLockedFolderOpen = false
+        NotificationCenter.default.post(name: NSNotification.Name(NotificationNames.resumeInactivityMonitoring), object: nil)
+
+        Task {
+            do {
+                try await authService.lockAuthSession()
+            } catch {
+                print("Failed to lock auth session after leaving private library: \(error)")
+            }
+        }
     }
 }
 

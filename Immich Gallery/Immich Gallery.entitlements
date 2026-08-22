@@ -4,11 +4,11 @@
 <dict>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.com.sanketh.dev.Immich-Gallery</string>
+		<string>group.lucasschonrock</string>
 	</array>
 	<key>keychain-access-groups</key>
 	<array>
-		<string>$(AppIdentifierPrefix)com.sanketh.dev.Immich-Gallery</string>
+		<string>$(AppIdentifierPrefix)com.lucasschonrock.Immich-Gallery</string>
 	</array>
 </dict>
 </plist>

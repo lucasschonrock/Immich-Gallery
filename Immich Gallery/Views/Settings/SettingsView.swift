@@ -67,6 +67,9 @@ struct SettingsView: View {
     @State private var showingSignIn = false
     @State private var showingWhatsNew = false
     @State private var showingVisibleTabs = false
+    @ObservedObject private var httpClient = ImmichHTTPClient.shared
+    @State private var showingMTLSPassword = false
+    @State private var mtlsPasswordDraft = ""
     @AppStorage("hideImageOverlay") private var hideImageOverlay = true
     @AppStorage(UserDefaultsKeys.showCurrentTimeWidget) private var showCurrentTimeWidget = true
     @AppStorage(UserDefaultsKeys.photoDateDisplayMode) private var photoDateDisplayMode = "dateAndTime"
@@ -193,6 +196,29 @@ struct SettingsView: View {
             .buttonStyle(CardButtonStyle())
         }
     }
+
+    private var mtlsSection: some View {
+        SettingsSection(title: "mTLS") {
+            AnyView(VStack(spacing: 12) {
+                SettingsRow(
+                    icon: "lock.shield",
+                    title: "Client Certificate",
+                    subtitle: httpClient.certificateStatus.settingsSubtitle,
+                    content: AnyView(
+                        HStack(spacing: 12) {
+                            Text(httpClient.certificateStatus.settingsTitle)
+                            Button("Password") {
+                                mtlsPasswordDraft = httpClient.storedPassword
+                                showingMTLSPassword = true
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    ),
+                    isOn: httpClient.certificateStatus == .ready
+                )
+            })
+        }
+    }
     
     private func userRow(user: SavedUser) -> some View {
         HStack {
@@ -296,6 +322,7 @@ struct SettingsView: View {
                         
                         serverInfoSection
                         userActionsSection
+                        mtlsSection
                         
                         // Interface Settings Section
                         SettingsSection(title: "Interface") {
@@ -716,6 +743,37 @@ struct SettingsView: View {
                 ) { selection, defaultTab in
                     applyVisibleTabs(selection, defaultTab: defaultTab)
                 }
+            }
+            .sheet(isPresented: $showingMTLSPassword) {
+                VStack(alignment: .leading, spacing: 24) {
+                    Text("mTLS Password")
+                        .font(.system(size: 48, weight: .semibold))
+
+                    Text("Used to unlock the bundled client.p12. Leave empty if the certificate has no password.")
+                        .font(.system(size: 29))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    SecureField("PKCS#12 password", text: $mtlsPasswordDraft)
+                        .font(.system(size: 31))
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
+                        .background(Color.white.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                    HStack {
+                        Spacer()
+                        Button("Save") {
+                            httpClient.storedPassword = mtlsPasswordDraft
+                            showingMTLSPassword = false
+                        }
+                        .font(.system(size: 31, weight: .semibold))
+                        .buttonStyle(.borderedProminent)
+                        Spacer()
+                    }
+                }
+                .padding(40)
+                .frame(minWidth: 720)
             }
             .alert("Clear Cache", isPresented: $showingClearCacheAlert) {
                 Button("Cancel", role: .cancel) { }

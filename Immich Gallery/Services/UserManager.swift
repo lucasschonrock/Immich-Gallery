@@ -311,7 +311,7 @@ class UserManager: ObservableObject {
         
         request.httpBody = try JSONSerialization.data(withJSONObject: loginData)
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await ImmichHTTPClient.shared.session.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NSError(domain: "UserManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
@@ -335,7 +335,7 @@ class UserManager: ObservableObject {
         request.httpMethod = "GET"
         request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await ImmichHTTPClient.shared.session.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NSError(domain: "UserManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])

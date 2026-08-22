@@ -57,7 +57,6 @@ struct AssetThumbnailView: View {
             
             // Video indicator
             if asset.type == .video {
-                // Play button at top right
                 VStack {
                     HStack {
                         Spacer()
@@ -71,7 +70,6 @@ struct AssetThumbnailView: View {
                     }
                     Spacer()
                 }
-            
             }
 
 
@@ -107,17 +105,28 @@ struct AssetThumbnailView: View {
                     }
                 }
             }
-            if showsDateOverlay {
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(DateFormatter.formatSpecificISO8601(asset.exifInfo?.dateTimeOriginal ?? asset.fileCreatedAt, includeTime: false))
-                        .font(.caption2)
-                        .foregroundColor(.white.opacity(0.8))
+            if asset.displayedVideoDuration != nil || showsDateOverlay {
+                VStack(alignment: .trailing, spacing: 6) {
+                    if let duration = asset.displayedVideoDuration {
+                        Text(duration)
+                            .font(.callout.weight(.semibold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Color.black.opacity(0.72), in: RoundedRectangle(cornerRadius: 8))
+                    }
+                    if showsDateOverlay {
+                        Text(DateFormatter.formatSpecificISO8601(asset.exifInfo?.dateTimeOriginal ?? asset.fileCreatedAt, includeTime: false))
+                            .font(.caption2)
+                            .foregroundColor(.white.opacity(0.8))
+                            .padding(8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.black.opacity(0.4))
+                            )
+                    }
                 }
                 .padding(8)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.black.opacity(0.4))
-                )
             }
             
         }
@@ -227,7 +236,7 @@ struct AssetThumbnailView: View {
         isOffline: false,
         isTrashed: false,
         checksum: "mock-checksum",
-        duration: nil,
+        duration: "00:01:23.000",
         hasMetadata: false,
         livePhotoVideoId: nil,
         people: [],

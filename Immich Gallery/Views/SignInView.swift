@@ -109,11 +109,17 @@ struct SignInView: View {
                         Text(authType == .password ? "Password" : "API Key")
                             .font(.headline)
                             .foregroundColor(.primary)
-                        
+
                         if authType == .password {
-                            SecureField("Enter your password", text: $password)
+                            VisibleSignInField(
+                                placeholder: "Enter your password",
+                                text: $password
+                            )
                         } else {
-                            SecureField("Enter your API key", text: $apiKey)
+                            VisibleSignInField(
+                                placeholder: "Enter your API key",
+                                text: $apiKey
+                            )
                         }
                     }
                 }
@@ -265,6 +271,17 @@ struct SignInView: View {
         }
     }
     
+}
+
+private struct VisibleSignInField: View {
+    let placeholder: String
+    @Binding var text: String
+
+    var body: some View {
+        TextField(placeholder, text: $text)
+            .textInputAutocapitalization(.never)
+            .disableAutocorrection(true)
+    }
 }
 
 #Preview {

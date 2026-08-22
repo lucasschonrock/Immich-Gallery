@@ -10,7 +10,7 @@ import AVKit
 import Combine
 
 
-class PlayerManager: NSObject, ObservableObject, AVAssetResourceLoaderDelegate {
+class PlayerManager: NSObject, ObservableObject {
     @Published var player = AVPlayer()
     @Published var isLoading = true
     @Published var errorMessage: String?
@@ -20,6 +20,7 @@ class PlayerManager: NSObject, ObservableObject, AVAssetResourceLoaderDelegate {
     
     private var playerItem: AVPlayerItem?
     private var cancellables = Set<AnyCancellable>()
+    private let videoLoader = ImmichVideoResourceLoader()
     
     let asset: ImmichAsset
     let assetService: AssetService
@@ -30,6 +31,7 @@ class PlayerManager: NSObject, ObservableObject, AVAssetResourceLoaderDelegate {
         self.assetService = assetService
         self.authenticationService = authenticationService
         super.init()
+        videoLoader.authenticationService = authenticationService
     }
     
     func initializePlayer() {
@@ -60,15 +62,13 @@ class PlayerManager: NSObject, ObservableObject, AVAssetResourceLoaderDelegate {
     private func setupPlayer(with url: URL) {
         // Determine MIME type based on asset properties
         let mimeType = determineVideoMimeType()
-        
-        // Create AVURLAsset with custom options including auth headers
-        let asset = AVURLAsset(url: url, options: [
-            "AVURLAssetOutOfBandMIMETypeKey": mimeType,
-            "AVURLAssetHTTPHeaderFieldsKey": getVideoAuthHeaders()
+        let proxyURL = ImmichVideoResourceLoader.proxyURL(for: url)
+
+        // Custom scheme so AVPlayer asks this loader for bytes (mTLS + auth).
+        let asset = AVURLAsset(url: proxyURL, options: [
+            "AVURLAssetOutOfBandMIMETypeKey": mimeType
         ])
-        
-        // Set up authentication delegate for streaming requests
-        asset.resourceLoader.setDelegate(self, queue: DispatchQueue.main)
+        asset.resourceLoader.setDelegate(videoLoader, queue: videoLoader.queue)
         
         // Create player item with the asset
         let playerItem = AVPlayerItem(asset: asset)
@@ -97,7 +97,7 @@ class PlayerManager: NSObject, ObservableObject, AVAssetResourceLoaderDelegate {
             .store(in: &cancellables)
         
         // Observe overall status (from Medium article)
-        playerItem.publisher(for: \.status)
+        playerItem.publisher(for: \.status, options: [.initial, .new])
             .sink { [weak self] status in
                 DispatchQueue.main.async {
                     self?.handlePlayerItemStatusChange(status)
@@ -136,10 +136,7 @@ class PlayerManager: NSObject, ObservableObject, AVAssetResourceLoaderDelegate {
             print("✅ Ready to play!")
             isReadyToPlay = true
             isLoading = false
-            // Auto-play when ready after 4 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { [weak self] in
-                self?.player.play()
-            }
+            player.play()
         case .failed:
             print("❌ Something went wrong with playback.")
             isLoading = false
@@ -199,99 +196,6 @@ class PlayerManager: NSObject, ObservableObject, AVAssetResourceLoaderDelegate {
         playerItem = nil
         
         print("🧹 Video player cleaned up")
-    }
-    
-    private func getVideoAuthHeaders() -> [String: String] {
-        let headers = authenticationService.getAuthHeaders()
-        
-        if headers.isEmpty {
-            print("❌ Video auth: No access token available")
-            print("🔍 Auth service isAuthenticated: \(authenticationService.isAuthenticated)")
-            print("🔍 Current user: \(authenticationService.currentUser?.email ?? "nil")")
-        } else {
-            let authType = headers.keys.contains("x-api-key") ? "API key" : "JWT token"
-            let token = headers.values.first ?? ""
-            print("✅ Video auth: Using \(authType): \(String(token.prefix(20)))...")
-        }
-        
-        return headers
-    }
-    
-    // MARK: - AVAssetResourceLoaderDelegate
-    
-    func resourceLoader(_ resourceLoader: AVAssetResourceLoader, shouldWaitForLoadingOfRequestedResource loadingRequest: AVAssetResourceLoadingRequest) -> Bool {
-        print("🔐 Handling authentication request for video")
-        
-        guard let url = loadingRequest.request.url else {
-            loadingRequest.finishLoading(with: NSError(domain: NSURLErrorDomain, code: NSURLErrorBadURL, userInfo: nil))
-            return false
-        }
-        
-        // Get authentication headers
-        let authHeaders = getVideoAuthHeaders()
-        
-        // Create authenticated request
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 30.0
-        
-        // Copy range headers for proper streaming
-        if let rangeHeader = loadingRequest.request.value(forHTTPHeaderField: "Range") {
-            request.setValue(rangeHeader, forHTTPHeaderField: "Range")
-        }
-        
-        for (key, value) in authHeaders {
-            request.setValue(value, forHTTPHeaderField: key)
-        }
-        
-        // Perform the request
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    print("❌ Video request failed: \(error)")
-                    loadingRequest.finishLoading(with: error)
-                    return
-                }
-                
-                guard let response = response as? HTTPURLResponse else {
-                    let error = NSError(domain: NSURLErrorDomain, code: NSURLErrorBadServerResponse, userInfo: nil)
-                    loadingRequest.finishLoading(with: error)
-                    return
-                }
-                
-                print("📡 Video response status: \(response.statusCode)")
-                
-                if response.statusCode != 200 && response.statusCode != 206 {
-                    let error = NSError(domain: NSURLErrorDomain, code: NSURLErrorBadServerResponse, userInfo: [NSLocalizedDescriptionKey: "Server returned status \(response.statusCode)"])
-                    loadingRequest.finishLoading(with: error)
-                    return
-                }
-                
-                // Set response information
-                loadingRequest.response = response
-                
-                // Set content type if available
-                if let mimeType = response.mimeType {
-                    loadingRequest.contentInformationRequest?.contentType = mimeType
-                }
-                
-                // Set content length if available
-                if response.expectedContentLength > 0 {
-                    loadingRequest.contentInformationRequest?.contentLength = response.expectedContentLength
-                }
-                
-                // Set data
-                if let data = data {
-                    loadingRequest.dataRequest?.respond(with: data)
-                }
-                
-                // Finish loading
-                loadingRequest.finishLoading()
-                print("✅ Video request completed successfully")
-            }
-        }
-        
-        task.resume()
-        return true
     }
 }
 

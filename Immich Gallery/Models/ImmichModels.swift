@@ -148,6 +148,49 @@ struct ImmichAsset: Codable, Identifiable, Equatable {
     static func == (lhs: ImmichAsset, rhs: ImmichAsset) -> Bool {
         return lhs.id == rhs.id
     }
+
+    var displayedVideoDuration: String? {
+        guard type == .video else { return nil }
+        return VideoDurationFormatter.displayString(from: duration)
+    }
+}
+
+enum VideoDurationFormatter {
+    static func displayString(from raw: String?) -> String? {
+        guard let raw, !raw.isEmpty, let seconds = parseSeconds(raw), seconds > 0 else {
+            return nil
+        }
+        return format(seconds)
+    }
+
+    private static func parseSeconds(_ raw: String) -> Double? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let value = Double(trimmed), !trimmed.contains(":") {
+            return value
+        }
+
+        let parts = trimmed.split(separator: ":")
+        let values = parts.compactMap { Double($0) }
+        guard values.count == parts.count, (2...3).contains(values.count) else {
+            return nil
+        }
+
+        if values.count == 3 {
+            return values[0] * 3600 + values[1] * 60 + values[2]
+        }
+        return values[0] * 60 + values[1]
+    }
+
+    private static func format(_ seconds: Double) -> String {
+        let total = max(Int(seconds.rounded(.towardZero)), 0)
+        let hours = total / 3600
+        let minutes = (total % 3600) / 60
+        let remainingSeconds = total % 60
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, remainingSeconds)
+        }
+        return String(format: "%d:%02d", minutes, remainingSeconds)
+    }
 }
 
 enum AssetType: String, Codable {

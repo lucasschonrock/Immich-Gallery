@@ -17,7 +17,7 @@ func debugLog(_ message: @autoclosure () -> String) {
 }
 
 struct AppConstants {
-    static let appGroupIdentifier = "group.com.sanketh.dev.Immich-Gallery"
+    static let appGroupIdentifier = "group.lucasschonrock"
     static let configAlbumName = "immich-gallery-config"
 }
 

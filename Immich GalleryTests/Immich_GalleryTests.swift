@@ -7,6 +7,7 @@
 
 import Testing
 import Foundation
+import AVFoundation
 @testable import Immich_Gallery
 
 struct Immich_GalleryTests {
@@ -124,6 +125,71 @@ struct Immich_GalleryTests {
         #expect(assets[0].stack?.primaryAssetId == "asset-1")
         #expect(assets[0].stack?.assetCount == 3)
         #expect(assets[1].stack == nil)
+    }
+
+    @Test func timelineResponseMapsMillisecondDurationToDisplayString() throws {
+        let json = """
+        {
+          "id": ["photo-1", "video-1"],
+          "isImage": [true, false],
+          "duration": [null, 125000]
+        }
+        """.data(using: .utf8)!
+
+        let assets = try JSONDecoder().decode(TimeBucketAssetResponse.self, from: json).toAssets()
+
+        #expect(assets[0].displayedVideoDuration == nil)
+        #expect(assets[1].type == .video)
+        #expect(assets[1].duration == "125")
+        #expect(assets[1].displayedVideoDuration == "2:05")
+    }
+
+    @Test func videoDurationFormatterHandlesAssetSearchFormats() {
+        #expect(VideoDurationFormatter.displayString(from: "00:00:12.000") == "0:12")
+        #expect(VideoDurationFormatter.displayString(from: "12") == "0:12")
+        #expect(VideoDurationFormatter.displayString(from: "1:02:03") == "1:02:03")
+        #expect(VideoDurationFormatter.displayString(from: nil) == nil)
+        #expect(VideoDurationFormatter.displayString(from: "0") == nil)
+    }
+
+    @Test func videoRangePlannerFetchesSmallStartupChunks() {
+        let first = ImmichVideoRangePlanner.fetchRange(currentOffset: 0, contentLength: 40_000_000, preferFirstChunk: true)
+        #expect(first == ImmichVideoRangePlanner.FetchRange(start: 0, end: ImmichVideoRangePlanner.firstChunkBytes - 1))
+
+        let next = ImmichVideoRangePlanner.fetchRange(
+            currentOffset: ImmichVideoRangePlanner.firstChunkBytes,
+            contentLength: 40_000_000,
+            preferFirstChunk: false
+        )
+        #expect(next == ImmichVideoRangePlanner.FetchRange(
+            start: ImmichVideoRangePlanner.firstChunkBytes,
+            end: ImmichVideoRangePlanner.firstChunkBytes + ImmichVideoRangePlanner.nextChunkBytes - 1
+        ))
+
+        let tail = ImmichVideoRangePlanner.fetchRange(currentOffset: 39_900_000, contentLength: 40_000_000, preferFirstChunk: false)
+        #expect(tail == ImmichVideoRangePlanner.FetchRange(start: 39_900_000, end: 39_999_999))
+        #expect(ImmichVideoRangePlanner.fetchRange(currentOffset: 40_000_000, contentLength: 40_000_000, preferFirstChunk: false) == nil)
+    }
+
+    @Test func videoByteRangeCacheCoalescesAndReadsOverlappingWrites() {
+        let cache = ByteRangeCache()
+        cache.write(offset: 0, data: Data("hello".utf8))
+        cache.write(offset: 5, data: Data("!".utf8))
+        #expect(String(data: cache.read(from: 0, maxLength: 6), encoding: .utf8) == "hello!")
+
+        cache.write(offset: 2, data: Data("XX".utf8))
+        #expect(String(data: cache.read(from: 0, maxLength: 6), encoding: .utf8) == "heXXo!")
+        #expect(cache.availableCount(from: 0) == 6)
+        #expect(cache.contains(offset: 5))
+        #expect(!cache.contains(offset: 6))
+    }
+
+    @Test func videoRangePlannerParsesContentRangeAndMp4Type() {
+        let parsed = ImmichVideoRangePlanner.parseContentRange("bytes 0-524287/10485760")
+        #expect(parsed?.start == 0)
+        #expect(parsed?.end == 524_287)
+        #expect(parsed?.total == 10_485_760)
+        #expect(ImmichVideoRangePlanner.contentType(from: "video/mp4") == AVFileType.mp4.rawValue)
     }
 
     @Test func albumResponseDecodesV3PayloadWithoutOwnerOrAssets() async throws {

@@ -23,9 +23,9 @@ struct TimelineBucket: Codable, Identifiable, Equatable {
 /// Columnar response from GET /api/timeline/bucket. Immich returns parallel
 /// arrays keyed by field; index `i` across all arrays describes one asset.
 /// Only the fields used by the grid are decoded; unused/volatile fields
-/// (duration, projectionType, EXIF, …) are intentionally omitted so the
-/// decoder is resilient to server-version differences.
-struct TimeBucketAssetResponse: Codable {
+/// (projectionType, EXIF, …) are omitted so the decoder is resilient to
+/// server-version differences.
+struct TimeBucketAssetResponse: Decodable {
     let id: [String]
     let isImage: [Bool]
     let isFavorite: [Bool]?
@@ -38,6 +38,7 @@ struct TimeBucketAssetResponse: Codable {
     let livePhotoVideoId: [String?]?
     let visibility: [String]?
     let stack: [[String]?]?
+    let duration: TimeBucketDurationColumn?
 
     /// Map the columnar arrays into ImmichAsset values, one per index.
     /// EXIF/people are left empty — the grid only needs id, type, thumbhash,
@@ -55,6 +56,10 @@ struct TimeBucketAssetResponse: Codable {
         func optStr(_ array: [String?]?, _ i: Int) -> String? {
             guard let array = array, i < array.count else { return nil }
             return array[i]
+        }
+        func optDuration(_ i: Int) -> String? {
+            guard let values = duration?.secondsStrings, i < values.count else { return nil }
+            return values[i]
         }
         func flag(_ array: [Bool]?, _ i: Int) -> Bool {
             guard let array = array, i < array.count else { return false }
@@ -92,7 +97,7 @@ struct TimeBucketAssetResponse: Codable {
                 isOffline: false,
                 isTrashed: flag(isTrashed, i),
                 checksum: "",
-                duration: nil,
+                duration: optDuration(i),
                 hasMetadata: false,
                 livePhotoVideoId: optStr(livePhotoVideoId, i),
                 people: [],
@@ -103,5 +108,48 @@ struct TimeBucketAssetResponse: Codable {
             ))
         }
         return result
+    }
+}
+
+/// Timeline buckets send duration as milliseconds (nullable ints). Older
+/// servers may omit the column or send `HH:MM:SS` strings instead.
+struct TimeBucketDurationColumn: Decodable {
+    let secondsStrings: [String?]
+
+    init(from decoder: Decoder) throws {
+        var container = try decoder.unkeyedContainer()
+        var values: [String?] = []
+        while !container.isAtEnd {
+            if try container.decodeNil() {
+                values.append(nil)
+                continue
+            }
+            if let milliseconds = try? container.decode(Int.self) {
+                values.append(Self.secondsString(fromMilliseconds: milliseconds))
+                continue
+            }
+            if let milliseconds = try? container.decode(Double.self) {
+                values.append(Self.secondsString(fromMilliseconds: Int(milliseconds)))
+                continue
+            }
+            if let raw = try? container.decode(String.self) {
+                values.append(raw.isEmpty ? nil : raw)
+                continue
+            }
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Unsupported timeline duration value"
+            )
+        }
+        secondsStrings = values
+    }
+
+    private static func secondsString(fromMilliseconds milliseconds: Int) -> String? {
+        guard milliseconds > 0 else { return nil }
+        let seconds = Double(milliseconds) / 1000.0
+        if seconds == seconds.rounded() {
+            return String(Int(seconds))
+        }
+        return String(seconds)
     }
 }

@@ -10,3 +10,9 @@ CLAUDE.local.md
 .kiro/**
 ios/**
 .claude/**
+
+# Local mTLS material — never commit certificates or their passwords
+Shared/mTLS/client.p12
+Shared/mTLS/mtls-password.txt
+*.p12
+

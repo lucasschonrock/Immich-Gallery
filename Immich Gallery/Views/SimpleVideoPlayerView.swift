@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AVKit
+import Combine
 
 /// Lightweight video player that relies on AVPlayer without custom observers.
 struct SimpleVideoPlayerView: View {
@@ -14,24 +15,18 @@ struct SimpleVideoPlayerView: View {
     @ObservedObject var assetService: AssetService
     @ObservedObject var authenticationService: AuthenticationService
 
-    @State private var player: AVPlayer?
-    @State private var isLoading = true
-    @State private var errorMessage: String?
-    @State private var hasAttemptedLoad = false
+    @StateObject private var playback = SimpleVideoPlaybackModel()
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            if let player = player {
-                VideoPlayer(player: player)
+            if let player = playback.player {
+                ImprovedVideoPlayerView(player: player)
                     .ignoresSafeArea()
-                    .onAppear {
-                        player.play()
-                    }
             }
 
-            if isLoading {
+            if playback.isLoading {
                 VStack(spacing: 16) {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
@@ -40,9 +35,10 @@ struct SimpleVideoPlayerView: View {
                         .foregroundColor(.white.opacity(0.8))
                         .font(.title3)
                 }
+                .allowsHitTesting(false)
             }
 
-            if let message = errorMessage {
+            if let message = playback.errorMessage {
                 VStack(spacing: 20) {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.system(size: 60))
@@ -56,7 +52,12 @@ struct SimpleVideoPlayerView: View {
                         .padding(.horizontal)
                     Button("Try Again") {
                         Task {
-                            await loadVideoIfNeeded(force: true)
+                            await playback.start(
+                                asset: asset,
+                                assetService: assetService,
+                                authenticationService: authenticationService,
+                                force: true
+                            )
                         }
                     }
                     .buttonStyle(.borderedProminent)
@@ -64,51 +65,111 @@ struct SimpleVideoPlayerView: View {
             }
         }
         .task {
-            await loadVideoIfNeeded()
+            await playback.start(
+                asset: asset,
+                assetService: assetService,
+                authenticationService: authenticationService
+            )
         }
         .onDisappear {
-            player?.pause()
-            player = nil
-            hasAttemptedLoad = false
+            playback.stop()
         }
     }
+}
 
-    private func loadVideoIfNeeded(force: Bool = false) async {
-        guard (!hasAttemptedLoad || force) else { return }
+@MainActor
+final class SimpleVideoPlaybackModel: ObservableObject {
+    @Published private(set) var player: AVPlayer?
+    @Published private(set) var isLoading = true
+    @Published private(set) var errorMessage: String?
 
-        await MainActor.run {
-            hasAttemptedLoad = true
-            isLoading = true
-            errorMessage = nil
-        }
+    let videoLoader = ImmichVideoResourceLoader()
+    private var observers = Set<AnyCancellable>()
+    private var hasAttemptedLoad = false
+    private var loadGeneration = 0
+
+    func start(
+        asset: ImmichAsset,
+        assetService: AssetService,
+        authenticationService: AuthenticationService,
+        force: Bool = false
+    ) async {
+        guard !hasAttemptedLoad || force else { return }
+
+        hasAttemptedLoad = true
+        loadGeneration += 1
+        let generation = loadGeneration
+        isLoading = true
+        errorMessage = nil
+        videoLoader.authenticationService = authenticationService
 
         do {
             let videoURL = try await assetService.loadVideoURL(asset: asset)
-            let headers = authenticationService.getAuthHeaders()
+            try Task.checkCancellation()
+            guard generation == loadGeneration else { return }
+            videoLoader.prefetch(videoURL)
 
-            let urlAsset: AVURLAsset
-            if headers.isEmpty {
-                urlAsset = AVURLAsset(url: videoURL)
-            } else {
-                urlAsset = AVURLAsset(
-                    url: videoURL,
-                    options: ["AVURLAssetHTTPHeaderFieldsKey": headers]
-                )
-            }
+            let proxyURL = ImmichVideoResourceLoader.proxyURL(for: videoURL)
+            let urlAsset = AVURLAsset(url: proxyURL)
+            urlAsset.resourceLoader.setDelegate(videoLoader, queue: videoLoader.queue)
 
             let playerItem = AVPlayerItem(asset: urlAsset)
-            let player = AVPlayer(playerItem: playerItem)
+            playerItem.preferredForwardBufferDuration = 1
+            playerItem.canUseNetworkResourcesForLiveStreamingWhilePaused = true
 
-            await MainActor.run {
-                self.player = player
-                self.player?.play()
-                self.isLoading = false
-            }
+            let player = AVPlayer(playerItem: playerItem)
+            player.automaticallyWaitsToMinimizeStalling = false
+            guard generation == loadGeneration else { return }
+            observe(player: player, item: playerItem)
+
+            self.player = player
+            player.play()
+        } catch is CancellationError {
+            return
         } catch {
-            await MainActor.run {
-                self.errorMessage = error.localizedDescription
-                self.isLoading = false
-            }
+            guard generation == loadGeneration else { return }
+            errorMessage = error.localizedDescription
+            isLoading = false
         }
+    }
+
+    func stop() {
+        loadGeneration += 1
+        observers.removeAll()
+        player?.pause()
+        player = nil
+        hasAttemptedLoad = false
+        isLoading = true
+        errorMessage = nil
+    }
+
+    private func observe(player: AVPlayer, item: AVPlayerItem) {
+        observers.removeAll()
+
+        item.publisher(for: \.status, options: [.initial, .new])
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self, weak item] status in
+                guard let self else { return }
+                switch status {
+                case .readyToPlay:
+                    self.isLoading = false
+                    player.play()
+                case .failed:
+                    self.errorMessage = item?.error?.localizedDescription ?? "This video is not playable."
+                    self.isLoading = false
+                default:
+                    break
+                }
+            }
+            .store(in: &observers)
+
+        player.publisher(for: \.timeControlStatus, options: [.initial, .new])
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] status in
+                if status == .playing {
+                    self?.isLoading = false
+                }
+            }
+            .store(in: &observers)
     }
 }

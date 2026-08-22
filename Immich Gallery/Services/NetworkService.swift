@@ -14,15 +14,11 @@ class NetworkService: ObservableObject {
     @Published var accessToken: String?
     @Published var currentAuthType: SavedUser.AuthType = .jwt
     
-    /// `URLSession.shared` only enforces a 60s *idle* timeout that resets on every
-    /// byte received, so a trickling server can keep a request alive indefinitely.
-    /// Bound both the idle gap and the total transfer time instead.
-    private let session: URLSession = {
-        let configuration = URLSessionConfiguration.default
-        configuration.timeoutIntervalForRequest = 30
-        configuration.timeoutIntervalForResource = 120
-        return URLSession(configuration: configuration)
-    }()
+    /// Shared session so login, API calls, video, and Top Shelf all present the
+    /// same bundled client certificate when the server asks for mTLS.
+    private var session: URLSession {
+        ImmichHTTPClient.shared.session
+    }
     private weak var userManager: UserManager?
     
     init(userManager: UserManager) {
@@ -159,7 +155,7 @@ class NetworkService: ObservableObject {
         return responseString?.isEmpty == false ? responseString : nil
     }
 
-    func makeRequest<T: Codable>(
+    func makeRequest<T: Decodable>(
         endpoint: String,
         method: HTTPMethod = .GET,
         body: [String: Any]? = nil,

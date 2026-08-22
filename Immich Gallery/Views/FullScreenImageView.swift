@@ -41,6 +41,7 @@ struct FullScreenImageView: View {
         self.authenticationService = authenticationService
         self._currentAssetIndex = currentAssetIndex
         self._currentAsset = State(initialValue: asset)
+        self._showingVideoPlayer = State(initialValue: asset.type == .video)
     }
     
     var body: some View {
@@ -49,7 +50,6 @@ struct FullScreenImageView: View {
             
             if currentAsset.type == .video {
                 if showingVideoPlayer {
-                    // Use simplified video player when user clicks play
                     SimpleVideoPlayerView(asset: currentAsset, assetService: assetService, authenticationService: authenticationService)
                         .id(currentAsset.id)
                 } else {
@@ -210,8 +210,6 @@ struct FullScreenImageView: View {
             print("FullScreenImageView: Exit command triggered")
             if showingStackPicker {
                 showingStackPicker = false
-            } else if showingVideoPlayer {
-                showingVideoPlayer = false
             } else {
                 print("FullScreenImageView: Dismissing fullscreen view")
                 dismiss()
@@ -313,7 +311,7 @@ struct FullScreenImageView: View {
         currentAsset = asset
         refreshToggle.toggle()
         showingExifInfo = false
-        showingVideoPlayer = false
+        showingVideoPlayer = asset.type == .video
         image = nil
         isLoading = asset.type == .image
         isLoadingPreviewImage = false

@@ -22,7 +22,7 @@ struct AssetThumbnailView: View {
     var thumbnailLoadDelayNanoseconds: UInt64 = 150_000_000
     
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
+        ZStack(alignment: .bottom) {
         
              RoundedRectangle(cornerRadius: 12)
                  .fill(Color.gray.opacity(0.3))
@@ -61,12 +61,11 @@ struct AssetThumbnailView: View {
                     HStack {
                         Spacer()
                         Image(systemName: "play.circle.fill")
-                            .font(.system(size: 40))
-                            .foregroundColor(.white)
-                            .background(Color.black.opacity(0.6))
-                            .clipShape(Circle())
-                            .shadow(color: .black.opacity(0.5), radius: 5, x: 0, y: 2)
-                            .padding(8)
+                            .font(.system(size: 28, weight: .semibold))
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(.white, .black.opacity(0.45))
+                            .shadow(color: .black.opacity(0.35), radius: 3, y: 1)
+                            .padding(10)
                     }
                     Spacer()
                 }
@@ -100,37 +99,17 @@ struct AssetThumbnailView: View {
                             .font(.caption2)
                             .foregroundColor(.red)
                             .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
-                            .padding(8)
+                            .padding(.leading, 10)
+                            .padding(.bottom, showsFocusedDate ? 48 : 10)
                         Spacer()
                     }
                 }
             }
-            if asset.displayedVideoDuration != nil || showsDateOverlay {
-                VStack(alignment: .trailing, spacing: 6) {
-                    if let duration = asset.displayedVideoDuration {
-                        Text(duration)
-                            .font(.callout.weight(.semibold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(Color.black.opacity(0.72), in: RoundedRectangle(cornerRadius: 8))
-                    }
-                    if showsDateOverlay {
-                        Text(DateFormatter.formatSpecificISO8601(asset.exifInfo?.dateTimeOriginal ?? asset.fileCreatedAt, includeTime: false))
-                            .font(.caption2)
-                            .foregroundColor(.white.opacity(0.8))
-                            .padding(8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color.black.opacity(0.4))
-                            )
-                    }
-                }
-                .padding(8)
-            }
+            thumbnailFooter
             
         }
         .frame(width: thumbnailSize, height: thumbnailSize)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(isFocused ? 0.5 : 0), radius: 15, y: 10)
         .onAppear {
             if allowsThumbhashPlaceholder && placeholder == nil {
@@ -153,6 +132,62 @@ struct AssetThumbnailView: View {
             } else {
                 cancelLoading()
             }
+        }
+    }
+
+    private var showsFocusedDate: Bool {
+        showsDateOverlay && isFocused
+    }
+
+    @ViewBuilder
+    private var thumbnailFooter: some View {
+        let duration = asset.displayedVideoDuration
+        if duration != nil || showsFocusedDate {
+            VStack {
+                Spacer()
+                HStack(alignment: .lastTextBaseline, spacing: 8) {
+                    if showsFocusedDate {
+                        Text(DateFormatter.formatThumbnailDate(asset.exifInfo?.dateTimeOriginal ?? asset.fileCreatedAt))
+                            .font(.system(size: 23, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                            .shadow(color: .black.opacity(0.55), radius: 3, y: 1)
+                        Spacer(minLength: 6)
+                    } else {
+                        Spacer()
+                    }
+
+                    if let duration {
+                        Text(duration)
+                            .font(.system(size: 21, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, showsFocusedDate ? 0 : 7)
+                            .padding(.vertical, showsFocusedDate ? 0 : 3)
+                            .background {
+                                if !showsFocusedDate {
+                                    Capsule()
+                                        .fill(.black.opacity(0.48))
+                                }
+                            }
+                            .shadow(color: .black.opacity(showsFocusedDate ? 0.55 : 0), radius: 3, y: 1)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 10)
+                .padding(.top, showsFocusedDate ? 28 : 8)
+                .frame(maxWidth: .infinity)
+                .background {
+                    if showsFocusedDate {
+                        LinearGradient(
+                            colors: [.clear, .black.opacity(0.62)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    }
+                }
+            }
+            .animation(.easeOut(duration: 0.18), value: isFocused)
         }
     }
 

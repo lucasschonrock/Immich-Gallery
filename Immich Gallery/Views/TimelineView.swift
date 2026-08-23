@@ -498,6 +498,7 @@ struct TimelineView: View {
                 shouldLoadThumbnail: !isScrolling,
                 allowsThumbhashPlaceholder: false,
                 showsDateOverlay: false,
+                thumbnailSize: 300,
                 thumbnailLoadDelayNanoseconds: 0
             )
         }

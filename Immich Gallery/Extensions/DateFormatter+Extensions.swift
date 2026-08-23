@@ -9,27 +9,43 @@ import Foundation
 
 extension DateFormatter {
     static func formatSpecificISO8601(_ utcTimestamp: String, includeTime: Bool = true) -> String {
-        // Clean the input string
+        guard let date = date(fromImmichTimestamp: utcTimestamp) else {
+            return utcTimestamp
+        }
+        return formatDisplayDate(date, includeTime: includeTime)
+    }
+
+    static func formatThumbnailDate(_ utcTimestamp: String) -> String {
+        guard let date = date(fromImmichTimestamp: utcTimestamp) else {
+            return utcTimestamp
+        }
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.timeZone = TimeZone(abbreviation: "UTC")
+        formatter.setLocalizedDateFormatFromTemplate("MMMdyyyy")
+        return formatter.string(from: date)
+    }
+
+    private static func date(fromImmichTimestamp utcTimestamp: String) -> Date? {
         let cleanedTimestamp = utcTimestamp
             .replacingOccurrences(of: "Optional(\"", with: "")
             .replacingOccurrences(of: "\")", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        
+
         let isoFormatter = ISO8601DateFormatter()
         isoFormatter.timeZone = TimeZone(abbreviation: "UTC")
-        
-        // Try different format options to handle both with and without fractional seconds
+
         let formatOptions: [ISO8601DateFormatter.Options] = [
-            [.withInternetDateTime, .withFractionalSeconds],  // For formats with .000Z
-            [.withInternetDateTime],                          // For formats without fractional seconds
-            [.withFullDate, .withTime, .withTimeZone],       // Alternative for +00:00 format
-            [.withFullDate, .withTime, .withTimeZone, .withFractionalSeconds] // Alternative with fractional seconds
+            [.withInternetDateTime, .withFractionalSeconds],
+            [.withInternetDateTime],
+            [.withFullDate, .withTime, .withTimeZone],
+            [.withFullDate, .withTime, .withTimeZone, .withFractionalSeconds]
         ]
-        
+
         for options in formatOptions {
             isoFormatter.formatOptions = options
             if let date = isoFormatter.date(from: cleanedTimestamp) {
-                return formatDisplayDate(date, includeTime: includeTime)
+                return date
             }
         }
 
@@ -47,13 +63,12 @@ extension DateFormatter {
             inputFormatter.locale = Locale(identifier: "en_US_POSIX")
             inputFormatter.timeZone = TimeZone(abbreviation: "UTC")
             inputFormatter.dateFormat = dateFormat
-
             if let date = inputFormatter.date(from: cleanedTimestamp) {
-                return formatDisplayDate(date, includeTime: includeTime)
+                return date
             }
         }
-        
-        return utcTimestamp
+
+        return nil
     }
 
     private static func formatDisplayDate(_ date: Date, includeTime: Bool) -> String {

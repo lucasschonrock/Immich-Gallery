@@ -125,15 +125,15 @@ struct TimeBucketDurationColumn: Decodable {
                 continue
             }
             if let milliseconds = try? container.decode(Int.self) {
-                values.append(Self.secondsString(fromMilliseconds: milliseconds))
+                values.append(VideoDurationFormatter.secondsString(fromMilliseconds: milliseconds))
                 continue
             }
             if let milliseconds = try? container.decode(Double.self) {
-                values.append(Self.secondsString(fromMilliseconds: Int(milliseconds)))
+                values.append(VideoDurationFormatter.secondsString(fromMilliseconds: Int(milliseconds.rounded())))
                 continue
             }
             if let raw = try? container.decode(String.self) {
-                values.append(raw.isEmpty ? nil : raw)
+                values.append(VideoDurationFormatter.normalizedStorage(raw))
                 continue
             }
             throw DecodingError.dataCorruptedError(
@@ -142,14 +142,5 @@ struct TimeBucketDurationColumn: Decodable {
             )
         }
         secondsStrings = values
-    }
-
-    private static func secondsString(fromMilliseconds milliseconds: Int) -> String? {
-        guard milliseconds > 0 else { return nil }
-        let seconds = Double(milliseconds) / 1000.0
-        if seconds == seconds.rounded() {
-            return String(Int(seconds))
-        }
-        return String(seconds)
     }
 }

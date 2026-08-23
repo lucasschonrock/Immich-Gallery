@@ -211,7 +211,8 @@ private struct SearchGridContent: View {
                                     asset: asset,
                                     assetService: assetService,
                                     isFocused: focusedAssetId == asset.id,
-                                    shouldLoadThumbnail: !isScrolling
+                                    shouldLoadThumbnail: !isScrolling,
+                                    thumbnailSize: 300
                                 )
                             }
                             .frame(width: 300, height: 360)

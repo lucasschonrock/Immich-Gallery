@@ -50,7 +50,7 @@ struct Immich_GalleryTests {
           "isOffline": false,
           "isTrashed": false,
           "checksum": "abc",
-          "duration": 12,
+          "duration": 12000,
           "hasMetadata": true,
           "livePhotoVideoId": null,
           "visibility": "timeline",
@@ -64,6 +64,7 @@ struct Immich_GalleryTests {
         #expect(asset.deviceAssetId == nil)
         #expect(asset.deviceId == nil)
         #expect(asset.duration == "12")
+        #expect(asset.displayedVideoDuration == "0:12")
         #expect(asset.people.isEmpty)
     }
 
@@ -146,10 +147,20 @@ struct Immich_GalleryTests {
 
     @Test func videoDurationFormatterHandlesAssetSearchFormats() {
         #expect(VideoDurationFormatter.displayString(from: "00:00:12.000") == "0:12")
+        #expect(VideoDurationFormatter.displayString(from: "0:00:31.320") == "0:31")
         #expect(VideoDurationFormatter.displayString(from: "12") == "0:12")
         #expect(VideoDurationFormatter.displayString(from: "1:02:03") == "1:02:03")
         #expect(VideoDurationFormatter.displayString(from: nil) == nil)
         #expect(VideoDurationFormatter.displayString(from: "0") == nil)
+        #expect(VideoDurationFormatter.displayString(from: VideoDurationFormatter.normalizedStorage("31320")) == "0:31")
+        #expect(VideoDurationFormatter.secondsString(fromMilliseconds: 31320) == "31.32")
+        #expect(VideoDurationFormatter.displayString(from: "31.32") == "0:31")
+    }
+
+    @Test func assetResponseDecodesV3MillisecondDurationForAlbumSearch() throws {
+        let asset = try decodeAsset(durationJSON: "31320")
+        #expect(asset.duration == "31.32")
+        #expect(asset.displayedVideoDuration == "0:31")
     }
 
     @Test func videoRangePlannerFetchesSmallStartupChunks() {

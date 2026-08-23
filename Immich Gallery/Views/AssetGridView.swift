@@ -163,7 +163,8 @@ struct AssetGridView: View {
                                         assetService: assetService,
                                         isFocused: focusedAssetId == asset.id,
                                         shouldLoadThumbnail: !isScrolling,
-                                        allowsThumbhashPlaceholder: false
+                                        allowsThumbhashPlaceholder: false,
+                                        thumbnailSize: 300
                                     )
                                 }
                                 .frame(width: 300, height: 360)

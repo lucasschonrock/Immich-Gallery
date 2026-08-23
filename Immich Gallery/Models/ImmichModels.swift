@@ -129,9 +129,11 @@ struct ImmichAsset: Codable, Identifiable, Equatable {
         isTrashed = try container.decode(Bool.self, forKey: .isTrashed)
         checksum = try container.decode(String.self, forKey: .checksum)
         if let stringDuration = try? container.decodeIfPresent(String.self, forKey: .duration) {
-            duration = stringDuration
+            duration = VideoDurationFormatter.normalizedStorage(stringDuration)
         } else if let intDuration = try? container.decodeIfPresent(Int.self, forKey: .duration) {
-            duration = String(intDuration)
+            duration = VideoDurationFormatter.secondsString(fromMilliseconds: intDuration)
+        } else if let doubleDuration = try? container.decodeIfPresent(Double.self, forKey: .duration) {
+            duration = VideoDurationFormatter.secondsString(fromMilliseconds: Int(doubleDuration.rounded()))
         } else {
             duration = nil
         }
@@ -157,14 +159,41 @@ struct ImmichAsset: Codable, Identifiable, Equatable {
 
 enum VideoDurationFormatter {
     static func displayString(from raw: String?) -> String? {
-        guard let raw, !raw.isEmpty, let seconds = parseSeconds(raw), seconds > 0 else {
+        guard let seconds = seconds(from: raw), seconds >= 0.5 else {
             return nil
         }
         return format(seconds)
     }
 
-    private static func parseSeconds(_ raw: String) -> Double? {
+    /// Immich v3 asset search/timeline send milliseconds. Legacy search used clock
+    /// strings (`00:00:31.320`) or small GIF durations in seconds (`"2"`).
+    static func normalizedStorage(_ raw: String) -> String? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.contains(":") {
+            return trimmed
+        }
+        guard let value = Double(trimmed), value > 0 else { return nil }
+        if value >= 1000 {
+            return secondsString(fromMilliseconds: Int(value.rounded()))
+        }
+        return trimmed
+    }
+
+    static func secondsString(fromMilliseconds milliseconds: Int) -> String? {
+        guard milliseconds > 0 else { return nil }
+        let seconds = Double(milliseconds) / 1000.0
+        if seconds == seconds.rounded() {
+            return String(Int(seconds))
+        }
+        return String(seconds)
+    }
+
+    static func seconds(from raw: String?) -> Double? {
+        guard let raw else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
         if let value = Double(trimmed), !trimmed.contains(":") {
             return value
         }
@@ -182,7 +211,7 @@ enum VideoDurationFormatter {
     }
 
     private static func format(_ seconds: Double) -> String {
-        let total = max(Int(seconds.rounded(.towardZero)), 0)
+        let total = max(Int(seconds.rounded()), 0)
         let hours = total / 3600
         let minutes = (total % 3600) / 60
         let remainingSeconds = total % 60

@@ -26,7 +26,10 @@ struct SimpleVideoPlayerView: View {
                     .ignoresSafeArea()
             }
 
-            if playback.isLoading {
+            // Only show our spinner while resolving the URL. Once the player
+            // exists, AVPlayerViewController shows its own native spinner, so
+            // gating on player == nil avoids two overlapping loaders.
+            if playback.isLoading && playback.player == nil {
                 VStack(spacing: 16) {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
@@ -107,18 +110,20 @@ final class SimpleVideoPlaybackModel: ObservableObject {
             let videoURL = try await assetService.loadVideoURL(asset: asset)
             try Task.checkCancellation()
             guard generation == loadGeneration else { return }
-            videoLoader.prefetch(videoURL)
 
-            let proxyURL = ImmichVideoResourceLoader.proxyURL(for: videoURL)
-            let urlAsset = AVURLAsset(url: proxyURL)
-            urlAsset.resourceLoader.setDelegate(videoLoader, queue: videoLoader.queue)
+            let urlAsset = Self.makeVideoAsset(
+                url: videoURL,
+                authenticationService: authenticationService,
+                loader: videoLoader
+            )
 
             let playerItem = AVPlayerItem(asset: urlAsset)
-            playerItem.preferredForwardBufferDuration = 1
+            // 0 lets AVKit size the read-ahead buffer for the streaming connection.
+            playerItem.preferredForwardBufferDuration = 0
             playerItem.canUseNetworkResourcesForLiveStreamingWhilePaused = true
 
             let player = AVPlayer(playerItem: playerItem)
-            player.automaticallyWaitsToMinimizeStalling = false
+            player.automaticallyWaitsToMinimizeStalling = true
             guard generation == loadGeneration else { return }
             observe(player: player, item: playerItem)
 
@@ -133,6 +138,27 @@ final class SimpleVideoPlaybackModel: ObservableObject {
         }
     }
 
+    /// A client certificate must be presented through the resource loader because
+    /// AVPlayer cannot present one itself. Without mTLS we let AVPlayer stream the
+    /// file natively — the progressive download the web player uses — which buffers
+    /// large 4K files far better than a resource loader can.
+    private static func makeVideoAsset(
+        url: URL,
+        authenticationService: AuthenticationService,
+        loader: ImmichVideoResourceLoader
+    ) -> AVURLAsset {
+        if ImmichHTTPClient.shared.certificateStatus == .ready {
+            let proxyURL = ImmichVideoResourceLoader.proxyURL(for: url)
+            let asset = AVURLAsset(url: proxyURL)
+            asset.resourceLoader.setDelegate(loader, queue: loader.queue)
+            return asset
+        }
+
+        let headers = authenticationService.getAuthHeaders()
+        let options: [String: Any]? = headers.isEmpty ? nil : ["AVURLAssetHTTPHeaderFieldsKey": headers]
+        return AVURLAsset(url: url, options: options)
+    }
+
     func stop() {
         loadGeneration += 1
         observers.removeAll()
@@ -141,6 +167,10 @@ final class SimpleVideoPlaybackModel: ObservableObject {
         hasAttemptedLoad = false
         isLoading = true
         errorMessage = nil
+    }
+
+    deinit {
+        videoLoader.invalidate()
     }
 
     private func observe(player: AVPlayer, item: AVPlayerItem) {

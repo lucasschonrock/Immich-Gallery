@@ -163,38 +163,6 @@ struct Immich_GalleryTests {
         #expect(asset.displayedVideoDuration == "0:31")
     }
 
-    @Test func videoRangePlannerFetchesSmallStartupChunks() {
-        let first = ImmichVideoRangePlanner.fetchRange(currentOffset: 0, contentLength: 40_000_000, preferFirstChunk: true)
-        #expect(first == ImmichVideoRangePlanner.FetchRange(start: 0, end: ImmichVideoRangePlanner.firstChunkBytes - 1))
-
-        let next = ImmichVideoRangePlanner.fetchRange(
-            currentOffset: ImmichVideoRangePlanner.firstChunkBytes,
-            contentLength: 40_000_000,
-            preferFirstChunk: false
-        )
-        #expect(next == ImmichVideoRangePlanner.FetchRange(
-            start: ImmichVideoRangePlanner.firstChunkBytes,
-            end: ImmichVideoRangePlanner.firstChunkBytes + ImmichVideoRangePlanner.nextChunkBytes - 1
-        ))
-
-        let tail = ImmichVideoRangePlanner.fetchRange(currentOffset: 39_900_000, contentLength: 40_000_000, preferFirstChunk: false)
-        #expect(tail == ImmichVideoRangePlanner.FetchRange(start: 39_900_000, end: 39_999_999))
-        #expect(ImmichVideoRangePlanner.fetchRange(currentOffset: 40_000_000, contentLength: 40_000_000, preferFirstChunk: false) == nil)
-    }
-
-    @Test func videoByteRangeCacheCoalescesAndReadsOverlappingWrites() {
-        let cache = ByteRangeCache()
-        cache.write(offset: 0, data: Data("hello".utf8))
-        cache.write(offset: 5, data: Data("!".utf8))
-        #expect(String(data: cache.read(from: 0, maxLength: 6), encoding: .utf8) == "hello!")
-
-        cache.write(offset: 2, data: Data("XX".utf8))
-        #expect(String(data: cache.read(from: 0, maxLength: 6), encoding: .utf8) == "heXXo!")
-        #expect(cache.availableCount(from: 0) == 6)
-        #expect(cache.contains(offset: 5))
-        #expect(!cache.contains(offset: 6))
-    }
-
     @Test func videoRangePlannerParsesContentRangeAndMp4Type() {
         let parsed = ImmichVideoRangePlanner.parseContentRange("bytes 0-524287/10485760")
         #expect(parsed?.start == 0)

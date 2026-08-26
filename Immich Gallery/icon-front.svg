@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="240" viewBox="0 0 400 240" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="play" x1="328" y1="138" x2="328" y2="206" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF6B4C"/>
+      <stop offset="100%" stop-color="#FF8F55"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Far left peak -->
+  <path d="M30,196 L108,120 L114,196 Z" fill="#E8EEF4"/>
+  <path d="M108,120 L188,196 L114,196 Z" fill="#C5CEDA"/>
+
+  <!-- Center peak -->
+  <path d="M74,196 L198,68 L210,196 Z" fill="#C5CED8"/>
+  <path d="M198,68 L328,196 L210,196 Z" fill="#96A2B2"/>
+
+  <!-- Near right peak -->
+  <path d="M202,196 L294,124 L304,196 Z" fill="#8B97A8"/>
+  <path d="M294,124 L376,196 L304,196 Z" fill="#5E6A7A"/>
+
+  <!-- Ground slab -->
+  <rect x="26" y="192" width="348" height="12" rx="3" fill="#E4EEF0"/>
+  <rect x="26" y="201" width="348" height="5" rx="2" fill="#C5D4D6"/>
+
+  <!-- Play badge -->
+  <g transform="translate(328,172)">
+    <circle cx="0" cy="0" r="34" fill="url(#play)"/>
+    <polygon points="-11,-16 20,0 -11,16" fill="#FFFFFF"/>
+    <ellipse cx="-11" cy="-13" rx="16" ry="8" fill="#FFFFFF" opacity="0.22"/>
+  </g>
+</svg>

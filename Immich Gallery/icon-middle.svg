@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="240" viewBox="0 0 400 240" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="sunGlow" cx="188" cy="100" r="96" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFD56A" stop-opacity="0.50"/>
+      <stop offset="42%" stop-color="#FFD56A" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#FFD56A" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="sun" cx="188" cy="100" r="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFF8D0"/>
+      <stop offset="42%" stop-color="#FFE27A"/>
+      <stop offset="100%" stop-color="#FFC247"/>
+    </radialGradient>
+  </defs>
+  <circle cx="188" cy="100" r="96" fill="url(#sunGlow)"/>
+  <circle cx="188" cy="100" r="52" fill="url(#sun)"/>
+</svg>

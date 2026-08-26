@@ -1,8 +1,14 @@
 {
   "images" : [
     {
-      "filename" : "svgviewer-png-output-5.png",
-      "idiom" : "tv"
+      "filename" : "front.png",
+      "idiom" : "tv",
+      "scale" : "1x"
+    },
+    {
+      "filename" : "front@2x.png",
+      "idiom" : "tv",
+      "scale" : "2x"
     }
   ],
   "info" : {

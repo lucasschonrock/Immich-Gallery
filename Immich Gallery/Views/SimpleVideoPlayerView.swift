@@ -127,6 +127,7 @@ final class SimpleVideoPlaybackModel: ObservableObject {
 
             let player = AVPlayer(playerItem: playerItem)
             player.automaticallyWaitsToMinimizeStalling = true
+            player.actionAtItemEnd = .none
             guard generation == loadGeneration else { return }
             diagnostics.attach(player: player, item: playerItem) { [weak self] in
                 self?.playbackProxy.notifyExplicitSeek()
@@ -200,6 +201,20 @@ final class SimpleVideoPlaybackModel: ObservableObject {
             .sink { [weak self] status in
                 if status == .playing {
                     self?.isLoading = false
+                }
+            }
+            .store(in: &observers)
+
+        NotificationCenter.default.publisher(for: .AVPlayerItemDidPlayToEndTime, object: item)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self, weak player] _ in
+                guard let player else { return }
+                player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self, weak player] finished in
+                    guard finished else { return }
+                    Task { @MainActor in
+                        guard let self, let player, self.player === player else { return }
+                        player.play()
+                    }
                 }
             }
             .store(in: &observers)

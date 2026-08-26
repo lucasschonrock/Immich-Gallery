@@ -204,6 +204,9 @@ final class ImmichVideoResourceLoader: NSObject, ObservableObject, AVAssetResour
             request.setValue(value, forHTTPHeaderField: header)
         }
 
+        // TEMP VIDEO-DIAG
+        VideoPlaybackLog.message("[VIDEO-DIAG] loader → Range=bytes=\(start)-\(end) window=\(index)")
+
         let task = session.dataTask(with: request)
         window.task = task
         windowForTask[task.taskIdentifier] = index
@@ -249,7 +252,38 @@ final class ImmichVideoResourceLoader: NSObject, ObservableObject, AVAssetResour
             return
         }
 
-        print("📡 Video loader status \(httpResponse.statusCode) \(dataTask.originalRequest?.value(forHTTPHeaderField: "Range") ?? "")")
+        let requestedRange = dataTask.originalRequest?.value(forHTTPHeaderField: "Range") ?? "none"
+        let contentRange = httpResponse.value(forHTTPHeaderField: "Content-Range") ?? "none"
+        let contentLength = httpResponse.value(forHTTPHeaderField: "Content-Length") ?? "\(httpResponse.expectedContentLength)"
+        let acceptRanges = httpResponse.value(forHTTPHeaderField: "Accept-Ranges") ?? "none"
+        // TEMP VIDEO-DIAG
+        VideoPlaybackLog.message("[VIDEO-DIAG] loader ← \(httpResponse.statusCode) Range=\(requestedRange) Content-Range=\(contentRange) Content-Length=\(contentLength) Accept-Ranges=\(acceptRanges)")
+
+        if requestedRange != "none", httpResponse.statusCode == 200 {
+            VideoPlaybackLog.message("[VIDEO-DIAG] loader WARNING: Range was ignored (200 OK)")
+            if let requested = ImmichVideoRangePlanner.parseRangeHeader(requestedRange), requested.start != 0 {
+                completionHandler(.cancel)
+                failWindow(index, error: NSError(
+                    domain: NSURLErrorDomain,
+                    code: NSURLErrorBadServerResponse,
+                    userInfo: [NSLocalizedDescriptionKey: "Server ignored byte range request"]
+                ))
+                return
+            }
+        }
+        if httpResponse.statusCode == 206,
+           let requested = ImmichVideoRangePlanner.parseRangeHeader(requestedRange),
+           let received = ImmichVideoRangePlanner.parseContentRange(contentRange),
+           requested.start != received.start {
+            VideoPlaybackLog.message("[VIDEO-DIAG] loader WARNING: Content-Range start \(received.start) != requested \(requested.start)")
+            completionHandler(.cancel)
+            failWindow(index, error: NSError(
+                domain: NSURLErrorDomain,
+                code: NSURLErrorBadServerResponse,
+                userInfo: [NSLocalizedDescriptionKey: "Byte range mismatch"]
+            ))
+            return
+        }
 
         if httpResponse.statusCode == 416 {
             // Past EOF: this window has no bytes to deliver.
@@ -410,6 +444,22 @@ enum ImmichVideoRangePlanner {
             total = nil
         }
         return (start, end, total)
+    }
+
+    /// Parses a request `Range` header such as `bytes=123-456` or `bytes=123-`.
+    static func parseRangeHeader(_ value: String) -> (start: Int64, end: Int64?)? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let specStart = trimmed.lowercased().range(of: "bytes=") else { return nil }
+        let spec = trimmed[specStart.upperBound...]
+        let parts = spec.split(separator: "-", maxSplits: 1, omittingEmptySubsequences: false)
+        guard let start = Int64(parts.first ?? "") else { return nil }
+        let end: Int64?
+        if parts.count == 2, !parts[1].isEmpty {
+            end = Int64(parts[1])
+        } else {
+            end = nil
+        }
+        return (start, end)
     }
 
     static func contentType(from mime: String?) -> String {

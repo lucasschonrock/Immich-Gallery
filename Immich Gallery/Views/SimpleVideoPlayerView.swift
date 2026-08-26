@@ -87,6 +87,8 @@ final class SimpleVideoPlaybackModel: ObservableObject {
     @Published private(set) var errorMessage: String?
 
     let videoLoader = ImmichVideoResourceLoader()
+    private let playbackProxy = ImmichVideoPlaybackProxy()
+    private let diagnostics = VideoPlaybackDiagnostics()
     private var observers = Set<AnyCancellable>()
     private var hasAttemptedLoad = false
     private var loadGeneration = 0
@@ -111,20 +113,24 @@ final class SimpleVideoPlaybackModel: ObservableObject {
             try Task.checkCancellation()
             guard generation == loadGeneration else { return }
 
-            let urlAsset = Self.makeVideoAsset(
-                url: videoURL,
+            Self.logAssetDiagnostics(asset)
+
+            let urlAsset = await playbackProxy.makePlaybackAsset(
+                origin: videoURL,
                 authenticationService: authenticationService,
                 loader: videoLoader
             )
 
             let playerItem = AVPlayerItem(asset: urlAsset)
-            // 0 lets AVKit size the read-ahead buffer for the streaming connection.
-            playerItem.preferredForwardBufferDuration = 0
+            playerItem.preferredForwardBufferDuration = 30
             playerItem.canUseNetworkResourcesForLiveStreamingWhilePaused = true
 
             let player = AVPlayer(playerItem: playerItem)
             player.automaticallyWaitsToMinimizeStalling = true
             guard generation == loadGeneration else { return }
+            diagnostics.attach(player: player, item: playerItem) { [weak self] in
+                self?.playbackProxy.notifyExplicitSeek()
+            }
             observe(player: player, item: playerItem)
 
             self.player = player
@@ -138,39 +144,35 @@ final class SimpleVideoPlaybackModel: ObservableObject {
         }
     }
 
-    /// A client certificate must be presented through the resource loader because
-    /// AVPlayer cannot present one itself. Without mTLS we let AVPlayer stream the
-    /// file natively — the progressive download the web player uses — which buffers
-    /// large 4K files far better than a resource loader can.
-    private static func makeVideoAsset(
-        url: URL,
-        authenticationService: AuthenticationService,
-        loader: ImmichVideoResourceLoader
-    ) -> AVURLAsset {
-        if ImmichHTTPClient.shared.certificateStatus == .ready {
-            let proxyURL = ImmichVideoResourceLoader.proxyURL(for: url)
-            let asset = AVURLAsset(url: proxyURL)
-            asset.resourceLoader.setDelegate(loader, queue: loader.queue)
-            return asset
-        }
-
-        let headers = authenticationService.getAuthHeaders()
-        let options: [String: Any]? = headers.isEmpty ? nil : ["AVURLAssetHTTPHeaderFieldsKey": headers]
-        return AVURLAsset(url: url, options: options)
-    }
-
     func stop() {
         loadGeneration += 1
         observers.removeAll()
+        diagnostics.stop()
         player?.pause()
         player = nil
+        playbackProxy.stop()
         hasAttemptedLoad = false
         isLoading = true
         errorMessage = nil
     }
 
     deinit {
+        playbackProxy.stop()
         videoLoader.invalidate()
+    }
+
+    private static func logAssetDiagnostics(_ asset: ImmichAsset) {
+        guard VideoPlaybackLog.isEnabled else { return }
+        let width = asset.exifInfo?.exifImageWidth.map(String.init) ?? "?"
+        let height = asset.exifInfo?.exifImageHeight.map(String.init) ?? "?"
+        let bytes = asset.exifInfo?.fileSizeInByte
+        let sizeMB = bytes.map { String(format: "%.1f", Double($0) / 1_000_000) } ?? "?"
+        let duration = asset.duration ?? "?"
+        var bitrate = "?"
+        if let bytes, let seconds = VideoDurationFormatter.seconds(from: asset.duration), seconds > 0 {
+            bitrate = String(format: "%.1fMbps", Double(bytes) * 8 / seconds / 1_000_000)
+        }
+        VideoPlaybackLog.message("[VIDEO-DIAG] asset \(asset.id) file=\(asset.originalFileName) mime=\(asset.originalMimeType ?? "?") size=\(sizeMB)MB \(width)x\(height) duration=\(duration) avgBitrate~\(bitrate) mTLS=\(ImmichHTTPClient.shared.certificateStatus.settingsTitle)")
     }
 
     private func observe(player: AVPlayer, item: AVPlayerItem) {

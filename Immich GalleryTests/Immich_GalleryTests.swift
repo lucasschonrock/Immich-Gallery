@@ -8,6 +8,7 @@
 import Testing
 import Foundation
 import AVFoundation
+import CoreMedia
 @testable import Immich_Gallery
 
 struct Immich_GalleryTests {
@@ -169,6 +170,219 @@ struct Immich_GalleryTests {
         #expect(parsed?.end == 524_287)
         #expect(parsed?.total == 10_485_760)
         #expect(ImmichVideoRangePlanner.contentType(from: "video/mp4") == AVFileType.mp4.rawValue)
+    }
+
+    @Test func videoRangePlannerParsesOpenEndedAndClosedRangeHeaders() {
+        let open = ImmichVideoRangePlanner.parseRangeHeader("bytes=123456-")
+        #expect(open?.start == 123_456)
+        #expect(open?.end == nil)
+
+        let closed = ImmichVideoRangePlanner.parseRangeHeader("Bytes=1000-2000")
+        #expect(closed?.start == 1_000)
+        #expect(closed?.end == 2_000)
+    }
+
+    @Test func videoProxyParsesRangeRequestAndBuildsPartialContentHeaders() throws {
+        let raw = "GET /video.mp4 HTTP/1.1\r\nHost: 127.0.0.1:8123\r\nRange: bytes=1048576-\r\nAccept: */*\r\n\r\n"
+        let request = try #require(ImmichVideoProxyHTTP.parseRequest(raw))
+        #expect(request.method == "GET")
+        #expect(request.path == "/video.mp4")
+        #expect(request.range == "bytes=1048576-")
+
+        let response = HTTPURLResponse(
+            url: URL(string: "https://immich.example/api/assets/1/video/playback")!,
+            statusCode: 206,
+            httpVersion: "HTTP/1.1",
+            headerFields: [
+                "Content-Type": "video/mp4",
+                "Content-Range": "bytes 1048576-2097151/3800000000",
+                "Content-Length": "1048576",
+                "Accept-Ranges": "bytes"
+            ]
+        )!
+        let header = String(data: ImmichVideoProxyHTTP.makeResponseHeader(from: response), encoding: .utf8) ?? ""
+        #expect(header.hasPrefix("HTTP/1.1 206 Partial Content"))
+        #expect(header.contains("Content-Range: bytes 1048576-2097151/3800000000"))
+        #expect(header.contains("Accept-Ranges: bytes"))
+        #expect(header.contains("Connection: keep-alive"))
+    }
+
+    @Test func videoProxyKeepAliveDefaultsForHTTP11() throws {
+        let keepAlive = try #require(ImmichVideoProxyHTTP.parseRequest(
+            "GET /video.mp4 HTTP/1.1\r\nRange: bytes=0-65535\r\n\r\n"
+        ))
+        #expect(keepAlive.keepAlive)
+
+        let close = try #require(ImmichVideoProxyHTTP.parseRequest(
+            "GET /video.mp4 HTTP/1.1\r\nRange: bytes=0-65535\r\nConnection: close\r\n\r\n"
+        ))
+        #expect(!close.keepAlive)
+    }
+
+    @Test func videoProxyTreatsOpenEndedAndHugeRangesAsStreamingPassThrough() {
+        #expect(ImmichVideoProxyPolicy.isStreamingRange(start: 0, end: 4_002_977_081))
+        #expect(ImmichVideoProxyPolicy.isStreamingRange(start: 11_203, end: nil))
+        #expect(ImmichVideoProxyPolicy.isStreamingRange(start: 0, end: nil))
+        #expect(!ImmichVideoProxyPolicy.isStreamingRange(start: 1_988_755_456, end: 1_988_820_991))
+        #expect(!ImmichVideoProxyPolicy.isStreamingRange(start: 144_769_024, end: 154_140_671))
+        #expect(!ImmichVideoProxyPolicy.isStreamingRange(start: 4_002_283_520, end: 4_002_977_081))
+    }
+
+    @Test func videoProxyTransportBufferPausesUpstreamBeforeUnboundedReadAhead() {
+        #expect(ImmichVideoProxyPolicy.transportHighWaterBytes == 4 * 1024 * 1024)
+        #expect(ImmichVideoProxyPolicy.transportLowWaterBytes == 1 * 1024 * 1024)
+        #expect(ImmichVideoProxyPolicy.transportLowWaterBytes < ImmichVideoProxyPolicy.transportHighWaterBytes)
+    }
+
+    @Test func videoProxyBlockCacheUsesFourMegabyteAlignedBlocks() {
+        #expect(ImmichVideoProxyPolicy.blockSize == 4 * 1024 * 1024)
+        #expect(ImmichVideoProxyPolicy.maxCacheBytes == 128 * 1024 * 1024)
+        #expect(ImmichVideoProxyPolicy.blockStart(for: 56_885_248) == 54_525_952)
+        #expect(ImmichVideoProxyPolicy.blockEnd(start: 54_525_952, total: 4_002_977_082) == 58_720_255)
+        #expect(ImmichVideoProxyPolicy.coveringBlocks(start: 56_885_248, end: 56_950_783) == [54_525_952])
+        #expect(
+            ImmichVideoProxyPolicy.coveringBlocks(start: 144_769_024, end: 154_140_671)
+            == [142_606_336, 146_800_640, 150_994_944]
+        )
+    }
+
+    @Test func videoBlockCacheSatisfiesSmallRangeFromContainingBlock() {
+        let cache = ImmichVideoBlockCache()
+        cache.total = 4_002_977_082
+        let blockStart: Int64 = 54_525_952
+        var payload = Data(count: Int(ImmichVideoProxyPolicy.blockSize))
+        payload[Int(56_885_248 - blockStart)] = 0xAB
+        cache.write(at: blockStart, payload)
+
+        let slice = cache.slice(from: 56_885_248, length: 65_536)
+        #expect(slice?.count == 65_536)
+        #expect(slice?.first == 0xAB)
+        #expect(cache.hasRange(from: 56_885_248, to: 56_950_783))
+    }
+
+    @Test func videoBlockCacheTeeThenRereadIsLocalHit() {
+        let cache = ImmichVideoBlockCache()
+        cache.total = 4_002_977_082
+        let passThroughStart: Int64 = 4_096
+        let length = 34_700_000
+        cache.write(at: passThroughStart, Data(count: length))
+
+        let reread: Int64 = 31_400_000
+        #expect(cache.hasRange(from: reread, to: reread + 65_535))
+        #expect(cache.slice(from: reread, length: 65_536)?.count == 65_536)
+    }
+
+    @Test func videoBlockCachePinsInFlightBlocksAgainstLRUEviction() {
+        let cache = ImmichVideoBlockCache()
+        let pinnedStart: Int64 = 54_525_952
+        cache.pin(starts: [pinnedStart])
+        cache.write(at: pinnedStart, Data(repeating: 1, count: Int(ImmichVideoProxyPolicy.blockSize)))
+
+        for index in 0..<40 {
+            let start = Int64(index) * ImmichVideoProxyPolicy.blockSize
+            if start == pinnedStart { continue }
+            cache.write(at: start, Data(repeating: UInt8(index % 250), count: Int(ImmichVideoProxyPolicy.blockSize)))
+        }
+
+        #expect(cache.hasRange(from: pinnedStart, to: pinnedStart + 1024))
+        #expect(cache.storedBytes <= ImmichVideoProxyPolicy.maxCacheBytes + ImmichVideoProxyPolicy.blockSize)
+        cache.unpin(starts: [pinnedStart])
+    }
+
+    @Test func videoBlockCacheKeepsDisjointRunsInsideABlock() throws {
+        let cache = ImmichVideoBlockCache()
+        let blockStart: Int64 = 750_780_416
+        let passThrough: Int64 = 750_911_488
+        cache.write(at: passThrough, Data(repeating: 1, count: 2_000_000))
+        cache.write(at: blockStart, Data(repeating: 2, count: 100_000))
+
+        let block = try #require(cache.block(at: blockStart))
+        #expect(block.hasRange(from: blockStart, to: blockStart + 99_999))
+        #expect(block.hasRange(from: passThrough, to: passThrough + 1_999_999))
+        #expect(!block.hasRange(from: blockStart, to: passThrough))
+        #expect(block.missingIntervals(from: blockStart, to: blockStart + 99_999).isEmpty)
+        #expect(!block.missingIntervals(from: blockStart + 100_000, to: passThrough - 1).isEmpty)
+    }
+
+    @Test func videoBlockCacheSatisfiesWaiterBeforeBlockIsComplete() throws {
+        let cache = ImmichVideoBlockCache()
+        let blockStart: Int64 = 750_780_416
+        let receivedEnd: Int64 = 753_800_000
+        cache.write(at: blockStart, Data(count: Int(receivedEnd - blockStart)))
+
+        #expect(cache.hasRange(from: blockStart, to: 753_400_000))
+        #expect(!cache.hasRange(from: blockStart, to: 754_974_719))
+        let missing = try #require(cache.block(at: blockStart)?.missingIntervals(from: blockStart, to: 754_974_719).first)
+        #expect(missing.start == receivedEnd)
+    }
+
+    @Test func videoBlockCacheMergesAdjacentPassThroughAndHoleFill() {
+        let cache = ImmichVideoBlockCache()
+        let blockStart: Int64 = 750_780_416
+        let passThrough: Int64 = 750_911_488
+        cache.write(at: passThrough, Data(repeating: 1, count: 4_096))
+        cache.write(at: blockStart, Data(repeating: 2, count: Int(passThrough - blockStart)))
+
+        #expect(cache.hasRange(from: blockStart, to: passThrough + 4_095))
+        #expect(cache.block(at: blockStart)?.runs.count == 1)
+    }
+
+    @Test func videoProxySequentialProducerDoesNotCoverBytesItAlreadyPassed() {
+        #expect(
+            ImmichVideoProxyPolicy.sequentialProducerCovers(
+                producerStart: 750_911_488,
+                producerReceived: 0,
+                producerEnd: nil,
+                needFrom: 751_108_096,
+                needTo: 751_173_631
+            )
+        )
+        #expect(
+            !ImmichVideoProxyPolicy.sequentialProducerCovers(
+                producerStart: 750_911_488,
+                producerReceived: 0,
+                producerEnd: nil,
+                needFrom: 750_780_416,
+                needTo: 750_911_487
+            )
+        )
+        #expect(
+            !ImmichVideoProxyPolicy.sequentialProducerCovers(
+                producerStart: 750_911_488,
+                producerReceived: 3_000_000,
+                producerEnd: nil,
+                needFrom: 750_911_488,
+                needTo: 750_911_488 + 100
+            )
+        )
+    }
+
+    @Test func videoProxySynthesizesKeepAlivePartialContentForTinyClientRanges() {
+        let header = String(
+            data: ImmichVideoProxyHTTP.makePartialContentHeader(
+                start: 140_705_792,
+                end: 140_771_327,
+                total: 4_002_977_082,
+                contentType: "video/mp4",
+                keepAlive: true
+            ),
+            encoding: .utf8
+        ) ?? ""
+        #expect(header.hasPrefix("HTTP/1.1 206 Partial Content"))
+        #expect(header.contains("Content-Range: bytes 140705792-140771327/4002977082"))
+        #expect(header.contains("Content-Length: 65536"))
+        #expect(header.contains("Connection: keep-alive"))
+        #expect(header.contains("Accept-Ranges: bytes"))
+    }
+
+    @Test func videoDiagnosticsComputesBufferedSecondsAheadFromLoadedRanges() {
+        let current = CMTime(seconds: 10, preferredTimescale: 600)
+        let loaded = NSValue(timeRange: CMTimeRange(
+            start: CMTime(seconds: 8, preferredTimescale: 600),
+            duration: CMTime(seconds: 22, preferredTimescale: 600)
+        ))
+        let ahead = VideoPlaybackDiagnostics.bufferedSecondsAhead(of: current, loaded: [loaded])
+        #expect(abs(ahead - 20) < 0.01)
     }
 
     @Test func albumResponseDecodesV3PayloadWithoutOwnerOrAssets() async throws {

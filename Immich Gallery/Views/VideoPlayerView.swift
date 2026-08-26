@@ -21,6 +21,8 @@ class PlayerManager: NSObject, ObservableObject {
     private var playerItem: AVPlayerItem?
     private var cancellables = Set<AnyCancellable>()
     private let videoLoader = ImmichVideoResourceLoader()
+    private let playbackProxy = ImmichVideoPlaybackProxy()
+    private let diagnostics = VideoPlaybackDiagnostics()
     
     let asset: ImmichAsset
     let assetService: AssetService
@@ -45,10 +47,7 @@ class PlayerManager: NSObject, ObservableObject {
             do {
                 let videoURL = try await assetService.loadVideoURL(asset: asset)
                 print("🎥 Video URL created: \(videoURL)")
-                
-                await MainActor.run {
-                    self.setupPlayer(with: videoURL)
-                }
+                await self.setupPlayer(with: videoURL)
             } catch {
                 print("❌ Failed to load video: \(error)")
                 await MainActor.run {
@@ -59,20 +58,22 @@ class PlayerManager: NSObject, ObservableObject {
         }
     }
     
-    private func setupPlayer(with url: URL) {
-        // Determine MIME type based on asset properties
-        let mimeType = determineVideoMimeType()
-        let proxyURL = ImmichVideoResourceLoader.proxyURL(for: url)
-
-        // Custom scheme so AVPlayer asks this loader for bytes (mTLS + auth).
-        let asset = AVURLAsset(url: proxyURL, options: [
-            "AVURLAssetOutOfBandMIMETypeKey": mimeType
-        ])
-        asset.resourceLoader.setDelegate(videoLoader, queue: videoLoader.queue)
+    @MainActor
+    private func setupPlayer(with url: URL) async {
+        let asset = await playbackProxy.makePlaybackAsset(
+            origin: url,
+            authenticationService: authenticationService,
+            loader: videoLoader
+        )
         
         // Create player item with the asset
         let playerItem = AVPlayerItem(asset: asset)
+        playerItem.preferredForwardBufferDuration = 30
+        playerItem.canUseNetworkResourcesForLiveStreamingWhilePaused = true
         self.playerItem = playerItem
+        diagnostics.attach(player: player, item: playerItem) { [weak self] in
+            self?.playbackProxy.notifyExplicitSeek()
+        }
         
         // Watch for buffer issues (from Medium article)
         playerItem.publisher(for: \.isPlaybackBufferEmpty)
@@ -126,6 +127,7 @@ class PlayerManager: NSObject, ObservableObject {
         
         // Replace current item
         player.replaceCurrentItem(with: playerItem)
+        player.automaticallyWaitsToMinimizeStalling = true
         
         print("▶️ Video player setup completed")
     }
@@ -156,44 +158,15 @@ class PlayerManager: NSObject, ObservableObject {
         }
     }
     
-    private func determineVideoMimeType() -> String {
-        // Try to determine MIME type from asset properties
-        if let mimeType = asset.originalMimeType {
-            // Validate that it's a video MIME type
-            if mimeType.hasPrefix("video/") {
-                return mimeType
-            }
-        }
-        
-        // Fallback to common video formats
-        let fileName = asset.originalFileName.lowercased()
-        if fileName.hasSuffix(".mp4") {
-            return "video/mp4"
-        } else if fileName.hasSuffix(".mov") {
-            return "video/quicktime"
-        } else if fileName.hasSuffix(".avi") {
-            return "video/x-msvideo"
-        } else if fileName.hasSuffix(".mkv") {
-            return "video/x-matroska"
-        } else if fileName.hasSuffix(".webm") {
-            return "video/webm"
-        } else {
-            // Default to MP4
-            return "video/mp4"
-        }
-    }
-    
-    
     func cleanup() {
-        // Remove all cancellables
         cancellables.removeAll()
-        
-        // Remove notification observers
+        diagnostics.stop()
         NotificationCenter.default.removeObserver(self)
         
         player.pause()
         player = AVPlayer()
         playerItem = nil
+        playbackProxy.stop()
         
         print("🧹 Video player cleaned up")
     }

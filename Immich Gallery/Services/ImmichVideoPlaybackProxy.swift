@@ -57,6 +57,7 @@ enum ImmichVideoProxyPolicy {
 
 final class ImmichVideoPlaybackProxy: NSObject, URLSessionDataDelegate {
     private let queue = DispatchQueue(label: "immich.video.playback-proxy")
+    private let queueKey = DispatchSpecificKey<Bool>()
 
     private var listener: NWListener?
     private var session: URLSession?
@@ -82,7 +83,14 @@ final class ImmichVideoPlaybackProxy: NSObject, URLSessionDataDelegate {
     private var cacheMisses = 0
     private var cacheWaits = 0
 
+    override init() {
+        super.init()
+        queue.setSpecific(key: queueKey, value: true)
+    }
+
     deinit {
+        // URLSession releases this delegate on `queue`; syncing to it from
+        // deinit deadlocks and libdispatch traps with EXC_BREAKPOINT.
         stop()
     }
 
@@ -195,7 +203,11 @@ final class ImmichVideoPlaybackProxy: NSObject, URLSessionDataDelegate {
     }
 
     func stop() {
-        queue.sync { stopLocked() }
+        if DispatchQueue.getSpecific(key: queueKey) != nil {
+            stopLocked()
+        } else {
+            queue.sync { stopLocked() }
+        }
     }
 
     /// AVPlayer closes the old localhost ranges on a real seek. The matching
@@ -207,6 +219,7 @@ final class ImmichVideoPlaybackProxy: NSObject, URLSessionDataDelegate {
     }
 
     private func stopLocked() {
+        guard !isStopped else { return }
         isStopped = true
         listener?.cancel()
         listener = nil
